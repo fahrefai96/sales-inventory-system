@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const saleSchema = new mongoose.Schema({
   saleId: {
     type: String,
@@ -35,6 +34,25 @@ const saleSchema = new mongoose.Schema({
   },
 
   createdAt: { type: Date, default: Date.now },
+
+  // Added saleDate
+  saleDate: {
+    type: Date,
+    default: Date.now,
+    required: true,
+  },
+
+  // Add discount field (percentage discount, default to 0%)
+  discount: {
+    type: Number,
+    default: 0,
+  },
+
+  // Discounted total amount
+  discountedAmount: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const Sale = mongoose.model("Sale", saleSchema);

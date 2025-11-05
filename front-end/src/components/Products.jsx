@@ -15,13 +15,13 @@ const Products = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    code: "", // ✅ new required field
+    code: "",
     price: "",
     stock: "",
     category: "",
-    brand: "", // ✅ new required field
+    brand: "",
     supplier: "",
-    size: "", // required for all categories
+    size: "",
   });
 
   const [editingId, setEditingId] = useState(null);
@@ -39,7 +39,7 @@ const Products = () => {
         setFilteredProducts(response.data.products);
         setCategories(response.data.categories);
         setSuppliers(response.data.suppliers);
-        // backend also returns active brands in /products; but fetch /brands too in case
+        // brands loaded separately to ensure only active brands
       }
     } catch (error) {
       alert(error?.response?.data?.error || error.message);
@@ -59,7 +59,6 @@ const Products = () => {
         setBrands((data.brands || []).filter((b) => b.active !== false));
       }
     } catch (err) {
-      // Non-fatal for page usage
       console.error("Fetch brands failed:", err?.response?.data || err.message);
     }
   };
@@ -72,11 +71,15 @@ const Products = () => {
   const handleSearchInput = (e) => {
     const q = e.target.value.toLowerCase();
     setFilteredProducts(
-      products.filter(
-        (product) =>
-          (product.name || "").toLowerCase().includes(q) ||
-          (product.code || "").toLowerCase().includes(q)
-      )
+      products
+        .filter(
+          (product) =>
+            (product.name || "").toLowerCase().includes(q) ||
+            (product.code || "").toLowerCase().includes(q)
+        )
+        .sort(
+          (a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0)
+        )
     );
   };
 
@@ -98,11 +101,11 @@ const Products = () => {
     const payload = {
       name: formData.name.trim(),
       description: formData.description,
-      code: formData.code.trim(), // ✅ send code
+      code: formData.code.trim(),
       price: Number(formData.price),
       stock: Number(formData.stock),
       category: formData.category, // ID
-      brand: formData.brand, // ✅ send brand ID
+      brand: formData.brand, // ID
       supplier: formData.supplier, // ID
       size: formData.size, // must match category.sizeOptions
     };
@@ -194,6 +197,8 @@ const Products = () => {
 
   if (loading) return <div>Loading ....</div>;
 
+  const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Products</h1>
@@ -244,6 +249,9 @@ const Products = () => {
                 Stock
               </th>
               <th className="px-4 py-2 text-left text-gray-600 font-semibold">
+                Last Updated
+              </th>
+              <th className="px-4 py-2 text-left text-gray-600 font-semibold">
                 Action
               </th>
             </tr>
@@ -280,6 +288,9 @@ const Products = () => {
                       {product.stock}
                     </span>
                   </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {formatDateTime(product.lastUpdated)}
+                  </td>
                   <td className="px-4 py-2 flex gap-2">
                     <button
                       onClick={() => handleEdit(product)}
@@ -298,7 +309,11 @@ const Products = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="px-4 py-2 text-center text-gray-500">
+                {/* 10 columns including the Action column */}
+                <td
+                  colSpan="10"
+                  className="px-4 py-2 text-center text-gray-500"
+                >
                   No products found.
                 </td>
               </tr>

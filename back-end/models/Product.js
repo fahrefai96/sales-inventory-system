@@ -56,5 +56,29 @@ productSchema.index({ name: 1, isDeleted: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ category: 1 });
 
+// auto-bump lastUpdated on save
+productSchema.pre("save", function (next) {
+  this.lastUpdated = new Date();
+  next();
+});
+
+// auto-bump lastUpdated on findOneAndUpdate (e.g., findByIdAndUpdate)
+productSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate() || {};
+  if (!update.$set) update.$set = {};
+  update.$set.lastUpdated = new Date();
+  this.setUpdate(update);
+  next();
+});
+
+// Also when using updateOne directly
+productSchema.pre("updateOne", function (next) {
+  const update = this.getUpdate() || {};
+  if (!update.$set) update.$set = {};
+  update.$set.lastUpdated = new Date();
+  this.setUpdate(update);
+  next();
+});
+
 const Product = mongoose.model("Product", productSchema);
 export default Product;

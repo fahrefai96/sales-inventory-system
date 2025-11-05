@@ -74,14 +74,16 @@ const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const productCount = await Product.countDocuments({ supplier: id });
-    if (productCount > 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Cannot delete supplier with associated products",
-        });
+    const count = await Product.countDocuments({
+      supplier: id,
+      isDeleted: false,
+    });
+    if (count > 0) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Cannot delete supplier with associated products. Remove or reassign those products first.",
+      });
     }
 
     const supplier = await Supplier.findByIdAndDelete({ _id: id });
