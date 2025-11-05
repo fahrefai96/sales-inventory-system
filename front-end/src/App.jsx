@@ -11,12 +11,14 @@ import Sales from "./components/Sales.jsx";
 import Customer from "./components/Customers.jsx";
 import DashboardPanel from "./components/DashboardPanel";
 import Users from "./pages/Users.jsx";
+import Logout from "./pages/Logout.jsx";
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Root />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/logout" element={<Logout />} />
         <Route
           path="/admin-dashboard"
           element={
@@ -32,6 +34,7 @@ function App() {
           <Route path="sales" element={<Sales />}></Route>
           <Route path="customers" element={<Customer />} />
           <Route path="users" element={<Users />} />
+          <Route path="logout" element={<Logout />} />
         </Route>
         <Route path="/staff/dashboard" element={<h1>Staff Dashboard</h1>} />
         <Route
