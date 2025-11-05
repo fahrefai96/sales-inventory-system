@@ -9,7 +9,8 @@ import Suppliers from "./components/Suppliers.jsx";
 import Products from "./components/Products.jsx";
 import Sales from "./components/Sales.jsx";
 import Customer from "./components/Customers.jsx";
-import DashboardPanel from "./components/DashboardPanel"
+import DashboardPanel from "./components/DashboardPanel";
+import Users from "./pages/Users.jsx";
 function App() {
   return (
     <Router>
@@ -28,9 +29,9 @@ function App() {
           <Route path="categories" element={<Categories />}></Route>
           <Route path="products" element={<Products />}></Route>
           <Route path="suppliers" element={<Suppliers />}></Route>
-          <Route path="sales" element={<Sales />}></Route> 
+          <Route path="sales" element={<Sales />}></Route>
           <Route path="customers" element={<Customer />} />
-          
+          <Route path="users" element={<Users />} />
         </Route>
         <Route path="/staff/dashboard" element={<h1>Staff Dashboard</h1>} />
         <Route
