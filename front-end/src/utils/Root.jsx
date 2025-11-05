@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
 
 const Root = () => {
@@ -8,7 +8,7 @@ const Root = () => {
   useEffect(() => {
     if (user) {
       if (user.role === "admin") {
-        navigate("/admin/dashboard");
+        navigate("/admin-dashboard");
       } else if (user.role === "staff") {
         navigate("/staff/dashboard");
       } else {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../../context/authContext";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const Login = () => {
@@ -28,7 +28,7 @@ const Login = () => {
       if (response.data.success) {
         await login(response.data.user, response.data.token);
         if (response.data.user.role === "admin") {
-          navigate("/admin/dashboard");
+          navigate("/admin-dashboard");
         } else {
           navigate("/staff/dashboard");
         }
