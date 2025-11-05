@@ -10,6 +10,7 @@ import productRouter from "./routes/product.js";
 import salesRouter from "./routes/sales.js";
 import customerRouter from "./routes/customer.js";
 import usersRoute from "./routes/users.js";
+import brandRoutes from "./routes/brands.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use("/api/products", productRouter);
 app.use("/api/sales", salesRouter);
 app.use("/api/customers", customerRouter);
 app.use("/api/users", usersRoute);
+app.use("/api/brands", brandRoutes);
 
 app.listen(process.env.PORT, () => {
   connectdb();

@@ -4,7 +4,6 @@ import Root from "./utils/Root.jsx";
 import Login from "./pages/Login.jsx";
 import ProtectedRoute from "./utils/protectedRoute.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Categories from "./components/Categories";
 import Suppliers from "./components/Suppliers.jsx";
 import Products from "./components/Products.jsx";
 import Sales from "./components/Sales.jsx";
@@ -12,6 +11,8 @@ import Customer from "./components/Customers.jsx";
 import DashboardPanel from "./components/DashboardPanel";
 import Users from "./pages/Users.jsx";
 import Logout from "./pages/Logout.jsx";
+import Catalog from "./components/Catalog.jsx";
+
 function App() {
   return (
     <Router>
@@ -28,7 +29,7 @@ function App() {
           }
         >
           <Route index element={<DashboardPanel />} />
-          <Route path="categories" element={<Categories />}></Route>
+          <Route path="catalog" element={<Catalog />}></Route>
           <Route path="products" element={<Products />}></Route>
           <Route path="suppliers" element={<Suppliers />}></Route>
           <Route path="sales" element={<Sales />}></Route>

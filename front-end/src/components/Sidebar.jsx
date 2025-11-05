@@ -11,7 +11,7 @@ import {
   FaUser,
   FaMoneyBillWave,
   FaChartLine,
-  FaRobot 
+  FaRobot,
 } from "react-icons/fa";
 
 const Sidebar = () => {
@@ -23,8 +23,8 @@ const Sidebar = () => {
       isParent: true,
     },
     {
-      name: "Categories",
-      path: "/admin-dashboard/categories",
+      name: "Categories & Brands",
+      path: "/admin-dashboard/catalog",
       icon: <FaTable />,
       isParent: false,
     },
@@ -40,35 +40,44 @@ const Sidebar = () => {
       icon: <FaTruck />,
       isParent: false,
     },
-   
-     {
-  name: "Sales",
-  path: "/admin-dashboard/sales",
-  icon: <FaMoneyBillWave />,
-  isParent: false
-},
- { name: "Customers", 
-  path: "/admin-dashboard/customers", 
-  icon: <FaUser />, 
-  isParent: false },
-    { name: "Reports", 
-      path: "/admin-dashboard/reports", 
-      icon: <FaChartLine />, 
-      isParent: false },
-    { name: "Forecasting", 
-      path: "/admin-dashboard/forecasting", 
-      icon: <FaRobot />, isParent: false },
-    { name: "Chatbot", 
-      path: "/admin-dashboard/chatbot", 
-      icon: <FaRobot />, 
-      isParent: false },
+
+    {
+      name: "Sales",
+      path: "/admin-dashboard/sales",
+      icon: <FaMoneyBillWave />,
+      isParent: false,
+    },
+    {
+      name: "Customers",
+      path: "/admin-dashboard/customers",
+      icon: <FaUser />,
+      isParent: false,
+    },
+    {
+      name: "Reports",
+      path: "/admin-dashboard/reports",
+      icon: <FaChartLine />,
+      isParent: false,
+    },
+    {
+      name: "Forecasting",
+      path: "/admin-dashboard/forecasting",
+      icon: <FaRobot />,
+      isParent: false,
+    },
+    {
+      name: "Chatbot",
+      path: "/admin-dashboard/chatbot",
+      icon: <FaRobot />,
+      isParent: false,
+    },
     {
       name: "Users",
       path: "/admin-dashboard/users",
       icon: <FaUser />,
       isParent: false,
     },
-   
+
     {
       name: "Logout",
       path: "/admin-dashboard/logout",
