@@ -6,10 +6,16 @@ const generateSaleId = async () => {
   const today = new Date().toISOString().split("T")[0].replace(/-/g, ""); // YYYYMMDD
   const pattern = new RegExp(`^INV-${today}`);
 
-  // Count all sales for today
-  const count = await Sale.countDocuments({ saleId: { $regex: pattern } });
+  let count = await Sale.countDocuments({ saleId: { $regex: pattern } });
+  let newId;
 
-  return `INV-${today}-${String(count + 1).padStart(4, "0")}`;
+  // Keep generating until a truly unique one is found
+  do {
+    count += 1;
+    newId = `INV-${today}-${String(count).padStart(4, "0")}`;
+  } while (await Sale.exists({ saleId: newId }));
+
+  return newId;
 };
 
 // Create Sale
@@ -74,6 +80,8 @@ const getSales = async (req, res) => {
       .populate("products.product", "name price")
       .populate("customer", "name")
       .populate("createdBy", "name")
+      // NEW: include who last updated the sale
+      .populate("updatedBy", "name")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, sales });
@@ -134,6 +142,9 @@ const updateSale = async (req, res) => {
     sale.saleDate = saleDate || sale.saleDate;
     sale.discount = discount || sale.discount;
     sale.discountedAmount = discountedAmount; // Update discountedAmount
+
+    // NEW: record who updated
+    sale.updatedBy = req.user._id;
 
     await sale.save();
     res.json({ success: true, sale });
