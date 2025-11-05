@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import User from "./models/user.js";
+import User from "./models/User.js";
 import connectdb from "./db/connection.js";
 
 const register = async () => {
