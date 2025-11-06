@@ -1,9 +1,12 @@
+// back-end/Controllers/productController.js
 import Category from "../models/Category.js";
 import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
 import Supplier from "../models/Supplier.js";
 
-// Add a new product
+/**
+ * Add a new product (or restore if a soft-deleted product with the same code exists)
+ */
 const addProduct = async (req, res) => {
   try {
     const {
@@ -16,25 +19,23 @@ const addProduct = async (req, res) => {
       brand,
       size,
       code,
-    } = req.body;
+    } = req.body || {};
 
-    // base validations
-    if (!code?.trim())
+    // Base validations
+    if (!code?.trim()) {
       return res
         .status(400)
         .json({ success: false, error: "Product code is required" });
+    }
 
-    const codeExists = await Product.findOne({ code: code.trim() });
-    if (codeExists)
-      return res
-        .status(409)
-        .json({ success: false, error: "Product code already exists" });
+    const trimmedCode = code.trim();
 
     const cat = await Category.findById(category);
-    if (!cat)
+    if (!cat) {
       return res
         .status(400)
         .json({ success: false, error: "Invalid category" });
+    }
 
     const br = await Brand.findById(brand);
     if (!br || br.active === false) {
@@ -44,26 +45,68 @@ const addProduct = async (req, res) => {
     }
 
     const sup = await Supplier.findById(supplier);
-    if (!sup)
+    if (!sup) {
       return res
         .status(400)
         .json({ success: false, error: "Invalid supplier" });
+    }
 
     // size must be one of category.sizeOptions
-    if (!size)
+    if (!size) {
       return res
         .status(400)
         .json({ success: false, error: "Size is required" });
+    }
     if (!Array.isArray(cat.sizeOptions) || !cat.sizeOptions.includes(size)) {
       return res
         .status(400)
         .json({ success: false, error: "Invalid size for this category" });
     }
 
+    // 1) Hard check for an ACTIVE duplicate by code
+    const activeDup = await Product.findOne({
+      code: trimmedCode,
+      isDeleted: false,
+    }).lean();
+
+    if (activeDup) {
+      return res
+        .status(409)
+        .json({ success: false, error: "Product code already exists" });
+    }
+
+    // 2) If there is a DELETED match, restore it instead of creating a new one
+    const deletedMatch = await Product.findOne({
+      code: trimmedCode,
+      isDeleted: true,
+    });
+
+    if (deletedMatch) {
+      deletedMatch.isDeleted = false;
+      deletedMatch.name = name;
+      deletedMatch.description = description;
+      deletedMatch.price = price;
+      deletedMatch.stock = stock;
+      deletedMatch.category = category;
+      deletedMatch.supplier = supplier;
+      deletedMatch.brand = brand;
+      deletedMatch.size = size;
+      deletedMatch.lastUpdated = new Date();
+
+      await deletedMatch.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Restored previously deleted product",
+        product: deletedMatch,
+      });
+    }
+
+    // 3) No duplicates at all -> create new
     const newProduct = await Product.create({
       name,
       description,
-      code: code.trim(),
+      code: trimmedCode,
       price,
       stock,
       category,
@@ -78,12 +121,20 @@ const addProduct = async (req, res) => {
       product: newProduct,
     });
   } catch (error) {
-    console.error(error.message);
+    console.error("Error adding product:", error);
+    // If unique index on code fires, surface a clear message
+    if (error?.code === 11000) {
+      return res
+        .status(409)
+        .json({ success: false, error: "Product code already exists" });
+    }
     return res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
-// Get all products (with optional filters)
+/**
+ * Get all products (with optional filters); supports dropdown mode
+ */
 const getProducts = async (req, res) => {
   try {
     const search = req.query.search || "";
@@ -102,6 +153,7 @@ const getProducts = async (req, res) => {
       .populate("brand")
       .populate("supplier");
 
+    // Dropdown mode: used by your React AsyncSelect
     if (req.query.dropdown) {
       const dropdownOptions = products.map((p) => ({
         value: p._id,
@@ -125,7 +177,9 @@ const getProducts = async (req, res) => {
   }
 };
 
-// Update a product
+/**
+ * Update a product
+ */
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -151,8 +205,15 @@ const updateProduct = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, error: "Product code is required" });
-    // unique code except self
-    const dup = await Product.findOne({ _id: { $ne: id }, code: code.trim() });
+
+    const trimmedCode = code.trim();
+
+    // Unique code among ACTIVE products (ignore self)
+    const dup = await Product.findOne({
+      _id: { $ne: id },
+      code: trimmedCode,
+      isDeleted: false,
+    }).lean();
     if (dup)
       return res
         .status(409)
@@ -192,7 +253,7 @@ const updateProduct = async (req, res) => {
       {
         name,
         description,
-        code: code.trim(),
+        code: trimmedCode,
         price,
         stock,
         category,
@@ -207,13 +268,20 @@ const updateProduct = async (req, res) => {
     return res.status(200).json({ success: true, updatedProduct });
   } catch (error) {
     console.error("Error updating product:", error);
+    if (error?.code === 11000) {
+      return res
+        .status(409)
+        .json({ success: false, error: "Product code already exists" });
+    }
     return res
       .status(500)
       .json({ success: false, error: "Server error " + error.message });
   }
 };
 
-// Soft delete a product
+/**
+ * Soft delete a product
+ */
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -255,4 +323,5 @@ const deleteProduct = async (req, res) => {
       .json({ success: false, error: "Server error " + error.message });
   }
 };
+
 export { addProduct, getProducts, updateProduct, deleteProduct };

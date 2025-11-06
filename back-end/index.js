@@ -11,6 +11,7 @@ import salesRouter from "./routes/sales.js";
 import customerRouter from "./routes/customer.js";
 import usersRoute from "./routes/users.js";
 import brandRoutes from "./routes/brands.js";
+import inventoryLogsRoutes from "./routes/inventory-logs.js";
 
 dotenv.config();
 
@@ -26,7 +27,7 @@ app.use("/api/sales", salesRouter);
 app.use("/api/customers", customerRouter);
 app.use("/api/users", usersRoute);
 app.use("/api/brands", brandRoutes);
-
+app.use("/api/inventory-logs", inventoryLogsRoutes);
 app.listen(process.env.PORT, () => {
   connectdb();
   console.log(`Server is running on http://localhost:${process.env.PORT}`);

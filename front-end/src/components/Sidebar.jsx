@@ -12,6 +12,7 @@ import {
   FaMoneyBillWave,
   FaChartLine,
   FaRobot,
+  FaClipboardList,
 } from "react-icons/fa";
 
 const Sidebar = () => {
@@ -75,6 +76,12 @@ const Sidebar = () => {
       name: "Users",
       path: "/admin-dashboard/users",
       icon: <FaUser />,
+      isParent: false,
+    },
+    {
+      name: "Inventory Logs",
+      path: "/admin-dashboard/inventory-logs",
+      icon: <FaClipboardList />,
       isParent: false,
     },
 
