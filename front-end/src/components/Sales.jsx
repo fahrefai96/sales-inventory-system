@@ -1,3 +1,4 @@
+// frontend/src/components/Sales.jsx
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
 import axios from "axios";
@@ -10,7 +11,7 @@ const Sales = () => {
   const [loading, setLoading] = useState(false);
   const [sales, setSales] = useState([]);
 
-  // server-side filters you already had
+  // server-side filters
   const [searchCustomerName, setSearchCustomerName] = useState("");
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [saleDate, setSaleDate] = useState(
@@ -28,9 +29,9 @@ const Sales = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
 
-  // page-level error (kept)
+  // page-level error
   const [uiError, setUiError] = useState("");
-  // NEW: inline modal error
+  // modal error
   const [modalError, setModalError] = useState("");
 
   const token = localStorage.getItem("pos-token");
@@ -39,7 +40,9 @@ const Sales = () => {
   const loadProductOptions = async (inputValue) => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/products?dropdown=true&search=${inputValue}`,
+        `http://localhost:3000/api/products?dropdown=true&search=${encodeURIComponent(
+          inputValue || ""
+        )}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const products = Array.isArray(res.data) ? res.data : [];
@@ -53,11 +56,13 @@ const Sales = () => {
     }
   };
 
-  // Load Customers Dropdown (for both modal and filter)
+  // Load Customers Dropdown
   const loadCustomerOptions = async (inputValue) => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/customers?dropdown=true&search=${inputValue}`,
+        `http://localhost:3000/api/customers?dropdown=true&search=${encodeURIComponent(
+          inputValue || ""
+        )}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const customers = Array.isArray(res.data.customers)
@@ -138,7 +143,7 @@ const Sales = () => {
 
   const openModalForEdit = (sale) => {
     setUiError("");
-    setModalError(""); // clear modal error
+    setModalError("");
 
     setEditingSaleId(sale._id);
     setSelectedCustomer({
@@ -146,15 +151,15 @@ const Sales = () => {
       label: sale.customer?.name || "",
     });
 
-    const products = sale.products.map((p) => ({
-      value: p.product._id,
-      label: p.product.name,
+    const products = (sale.products || []).map((p) => ({
+      value: p?.product?._id,
+      label: p?.product?.name ?? "-",
     }));
     setSelectedProducts(products);
 
     const q = {};
-    sale.products.forEach((p) => {
-      q[p.product._id] = p.quantity;
+    (sale.products || []).forEach((p) => {
+      if (p?.product?._id) q[p.product._id] = p.quantity;
     });
     setQuantities(q);
 
@@ -183,6 +188,21 @@ const Sales = () => {
         err?.response?.data?.message ||
           err?.response?.data?.error ||
           "Failed to delete sale."
+      );
+    }
+  };
+
+  // ---- SINGLE download path to avoid double downloads (no XHR/Blob) ----
+  const downloadInvoice = (id /*, humanSaleId */) => {
+    setUiError("");
+    const tok = localStorage.getItem("pos-token") || token || "";
+    const url = `http://localhost:3000/api/sales/${id}/invoice.pdf?token=${encodeURIComponent(
+      tok
+    )}`;
+    const win = window.open(url, "_blank");
+    if (!win) {
+      setUiError(
+        "Pop-up blocked. Please allow pop-ups to download the invoice."
       );
     }
   };
@@ -224,7 +244,7 @@ const Sales = () => {
       const payload = {
         products,
         customer: selectedCustomer.value,
-        saleDate,
+        saleDate, // date-only (used for filters); actual time shows from createdAt
         discount,
         discountedAmount,
       };
@@ -233,7 +253,9 @@ const Sales = () => {
         await axios.put(
           `http://localhost:3000/api/sales/${editingSaleId}`,
           payload,
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
         setEditingSaleId(null);
       } else {
@@ -242,7 +264,6 @@ const Sales = () => {
         });
       }
 
-      // success: close modal & reset
       setIsModalOpen(false);
       setSelectedProducts([]);
       setSelectedCustomer(null);
@@ -254,7 +275,6 @@ const Sales = () => {
     } catch (err) {
       console.error("Error saving sale:", err);
 
-      // Prefer backend message
       const raw =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
@@ -263,7 +283,6 @@ const Sales = () => {
 
       let friendly = raw;
       if (/insufficient stock/i.test(raw)) {
-        // backend already includes product name; show as-is
         friendly = raw;
       } else if (/product not found/i.test(raw)) {
         friendly = "One or more selected products no longer exist.";
@@ -271,9 +290,7 @@ const Sales = () => {
         friendly = "Please add at least one product to the sale.";
       }
 
-      // 👉 Show error **inside the modal**
       setModalError(friendly);
-      // keep modal open
     } finally {
       setLoading(false);
     }
@@ -293,11 +310,19 @@ const Sales = () => {
     setSortDir("desc");
   };
 
+  // Local date-time display (use createdAt for accurate time)
+  const formatDateTime = (d) => {
+    try {
+      return new Date(d).toLocaleString();
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Sales</h1>
 
-      {/* page-level error (kept) */}
       {uiError ? (
         <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-700 p-3 flex items-start justify-between">
           <div className="pr-3">
@@ -315,9 +340,9 @@ const Sales = () => {
         </div>
       ) : null}
 
-      {/* FILTER BAR (server-side) */}
+      {/* FILTER BAR */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           <div>
             <label className="block text-sm mb-1">Sale ID</label>
             <input
@@ -373,25 +398,23 @@ const Sales = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-sm mb-1">Min ₹</label>
-              <input
-                type="number"
-                value={minAmount}
-                onChange={(e) => setMinAmount(e.target.value)}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Max ₹</label>
-              <input
-                type="number"
-                value={maxAmount}
-                onChange={(e) => setMaxAmount(e.target.value)}
-                className="p-2 border rounded w-full"
-              />
-            </div>
+          <div>
+            <label className="block text-sm mb-1">Min ₹</label>
+            <input
+              type="number"
+              value={minAmount}
+              onChange={(e) => setMinAmount(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Max ₹</label>
+            <input
+              type="number"
+              value={maxAmount}
+              onChange={(e) => setMaxAmount(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
           </div>
         </div>
 
@@ -460,7 +483,10 @@ const Sales = () => {
             <tr>
               <th className="px-4 py-2 text-left font-semibold">Sale ID</th>
               <th className="px-4 py-2 text-left font-semibold">Customer</th>
-              <th className="px-4 py-2 text-left font-semibold">Sale Date</th>
+              <th className="px-4 py-2 text-left font-semibold">
+                Sale Date & Time
+              </th>
+              <th className="px-4 py-2 text-left font-semibold">Products</th>
               <th className="px-4 py-2 text-left font-semibold">Discount</th>
               <th className="px-4 py-2 text-left font-semibold">
                 Unit Price(s)
@@ -475,7 +501,7 @@ const Sales = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-gray-500" colSpan={8}>
+                <td className="px-4 py-6 text-gray-500" colSpan={9}>
                   Loading...
                 </td>
               </tr>
@@ -486,17 +512,59 @@ const Sales = () => {
                     {sale.saleId}
                   </td>
                   <td className="px-4 py-2">{sale.customer?.name}</td>
+
+                  {/* Use createdAt for the real time */}
                   <td className="px-4 py-2">
-                    {new Date(sale.saleDate).toLocaleDateString()}
+                    {formatDateTime(sale.createdAt || sale.saleDate)}
                   </td>
+
+                  {/* Products column: name + Tailwind tooltip with Brand (first) then Size */}
+                  <td className="px-4 py-2">
+                    {Array.isArray(sale.products) &&
+                      sale.products.map((p) => {
+                        const key = p?.product?._id || Math.random();
+                        const name = p?.product?.name || "-";
+                        const brand = p?.product?.brand?.name || "";
+                        const size = p?.product?.size || "";
+                        const hasMeta = brand || size;
+
+                        return (
+                          <div key={key} className="relative group w-fit">
+                            <span
+                              className={
+                                hasMeta ? "cursor-help hover:underline" : ""
+                              }
+                            >
+                              {name}
+                            </span>
+
+                            {hasMeta && (
+                              <div className="pointer-events-none absolute left-0 top-[120%] z-10 hidden w-max max-w-xs rounded-md bg-black/90 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                                {brand ? (
+                                  <div>
+                                    <strong>Brand:</strong> {brand}
+                                  </div>
+                                ) : null}
+                                {size ? (
+                                  <div>
+                                    <strong>Size:</strong> {size}
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </td>
+
                   <td className="px-4 py-2">{sale.discount}%</td>
 
                   {/* Unit Price(s) */}
                   <td className="px-4 py-2">
                     {sale.products.map((p) => (
-                      <div key={p.product._id}>
+                      <div key={p?.product?._id || Math.random()}>
                         $
-                        {Number(p.unitPrice ?? p.product?.price ?? 0).toFixed(
+                        {Number(p?.unitPrice ?? p?.product?.price ?? 0).toFixed(
                           2
                         )}
                       </div>
@@ -506,7 +574,9 @@ const Sales = () => {
                   {/* Quantities */}
                   <td className="px-4 py-2">
                     {sale.products.map((p) => (
-                      <div key={p.product._id}>{p.quantity}</div>
+                      <div key={p?.product?._id || Math.random()}>
+                        {p.quantity}
+                      </div>
                     ))}
                   </td>
 
@@ -515,7 +585,7 @@ const Sales = () => {
                     ${Number(sale.discountedAmount || 0).toFixed(2)}
                   </td>
 
-                  <td className="px-4 py-2 flex gap-2">
+                  <td className="px-4 py-2 flex gap-3">
                     <button
                       onClick={() => openModalForEdit(sale)}
                       className="text-blue-500 hover:text-blue-700 font-semibold"
@@ -528,12 +598,19 @@ const Sales = () => {
                     >
                       Delete
                     </button>
+                    <button
+                      onClick={() => downloadInvoice(sale._id, sale.saleId)}
+                      className="text-green-600 hover:text-green-800 font-semibold"
+                      title="Download invoice PDF"
+                    >
+                      Invoice (PDF)
+                    </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td className="px-4 py-6 text-center text-gray-500" colSpan={8}>
+                <td className="px-4 py-6 text-center text-gray-500" colSpan={9}>
                   No sales found.
                 </td>
               </tr>
@@ -550,7 +627,6 @@ const Sales = () => {
               {editingSaleId ? "Edit Sale" : "Add Sale"}
             </h2>
 
-            {/* NEW: modal-level error banner */}
             {modalError ? (
               <div className="mb-3 rounded border border-red-200 bg-red-50 text-red-700 p-2">
                 {modalError}
@@ -566,6 +642,10 @@ const Sales = () => {
                   onChange={(e) => setSaleDate(e.target.value)}
                   className="border p-2 rounded w-full"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Date used for filtering. The time shown in the table is when
+                  the sale was actually created.
+                </p>
               </div>
 
               <div>
@@ -612,9 +692,6 @@ const Sales = () => {
                     }}
                     className="border p-2 rounded w-full"
                   />
-                  <p className="text-sm text-gray-500">
-                    Unit Price: ${p.price}
-                  </p>
                 </div>
               ))}
 

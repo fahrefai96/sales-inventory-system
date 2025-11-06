@@ -1,7 +1,8 @@
 import Sale from "../models/Sales.js";
 import Product from "../models/Product.js";
-import InventoryLog from "../models/InventoryLog.js"; // NEW
-import Customer from "../models/Customer.js"; // NEW (for name searches)
+import InventoryLog from "../models/InventoryLog.js";
+import PDFDocument from "pdfkit";
+import Customer from "../models/Customer.js";
 
 // Generate Sale ID
 const generateSaleId = async () => {
@@ -27,7 +28,7 @@ const addSale = async (req, res) => {
         .json({ success: false, message: "No products provided" });
 
     let totalAmount = 0;
-    const logsToWrite = []; // collect logs and write after sale gets _id
+    const logsToWrite = [];
 
     for (const item of products) {
       const product = await Product.findById(item.product);
@@ -51,7 +52,6 @@ const addSale = async (req, res) => {
       const afterQty = product.stock;
       await product.save();
 
-      // log stock out
       logsToWrite.push({
         product: product._id,
         action: "sale.create",
@@ -78,7 +78,6 @@ const addSale = async (req, res) => {
 
     await sale.save();
 
-    // attach sale id to logs and write them
     if (logsToWrite.length) {
       logsToWrite.forEach((l) => (l.sale = sale._id));
       await InventoryLog.insertMany(logsToWrite);
@@ -91,39 +90,34 @@ const addSale = async (req, res) => {
   }
 };
 
-// Get All Sales (ENHANCED: filters + sorting)
+// Get All Sales
 const getSales = async (req, res) => {
   try {
-    // Supported query params:
-    // saleId (string, exact or partial), customer (ObjectId),
-    // customerName (string, regex), from/to (ISO date), min/max (number on discountedAmount),
-    // sortBy: 'saleDate' | 'discountedAmount' | 'createdAt' (default: createdAt)
-    // sortDir: 'asc' | 'desc' (default: 'desc')
     const {
-      saleId,
-      customer,
-      customerName,
-      from,
-      to,
-      min,
-      max,
-      sortBy,
-      sortDir,
-    } = req.query;
+      saleId, // partial match on saleId
+      customer, // exact customer _id
+      customerName, // fuzzy name -> resolves to ids
+      from, // ISO date (start) on saleDate
+      to, // ISO date (end) on saleDate
+      min, // min discountedAmount
+      max, // max discountedAmount
+      sortBy, // 'createdAt' | 'saleDate' | 'discountedAmount'
+      sortDir, // 'asc' | 'desc'
+    } = req.query || {};
 
     const q = {};
 
-    // saleId partial match
+    // saleId partial (ignore empty/whitespace)
     if (saleId && saleId.trim()) {
       q.saleId = { $regex: saleId.trim(), $options: "i" };
     }
 
-    // filter by customer _id if provided
-    if (customer) {
+    // customer exact id
+    if (customer && String(customer).trim()) {
       q.customer = customer;
     }
 
-    // filter by customer name (resolve to customer ids)
+    // customerName -> ids (AND if 'customer' also present)
     if (customerName && customerName.trim()) {
       const rx = new RegExp(customerName.trim(), "i");
       const custs = await Customer.find({ name: rx }).select("_id").lean();
@@ -131,41 +125,55 @@ const getSales = async (req, res) => {
       if (!ids.length) {
         return res.json({ success: true, sales: [] });
       }
-      q.customer = q.customer ? q.customer : { $in: ids }; // if customer id already set, we keep that; otherwise use list
-      // If both provided (customer and customerName), the AND condition is already enforced by q.customer exact id,
-      // so we don't override in that case.
+      if (!q.customer) {
+        q.customer = { $in: ids };
+      }
+      // If q.customer already set (exact id), we keep it; that naturally ANDs with the name intent.
     }
 
-    // date range on saleDate
+    // saleDate range
     if (from || to) {
-      q.saleDate = {};
-      if (from) q.saleDate.$gte = new Date(from);
-      if (to) q.saleDate.$lte = new Date(to);
+      const range = {};
+      if (from) {
+        const d = new Date(from);
+        if (!isNaN(d)) range.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        if (!isNaN(d)) range.$lte = d;
+      }
+      if (Object.keys(range).length) q.saleDate = range;
     }
 
-    // amount range on discountedAmount (fallback to totalAmount if discountedAmount missing)
-    // We keep it simple: filter on discountedAmount field we already store.
-    if (min || max) {
-      q.discountedAmount = {};
-      if (min) q.discountedAmount.$gte = Number(min);
-      if (max) q.discountedAmount.$lte = Number(max);
+    // discountedAmount range (ignore blanks/NaN)
+    const minNum = min === "" ? NaN : Number(min);
+    const maxNum = max === "" ? NaN : Number(max);
+    if (!Number.isNaN(minNum) || !Number.isNaN(maxNum)) {
+      const amt = {};
+      if (!Number.isNaN(minNum)) amt.$gte = minNum;
+      if (!Number.isNaN(maxNum)) amt.$lte = maxNum;
+      q.discountedAmount = amt;
     }
 
-    // sorting
+    // sorting (whitelist)
     let sortField = "createdAt";
     if (["saleDate", "discountedAmount", "createdAt"].includes(sortBy)) {
       sortField = sortBy;
     }
-    const dir = sortDir === "asc" ? 1 : -1;
+    const dir = String(sortDir).toLowerCase() === "asc" ? 1 : -1;
 
     const sales = await Sale.find(q)
-      .populate("products.product", "name price")
+      .populate({
+        path: "products.product",
+        select: "name price code size brand",
+        populate: { path: "brand", select: "name" },
+      })
       .populate("customer", "name")
       .populate("createdBy", "name")
       .populate("updatedBy", "name")
-      .sort({ [sortField]: dir });
+      .sort({ [sortField]: dir, _id: -1 }); // stable tiebreaker
 
-    res.json({ success: true, sales });
+    res.json({ success: true, sales: Array.isArray(sales) ? sales : [] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -311,4 +319,214 @@ const deleteSale = async (req, res) => {
   }
 };
 
-export { addSale, getSales, updateSale, deleteSale };
+/**
+ * Stream a PDF invoice for a sale
+ * GET /api/sales/:id/invoice.pdf
+ */
+const getSaleInvoicePdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const sale = await Sale.findById(id)
+      .populate("customer", "name")
+      .populate("createdBy", "name email")
+      .populate({
+        path: "products.product",
+        select: "name price code size brand",
+        populate: { path: "brand", select: "name" },
+      })
+      .lean();
+
+    if (!sale) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
+    }
+
+    const filename = `${sale.saleId || "invoice"}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    doc.on("error", (err) => {
+      console.error("PDF stream error:", err);
+      try {
+        doc.destroy();
+      } catch {}
+      if (!res.headersSent) {
+        res.status(500);
+      }
+      try {
+        res.end();
+      } catch {}
+    });
+    doc.pipe(res);
+
+    // Header
+    doc
+      .fontSize(18)
+      .text("A2R Ceramic & Hardware", { align: "left" })
+      .moveDown(0.3);
+    doc.fontSize(10).text("Inventory Management System", { align: "left" });
+    doc.fontSize(10).text("Tel: +94-xxx-xxx-xxxx  |  Email: info@a2r.local", {
+      align: "left",
+    });
+    doc.moveDown(1);
+
+    // Title + meta
+    const invoiceDate = sale.createdAt || sale.saleDate;
+
+    doc
+      .fontSize(10)
+      .text(`Invoice No: ${sale.saleId}`, { align: "right" })
+      .text(
+        `Invoice Date: ${new Date(invoiceDate).toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        })}`,
+        { align: "right" }
+      )
+      .moveDown(1);
+    // Bill To
+    doc.fontSize(12).text("Bill To:", { underline: true });
+    doc
+      .fontSize(11)
+      .text(`${sale.customer?.name || "-"}`)
+      .moveDown(1);
+
+    // Table header
+    doc
+      .fontSize(11)
+      .text("Item", 40, doc.y, { continued: true })
+      .text("Qty", 280, doc.y, { width: 60, align: "right", continued: true })
+      .text("Unit", 360, doc.y, { width: 80, align: "right", continued: true })
+      .text("Total", 460, doc.y, { width: 80, align: "right" });
+
+    doc
+      .moveTo(40, doc.y + 3)
+      .lineTo(540, doc.y + 3)
+      .stroke();
+
+    // Line items: Name (line1), Brand (line2), Size (line3), Code (line4)
+    let subtotal = 0;
+    (sale.products || []).forEach((item) => {
+      const name = item.product?.name || "-";
+      const brand = item.product?.brand?.name || null;
+      const size = item.product?.size || null;
+      const code = item.product?.code || null;
+
+      const qty = Number(item.quantity || 0);
+      const unit = Number(item.unitPrice ?? item.product?.price ?? 0);
+      const line = unit * qty;
+      subtotal += line;
+
+      // First line: main row aligned with Qty/Unit/Total
+      const startY = doc.y + 6;
+      doc.fontSize(10).text(name, 40, startY, { continued: true });
+      doc.text(String(qty), 280, startY, {
+        width: 60,
+        align: "right",
+        continued: true,
+      });
+      doc.text(`${unit.toFixed(2)}`, 360, startY, {
+        width: 80,
+        align: "right",
+        continued: true,
+      });
+      doc.text(`${line.toFixed(2)}`, 460, startY, {
+        width: 80,
+        align: "right",
+      });
+
+      // Subsequent detail lines under the Item column only
+      let y = startY + 14;
+      if (brand) {
+        doc.fontSize(9).text(`Brand: ${brand}`, 40, y);
+        y += 12;
+      }
+      if (size) {
+        doc.fontSize(9).text(`Size: ${size}`, 40, y);
+        y += 12;
+      }
+      if (code) {
+        doc.fontSize(9).text(`Code: ${code}`, 40, y);
+        y += 12;
+      }
+      // Make sure we add a small gap before the next item
+      doc.moveDown(0.2);
+    });
+
+    doc.moveDown(1);
+
+    // Totals
+    const discountPct = Number(sale.discount || 0);
+    const discountAmt = (subtotal * discountPct) / 100;
+    const grandTotal = subtotal - discountAmt;
+
+    const rightColX = 360;
+    const labelW = 80;
+    const valueW = 80;
+
+    doc
+      .fontSize(11)
+      .text("Subtotal:", rightColX, doc.y, {
+        width: labelW,
+        continued: true,
+        align: "right",
+      })
+      .text(`${subtotal.toFixed(2)}`, rightColX + labelW, doc.y, {
+        width: valueW,
+        align: "right",
+      });
+
+    doc
+      .text(`Discount (${discountPct}%) :`, rightColX, doc.y + 2, {
+        width: labelW,
+        continued: true,
+        align: "right",
+      })
+      .text(`-${discountAmt.toFixed(2)}`, rightColX + labelW, doc.y, {
+        width: valueW,
+        align: "right",
+      });
+
+    doc
+      .fontSize(12)
+      .text("Grand Total:", rightColX, doc.y + 4, {
+        width: labelW,
+        continued: true,
+        align: "right",
+      })
+      .text(`${grandTotal.toFixed(2)}`, rightColX + labelW, doc.y, {
+        width: valueW,
+        align: "right",
+      });
+
+    doc.moveDown(2);
+
+    // Footer
+    doc
+      .fontSize(9)
+      .text(
+        `Issued by: ${
+          sale.createdBy?.name || "-"
+        }  •  Generated: ${new Date().toLocaleString()}`,
+        { align: "left" }
+      )
+      .moveDown(0.5)
+      .text("Thank you for your business!", { align: "center" });
+
+    doc.end();
+  } catch (err) {
+    console.error("Invoice PDF error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export { addSale, getSales, updateSale, deleteSale, getSaleInvoicePdf };

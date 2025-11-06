@@ -1,50 +1,58 @@
-// back-end/middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+const extractToken = (req) => {
+  // Prefer Authorization header
+  const authHeader = req.headers?.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  // Fallbacks for downloads/open-in-new-tab cases
+  if (typeof req.query?.token === "string" && req.query.token) {
+    // token may already be raw JWT or "Bearer <jwt>"
+    return req.query.token.startsWith("Bearer ")
+      ? req.query.token.slice(7)
+      : req.query.token;
+  }
+  return null;
+};
+
 const authMiddleware = async (req, res, next) => {
   try {
-    // Check header format
-    const auth = req.headers?.authorization || "";
-    const [scheme, token] = auth.split(" ");
-    if (scheme !== "Bearer" || !token) {
+    const token = extractToken(req);
+    if (!token) {
       return res
         .status(401)
         .json({ success: false, error: "Unauthorized - No Token Provided" });
     }
 
-    // Verify token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
+    } catch {
       return res
         .status(401)
         .json({ success: false, error: "Unauthorized - Invalid Token" });
     }
 
-    // Load user
     const user = await User.findById(decoded.id).select("-password");
     if (!user) {
       return res.status(404).json({ success: false, error: "User not found" });
     }
 
-    // Block inactive accounts on every request (invalidates old tokens)
     if (user.isActive === false) {
       return res
         .status(403)
         .json({ success: false, error: "Account is inactive" });
     }
 
-    req.user = user; // attach user (with role) to request
+    req.user = user; // includes role
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
     return res.status(500).json({ success: false, error: "Server error" });
   }
 };
-
-export default authMiddleware;
 
 // Role guard (admin / staff)
 export const requireRole = (roles = []) => {
@@ -58,7 +66,7 @@ export const requireRole = (roles = []) => {
   };
 };
 
-// Optional helper: allow self OR admin access to routes like /users/:id
+// Optional: allow self or admin (kept for future if needed)
 export const requireSelfOrAdmin = (paramKey = "id") => {
   return (req, res, next) => {
     const isAdmin = req.user?.role === "admin";
@@ -69,3 +77,5 @@ export const requireSelfOrAdmin = (paramKey = "id") => {
     next();
   };
 };
+
+export default authMiddleware;
