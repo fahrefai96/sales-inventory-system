@@ -1,14 +1,28 @@
-// back-end/routes/users.js
 import express from "express";
 import auth, { requireRole } from "../middleware/authMiddleware.js";
-import { createStaff, listUsers } from "../Controllers/userController.js";
+import {
+  createStaff,
+  listUsers,
+  updateUser,
+  toggleActive,
+  resetPassword,
+} from "../Controllers/userController.js";
 
 const router = express.Router();
 
-// Autocomplete / listing for UI filters
+// List / search (auth: any logged-in user; front-end uses it for dropdowns too)
 router.get("/", auth, listUsers);
 
-// Create staff (admin-only) - unchanged
+// Create staff (admin)
 router.post("/", auth, requireRole(["admin"]), createStaff);
+
+// Update user (admin)
+router.put("/:id", auth, requireRole(["admin"]), updateUser);
+
+// Toggle active (admin)
+router.patch("/:id/toggle", auth, requireRole(["admin"]), toggleActive);
+
+// Reset password (admin)
+router.patch("/:id/password", auth, requireRole(["admin"]), resetPassword);
 
 export default router;

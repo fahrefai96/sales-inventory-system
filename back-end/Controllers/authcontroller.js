@@ -12,18 +12,27 @@ export const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
       return res
         .status(401)
         .json({ success: false, message: "Invalid credentials" });
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
+    if (!match) {
       return res
         .status(401)
         .json({ success: false, message: "Invalid credentials" });
+    }
 
-    // ✅ include role in payload
+    // Block login for inactive accounts
+    if (user.isActive === false) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Account is inactive" });
+    }
+
+    // Include role in JWT payload
     const payload = { id: user._id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "8h",
@@ -37,7 +46,7 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role, // 'admin' | 'staff'
+        role: user.role,
         address: user.address,
       },
     });

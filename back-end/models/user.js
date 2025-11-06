@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema(
       default: "staff",
       index: true,
     },
+    // NEW: simple activation flag
+    isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }
 );
