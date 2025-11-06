@@ -9,13 +9,29 @@ const Sales = () => {
   const [quantities, setQuantities] = useState({});
   const [loading, setLoading] = useState(false);
   const [sales, setSales] = useState([]);
-  const [searchCustomer, setSearchCustomer] = useState("");
+
+  // server-side filters you already had
+  const [searchCustomerName, setSearchCustomerName] = useState("");
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [saleDate, setSaleDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
-  const [discount, setDiscount] = useState(0); // Discount state
-  const [discountedAmount, setDiscountedAmount] = useState(0); // Discounted amount state
+  const [discount, setDiscount] = useState(0);
+  const [discountedAmount, setDiscountedAmount] = useState(0);
+
+  const [saleIdSearch, setSaleIdSearch] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState("desc");
+
+  // page-level error (kept)
+  const [uiError, setUiError] = useState("");
+  // NEW: inline modal error
+  const [modalError, setModalError] = useState("");
 
   const token = localStorage.getItem("pos-token");
 
@@ -37,7 +53,7 @@ const Sales = () => {
     }
   };
 
-  // Load Customers Dropdown
+  // Load Customers Dropdown (for both modal and filter)
   const loadCustomerOptions = async (inputValue) => {
     try {
       const res = await axios.get(
@@ -57,16 +73,49 @@ const Sales = () => {
     }
   };
 
-  // Fetch all sales
+  // Fetch sales with server-side filters
   const fetchSales = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:3000/api/sales", {
+      setUiError("");
+
+      const params = new URLSearchParams();
+
+      if (saleIdSearch.trim()) params.set("saleId", saleIdSearch.trim());
+      if (filterCustomer?.value) params.set("customer", filterCustomer.value);
+      if (searchCustomerName.trim())
+        params.set("customerName", searchCustomerName.trim());
+
+      if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        params.set("to", end.toISOString());
+      }
+
+      if (minAmount !== "") params.set("min", String(Number(minAmount)));
+      if (maxAmount !== "") params.set("max", String(Number(maxAmount)));
+
+      if (sortBy) params.set("sortBy", sortBy);
+      if (sortDir) params.set("sortDir", sortDir);
+
+      const url = `http://localhost:3000/api/sales${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) setSales(res.data.sales);
+      else setSales([]);
     } catch (err) {
       console.error("Error fetching sales:", err);
+      setSales([]);
+      setUiError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to load sales."
+      );
     } finally {
       setLoading(false);
     }
@@ -74,6 +123,7 @@ const Sales = () => {
 
   useEffect(() => {
     fetchSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Recalculate discounted amount
@@ -87,6 +137,9 @@ const Sales = () => {
   };
 
   const openModalForEdit = (sale) => {
+    setUiError("");
+    setModalError(""); // clear modal error
+
     setEditingSaleId(sale._id);
     setSelectedCustomer({
       value: sale.customer?._id,
@@ -110,8 +163,8 @@ const Sales = () => {
         ? new Date(sale.saleDate).toISOString().slice(0, 10)
         : new Date().toISOString().slice(0, 10)
     );
-    setDiscount(sale.discount || 0); // Pre-fill discount
-    setDiscountedAmount(sale.discountedAmount || sale.totalAmount); // Pre-fill discounted amount
+    setDiscount(sale.discount || 0);
+    setDiscountedAmount(sale.discountedAmount || sale.totalAmount);
 
     setIsModalOpen(true);
   };
@@ -119,42 +172,61 @@ const Sales = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this sale?")) return;
     try {
+      setUiError("");
       await axios.delete(`http://localhost:3000/api/sales/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSales((prev) => prev.filter((s) => s._id !== id));
     } catch (err) {
       console.error("Error deleting sale:", err);
-      alert("Failed to delete sale");
+      setUiError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to delete sale."
+      );
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedCustomer) return alert("Select a customer");
-    if (selectedProducts.length === 0)
-      return alert("Select at least one product");
+    setUiError("");
+    setModalError("");
+
+    if (!selectedCustomer) {
+      setModalError("Select a customer.");
+      return;
+    }
+    if (selectedProducts.length === 0) {
+      setModalError("Select at least one product.");
+      return;
+    }
 
     const products = selectedProducts.map((p) => ({
       product: p.value,
       quantity: quantities[p.value] || 1,
     }));
 
+    for (const item of products) {
+      if (!item.quantity || item.quantity <= 0) {
+        setModalError("Quantity must be at least 1 for all products.");
+        return;
+      }
+    }
+
     try {
       setLoading(true);
+
       const totalAmount = products.reduce((sum, item) => {
         return sum + item.unitPrice * item.quantity;
       }, 0);
-
-      // Recalculate discounted amount
       recalculateDiscountedAmount(totalAmount);
 
       const payload = {
         products,
-        customer: selectedCustomer.value, // Send ObjectId
+        customer: selectedCustomer.value,
         saleDate,
-        discount, // Send the discount
-        discountedAmount, // Send the discounted amount
+        discount,
+        discountedAmount,
       };
 
       if (editingSaleId) {
@@ -170,40 +242,211 @@ const Sales = () => {
         });
       }
 
+      // success: close modal & reset
       setIsModalOpen(false);
       setSelectedProducts([]);
       setSelectedCustomer(null);
       setQuantities({});
-      setDiscount(0); // Reset discount
-      setDiscountedAmount(0); // Reset discounted amount
+      setDiscount(0);
+      setDiscountedAmount(0);
+      setModalError("");
       fetchSales();
     } catch (err) {
       console.error("Error saving sale:", err);
-      alert("Failed to save sale");
+
+      // Prefer backend message
+      const raw =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        (typeof err?.message === "string" ? err.message : null) ||
+        "Failed to save sale.";
+
+      let friendly = raw;
+      if (/insufficient stock/i.test(raw)) {
+        // backend already includes product name; show as-is
+        friendly = raw;
+      } else if (/product not found/i.test(raw)) {
+        friendly = "One or more selected products no longer exist.";
+      } else if (/no products provided/i.test(raw)) {
+        friendly = "Please add at least one product to the sale.";
+      }
+
+      // 👉 Show error **inside the modal**
+      setModalError(friendly);
+      // keep modal open
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSales = sales.filter((sale) =>
-    sale.customer?.name.toLowerCase().includes(searchCustomer.toLowerCase())
-  );
+  // Apply/Reset filter helpers
+  const applyFilters = () => fetchSales();
+  const resetFilters = () => {
+    setSaleIdSearch("");
+    setFilterCustomer(null);
+    setSearchCustomerName("");
+    setDateFrom("");
+    setDateTo("");
+    setMinAmount("");
+    setMaxAmount("");
+    setSortBy("createdAt");
+    setSortDir("desc");
+  };
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Sales</h1>
 
-      {/* Search & Add */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Search sales by customer..."
-          value={searchCustomer}
-          onChange={(e) => setSearchCustomer(e.target.value)}
-          className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
-        />
+      {/* page-level error (kept) */}
+      {uiError ? (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-700 p-3 flex items-start justify-between">
+          <div className="pr-3">
+            <div className="font-semibold">There was a problem</div>
+            <div className="text-sm">{uiError}</div>
+          </div>
+          <button
+            onClick={() => setUiError("")}
+            className="text-red-700 hover:text-red-900 font-bold"
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+
+      {/* FILTER BAR (server-side) */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div>
+            <label className="block text-sm mb-1">Sale ID</label>
+            <input
+              type="text"
+              placeholder="e.g. INV-20251106"
+              value={saleIdSearch}
+              onChange={(e) => setSaleIdSearch(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Customer (by name)</label>
+            <input
+              type="text"
+              placeholder="e.g. John"
+              value={searchCustomerName}
+              onChange={(e) => setSearchCustomerName(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Customer (by select)</label>
+            <AsyncSelect
+              cacheOptions
+              defaultOptions
+              loadOptions={loadCustomerOptions}
+              value={filterCustomer}
+              onChange={setFilterCustomer}
+              isClearable
+              placeholder="Pick customer"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-sm mb-1">Min ₹</label>
+              <input
+                type="number"
+                value={minAmount}
+                onChange={(e) => setMinAmount(e.target.value)}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Max ₹</label>
+              <input
+                type="number"
+                value={maxAmount}
+                onChange={(e) => setMaxAmount(e.target.value)}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row gap-2">
+          <div className="flex items-center gap-2">
+            <label className="text-sm">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="createdAt">Created At</option>
+              <option value="saleDate">Sale Date</option>
+              <option value="discountedAmount">Amount</option>
+            </select>
+
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </div>
+
+          <div className="ml-auto flex gap-2">
+            <button
+              onClick={applyFilters}
+              disabled={loading}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {loading ? "Loading..." : "Apply"}
+            </button>
+            <button
+              onClick={() => {
+                resetFilters();
+                setTimeout(applyFilters, 0);
+              }}
+              className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Sale button */}
+      <div className="flex justify-end mb-4">
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setUiError("");
+            setModalError("");
+            setIsModalOpen(true);
+          }}
           className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
         >
           Add Sale
@@ -222,9 +465,7 @@ const Sales = () => {
               <th className="px-4 py-2 text-left font-semibold">
                 Unit Price(s)
               </th>
-
               <th className="px-4 py-2 text-left font-semibold">Quantities</th>
-
               <th className="px-4 py-2 text-left font-semibold">
                 Total Amount
               </th>
@@ -232,8 +473,14 @@ const Sales = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredSales.length > 0 ? (
-              filteredSales.map((sale) => (
+            {loading ? (
+              <tr>
+                <td className="px-4 py-6 text-gray-500" colSpan={8}>
+                  Loading...
+                </td>
+              </tr>
+            ) : sales.length > 0 ? (
+              sales.map((sale) => (
                 <tr key={sale._id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-2 font-semibold text-blue-600">
                     {sale.saleId}
@@ -244,7 +491,7 @@ const Sales = () => {
                   </td>
                   <td className="px-4 py-2">{sale.discount}%</td>
 
-                  {/* NEW: Unit Price(s) column */}
+                  {/* Unit Price(s) */}
                   <td className="px-4 py-2">
                     {sale.products.map((p) => (
                       <div key={p.product._id}>
@@ -256,15 +503,16 @@ const Sales = () => {
                     ))}
                   </td>
 
+                  {/* Quantities */}
                   <td className="px-4 py-2">
                     {sale.products.map((p) => (
                       <div key={p.product._id}>{p.quantity}</div>
                     ))}
                   </td>
 
-                  {/* Total Amount column */}
+                  {/* Total Amount */}
                   <td className="px-4 py-2">
-                    ${sale.discountedAmount.toFixed(2)}
+                    ${Number(sale.discountedAmount || 0).toFixed(2)}
                   </td>
 
                   <td className="px-4 py-2 flex gap-2">
@@ -285,7 +533,7 @@ const Sales = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="px-4 py-2 text-center text-gray-500">
+                <td className="px-4 py-6 text-center text-gray-500" colSpan={8}>
                   No sales found.
                 </td>
               </tr>
@@ -298,9 +546,17 @@ const Sales = () => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-md overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+            <h2 className="text-2xl font-bold mb-3">
               {editingSaleId ? "Edit Sale" : "Add Sale"}
             </h2>
+
+            {/* NEW: modal-level error banner */}
+            {modalError ? (
+              <div className="mb-3 rounded border border-red-200 bg-red-50 text-red-700 p-2">
+                {modalError}
+              </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block mb-1">Sale Date</label>
@@ -319,7 +575,10 @@ const Sales = () => {
                   defaultOptions
                   loadOptions={loadCustomerOptions}
                   value={selectedCustomer}
-                  onChange={setSelectedCustomer}
+                  onChange={(v) => {
+                    setSelectedCustomer(v);
+                    setModalError("");
+                  }}
                   placeholder="Search customer..."
                 />
               </div>
@@ -332,7 +591,10 @@ const Sales = () => {
                   defaultOptions
                   loadOptions={loadProductOptions}
                   value={selectedProducts}
-                  onChange={setSelectedProducts}
+                  onChange={(v) => {
+                    setSelectedProducts(v || []);
+                    setModalError("");
+                  }}
                   placeholder="Search products..."
                 />
               </div>
@@ -344,9 +606,10 @@ const Sales = () => {
                     type="number"
                     min="1"
                     value={quantities[p.value] || 1}
-                    onChange={(e) =>
-                      handleQuantityChange(p.value, e.target.value)
-                    }
+                    onChange={(e) => {
+                      handleQuantityChange(p.value, e.target.value);
+                      setModalError("");
+                    }}
                     className="border p-2 rounded w-full"
                   />
                   <p className="text-sm text-gray-500">
@@ -365,15 +628,19 @@ const Sales = () => {
                   onChange={(e) => {
                     const newDiscount = Math.max(
                       0,
-                      Math.min(100, e.target.value)
+                      Math.min(100, Number(e.target.value))
                     );
                     setDiscount(newDiscount);
-                    recalculateDiscountedAmount(
-                      selectedProducts.reduce(
-                        (sum, item) => sum + item.unitPrice * item.quantity,
+                    setDiscountedAmount(() => {
+                      const base = selectedProducts.reduce(
+                        (sum, item) =>
+                          sum +
+                          (item.unitPrice || 0) * (quantities[item.value] || 1),
                         0
-                      )
-                    );
+                      );
+                      return base - (base * newDiscount) / 100;
+                    });
+                    setModalError("");
                   }}
                   className="border p-2 rounded w-full"
                 />
@@ -388,6 +655,7 @@ const Sales = () => {
                     setSelectedCustomer(null);
                     setQuantities({});
                     setEditingSaleId(null);
+                    setModalError("");
                   }}
                   className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
                 >
@@ -396,7 +664,7 @@ const Sales = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
                 >
                   {loading
                     ? "Saving..."

@@ -1,6 +1,7 @@
 import Sale from "../models/Sales.js";
 import Product from "../models/Product.js";
 import InventoryLog from "../models/InventoryLog.js"; // NEW
+import Customer from "../models/Customer.js"; // NEW (for name searches)
 
 // Generate Sale ID
 const generateSaleId = async () => {
@@ -26,7 +27,7 @@ const addSale = async (req, res) => {
         .json({ success: false, message: "No products provided" });
 
     let totalAmount = 0;
-    const logsToWrite = []; // NEW: collect logs and write after sale gets _id
+    const logsToWrite = []; // collect logs and write after sale gets _id
 
     for (const item of products) {
       const product = await Product.findById(item.product);
@@ -50,7 +51,7 @@ const addSale = async (req, res) => {
       const afterQty = product.stock;
       await product.save();
 
-      // NEW: log stock out
+      // log stock out
       logsToWrite.push({
         product: product._id,
         action: "sale.create",
@@ -77,7 +78,7 @@ const addSale = async (req, res) => {
 
     await sale.save();
 
-    // NEW: attach sale id to logs and write them
+    // attach sale id to logs and write them
     if (logsToWrite.length) {
       logsToWrite.forEach((l) => (l.sale = sale._id));
       await InventoryLog.insertMany(logsToWrite);
@@ -90,15 +91,79 @@ const addSale = async (req, res) => {
   }
 };
 
-// Get All Sales
+// Get All Sales (ENHANCED: filters + sorting)
 const getSales = async (req, res) => {
   try {
-    const sales = await Sale.find()
+    // Supported query params:
+    // saleId (string, exact or partial), customer (ObjectId),
+    // customerName (string, regex), from/to (ISO date), min/max (number on discountedAmount),
+    // sortBy: 'saleDate' | 'discountedAmount' | 'createdAt' (default: createdAt)
+    // sortDir: 'asc' | 'desc' (default: 'desc')
+    const {
+      saleId,
+      customer,
+      customerName,
+      from,
+      to,
+      min,
+      max,
+      sortBy,
+      sortDir,
+    } = req.query;
+
+    const q = {};
+
+    // saleId partial match
+    if (saleId && saleId.trim()) {
+      q.saleId = { $regex: saleId.trim(), $options: "i" };
+    }
+
+    // filter by customer _id if provided
+    if (customer) {
+      q.customer = customer;
+    }
+
+    // filter by customer name (resolve to customer ids)
+    if (customerName && customerName.trim()) {
+      const rx = new RegExp(customerName.trim(), "i");
+      const custs = await Customer.find({ name: rx }).select("_id").lean();
+      const ids = custs.map((c) => c._id);
+      if (!ids.length) {
+        return res.json({ success: true, sales: [] });
+      }
+      q.customer = q.customer ? q.customer : { $in: ids }; // if customer id already set, we keep that; otherwise use list
+      // If both provided (customer and customerName), the AND condition is already enforced by q.customer exact id,
+      // so we don't override in that case.
+    }
+
+    // date range on saleDate
+    if (from || to) {
+      q.saleDate = {};
+      if (from) q.saleDate.$gte = new Date(from);
+      if (to) q.saleDate.$lte = new Date(to);
+    }
+
+    // amount range on discountedAmount (fallback to totalAmount if discountedAmount missing)
+    // We keep it simple: filter on discountedAmount field we already store.
+    if (min || max) {
+      q.discountedAmount = {};
+      if (min) q.discountedAmount.$gte = Number(min);
+      if (max) q.discountedAmount.$lte = Number(max);
+    }
+
+    // sorting
+    let sortField = "createdAt";
+    if (["saleDate", "discountedAmount", "createdAt"].includes(sortBy)) {
+      sortField = sortBy;
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    const sales = await Sale.find(q)
       .populate("products.product", "name price")
       .populate("customer", "name")
       .populate("createdBy", "name")
       .populate("updatedBy", "name")
-      .sort({ createdAt: -1 });
+      .sort({ [sortField]: dir });
 
     res.json({ success: true, sales });
   } catch (error) {
@@ -117,7 +182,7 @@ const updateSale = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Sale not found" });
 
-    const logsToWrite = []; // NEW
+    const logsToWrite = [];
 
     // Restore stock for previous sale items
     for (const item of sale.products) {
@@ -128,7 +193,6 @@ const updateSale = async (req, res) => {
         const afterQty = product.stock;
         await product.save();
 
-        // NEW: log restore
         logsToWrite.push({
           product: product._id,
           action: "sale.update.restore",
@@ -165,7 +229,6 @@ const updateSale = async (req, res) => {
       const afterQty = product.stock;
       await product.save();
 
-      // NEW: log apply
       logsToWrite.push({
         product: product._id,
         action: "sale.update.apply",
@@ -192,7 +255,6 @@ const updateSale = async (req, res) => {
 
     await sale.save();
 
-    // NEW: write logs
     if (logsToWrite.length) {
       await InventoryLog.insertMany(logsToWrite);
     }
@@ -213,7 +275,7 @@ const deleteSale = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Sale not found" });
 
-    const logsToWrite = []; // NEW
+    const logsToWrite = [];
 
     // Restore stock before deleting
     for (const item of sale.products) {
@@ -224,7 +286,6 @@ const deleteSale = async (req, res) => {
         const afterQty = product.stock;
         await product.save();
 
-        // NEW: log restore on delete
         logsToWrite.push({
           product: product._id,
           action: "sale.delete.restore",
@@ -239,7 +300,6 @@ const deleteSale = async (req, res) => {
 
     await sale.deleteOne();
 
-    // NEW: write logs
     if (logsToWrite.length) {
       await InventoryLog.insertMany(logsToWrite);
     }
