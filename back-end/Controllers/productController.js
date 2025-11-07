@@ -3,6 +3,28 @@ import Category from "../models/Category.js";
 import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
 import Supplier from "../models/Supplier.js";
+import InventoryLog from "../models/InventoryLog.js";
+
+const writeInventoryLog = async ({
+  productId,
+  action,
+  beforeQty,
+  afterQty,
+  userId,
+}) => {
+  const b = Number(beforeQty || 0);
+  const a = Number(afterQty || 0);
+  const delta = a - b;
+  if (delta === 0) return; // only log if stock actually changed
+  await InventoryLog.create({
+    product: productId,
+    action, // e.g., "product.create", "product.update.stock", "product.delete", "product.restore"
+    delta, // + added, - removed
+    beforeQty: b,
+    afterQty: a,
+    actor: userId || null,
+  });
+};
 
 /**
  * Add a new product (or restore if a soft-deleted product with the same code exists)
@@ -95,6 +117,15 @@ const addProduct = async (req, res) => {
 
       await deletedMatch.save();
 
+      // INVENTORY LOG: restoring a product (0 -> current stock)
+      await writeInventoryLog({
+        productId: deletedMatch._id,
+        action: "product.restore",
+        beforeQty: 0,
+        afterQty: deletedMatch.stock,
+        userId: req.user?._id,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Restored previously deleted product",
@@ -113,6 +144,15 @@ const addProduct = async (req, res) => {
       supplier,
       brand,
       size,
+    });
+
+    // INVENTORY LOG: new product creation (0 -> initial stock)
+    await writeInventoryLog({
+      productId: newProduct._id,
+      action: "product.create",
+      beforeQty: 0,
+      afterQty: newProduct.stock,
+      userId: req.user?._id,
     });
 
     return res.status(201).json({
@@ -248,6 +288,9 @@ const updateProduct = async (req, res) => {
         .json({ success: false, error: "Invalid size for this category" });
     }
 
+    // INVENTORY LOG: capture stock BEFORE update
+    const beforeQty = Number(product.stock);
+
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -264,6 +307,15 @@ const updateProduct = async (req, res) => {
       },
       { new: true }
     );
+
+    // INVENTORY LOG: write only if stock actually changed
+    await writeInventoryLog({
+      productId: updatedProduct._id,
+      action: "stock.adjust",
+      beforeQty,
+      afterQty: Number(updatedProduct.stock),
+      userId: req.user?._id,
+    });
 
     return res.status(200).json({ success: true, updatedProduct });
   } catch (error) {
@@ -303,12 +355,24 @@ const deleteProduct = async (req, res) => {
       });
     }
 
+    // INVENTORY LOG: capture stock BEFORE deletion
+    const beforeQty = Number(existing.stock) || 0;
+
     // Mark deleted and bump lastUpdated; return the updated doc
     const updated = await Product.findByIdAndUpdate(
       id,
       { isDeleted: true, lastUpdated: new Date() },
       { new: true }
     );
+
+    // INVENTORY LOG: deleting a product (stock -> 0)
+    await writeInventoryLog({
+      productId: existing._id,
+      action: "product.delete",
+      beforeQty,
+      afterQty: 0,
+      userId: req.user?._id,
+    });
 
     return res.status(200).json({ success: true, product: updated });
   } catch (error) {
