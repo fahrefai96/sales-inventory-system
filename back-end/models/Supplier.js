@@ -19,11 +19,15 @@ const supplierSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  country: { type: String, trim: true },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
+
+supplierSchema.index({ name: 1 });
+supplierSchema.index({ email: 1 }, { sparse: true, unique: false });
 
 const Supplier = mongoose.model("Supplier", supplierSchema);
 export default Supplier;

@@ -81,4 +81,6 @@ productSchema.pre("updateOne", function (next) {
 });
 
 const Product = mongoose.model("Product", productSchema);
+
+productSchema.index({ supplier: 1, createdAt: -1 });
 export default Product;

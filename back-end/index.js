@@ -1,3 +1,5 @@
+console.log("SERVER ENTRY:", import.meta.url);
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -14,11 +16,12 @@ import usersRoute from "./routes/users.js";
 import brandRoutes from "./routes/brands.js";
 import inventoryLogsRoutes from "./routes/inventory-logs.js";
 
+console.log("Mounted /api/supplier at", new Date().toISOString());
+
 dotenv.config();
 
 const app = express();
 
-// ✅ CORS: allow Vite origin and Authorization header; expose filename
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 const corsConfig = {
   origin: CORS_ORIGIN,
@@ -28,10 +31,8 @@ const corsConfig = {
   exposedHeaders: ["Content-Disposition"],
 };
 
-// Use cors() once — it will register preflight internally
 app.use(cors(corsConfig));
 
-// Extra-safe fallback for OPTIONS without using a wildcard route pattern
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") {
     res.header("Access-Control-Allow-Origin", CORS_ORIGIN);
@@ -46,16 +47,94 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Debug: Log ALL incoming requests (moved before route registration)
+app.use((req, res, next) => {
+  console.log(`\n[REQUEST] ${req.method} ${req.path}`);
+  console.log(`[REQUEST] Full URL: ${req.originalUrl}`);
+  console.log(
+    `[REQUEST] Headers:`,
+    req.headers["authorization"] ? "Has Auth" : "No Auth"
+  );
+  next();
+});
+
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRouter);
-app.use("/api/supplier", supplierRouter);
+
+// Debug: Verify supplier router is being used
+console.log("[INDEX] Registering supplier router at /api/supplier");
+console.log("[INDEX] Supplier router type:", typeof supplierRouter);
+console.log(
+  "[INDEX] Supplier router stack length:",
+  supplierRouter.stack?.length || "unknown"
+);
+
+app.use(
+  "/api/supplier",
+  (req, res, next) => {
+    console.log("[MOUNT TAP] hit /api/supplier →", req.method, req.path);
+    next();
+  },
+  supplierRouter
+);
+
+function dumpAppRoutes(label) {
+  try {
+    const list = [];
+    (app._router?.stack || []).forEach((layer) => {
+      if (layer.route?.path) {
+        list.push({
+          method: Object.keys(layer.route.methods).join(","),
+          path: layer.route.path,
+        });
+      } else if (layer.name === "router" && layer.regexp) {
+        // mounted router: drill down
+        const mountPath = layer.regexp?.toString(); // shows mount regex
+        (layer.handle?.stack || []).forEach((r) => {
+          if (r.route) {
+            list.push({
+              method: Object.keys(r.route.methods).join(","),
+              path: `/api/supplier${r.route.path}`, // we know this mount
+            });
+          }
+        });
+      }
+    });
+    console.log(`[APP ROUTES ${label}]`, list);
+  } catch (e) {
+    console.log("[APP ROUTES] failed:", e.message);
+  }
+}
+dumpAppRoutes("AFTER SUPPLIER MOUNT");
+
 app.use("/api/products", productRouter);
 app.use("/api/sales", salesRouter);
 app.use("/api/customers", customerRouter);
 app.use("/api/users", usersRoute);
 app.use("/api/brands", brandRoutes);
 app.use("/api/inventory-logs", inventoryLogsRoutes);
+
+// Catch-all for debugging 404s
+app.use((req, res, next) => {
+  if (req.path.includes("supplier") && req.path.includes("products")) {
+    console.log(`[404 DEBUG] Unmatched route: ${req.method} ${req.path}`);
+    console.log(
+      `[404 DEBUG] Full URL: ${req.protocol}://${req.get("host")}${
+        req.originalUrl
+      }`
+    );
+  }
+  res.status(404).json({
+    success: false,
+    error: `Route not found: ${req.method} ${req.path}`,
+    availableRoutes: [
+      "GET /api/supplier",
+      "GET /api/supplier/:id/products",
+      "POST /api/supplier/add",
+    ],
+  });
+});
 
 app.listen(process.env.PORT, () => {
   connectdb();

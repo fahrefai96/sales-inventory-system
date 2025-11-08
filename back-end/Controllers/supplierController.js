@@ -1,75 +1,81 @@
+import mongoose from "mongoose";
 import Supplier from "../models/Supplier.js";
 import Product from "../models/Product.js";
 
-// Route to add a new employee
+// POST /api/supplier/add
 const addSupplier = async (req, res) => {
   try {
-    const { name, email, phone, address } = req.body;
+    const { name, email, phone, address, country } = req.body;
 
-    // Check if user already exists with the same email
-    let existingSupplier = await Supplier.findOne({ email });
-    if (existingSupplier) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Supplier already exists" });
+    // Only check for duplicates if email is provided
+    if (email) {
+      const existingSupplier = await Supplier.findOne({ email });
+      if (existingSupplier) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Supplier already exists" });
+      }
     }
 
-    // Hash the password before storing the user
-    // const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
-    const newSupplier = new Supplier({
+    const supplier = await Supplier.create({
       name,
       email,
       phone,
       address,
+      country, // NEW
     });
-    const supplier = await newSupplier.save();
 
-    res
-      .status(201)
-      .json({ success: true, message: "Supplier created successfully" });
+    return res.status(201).json({
+      success: true,
+      message: "Supplier created successfully",
+      supplier,
+    });
   } catch (error) {
     console.error(error.message);
-    res.status(500).json({ success: false, error: "Server error" });
+    return res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
+// GET /api/supplier
 const getSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find();
-    res.status(201).json({ success: true, suppliers });
+    const suppliers = await Supplier.find().sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, suppliers });
   } catch (error) {
-    res
+    return res
       .status(500)
       .json({ success: false, error: "Server error " + error.message });
   }
 };
 
+// PUT /api/supplier/:id
 const updateSupplier = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, address } = req.body;
+    const { name, email, phone, address, country } = req.body;
 
-    const supplier = await Supplier.findById({ _id: id });
-    if (!supplier) {
-      res.status(404).json({ success: false, error: "Supplier Not Found" });
-    }
-
-    const updateUser = await Supplier.findByIdAndUpdate(
-      { _id: id },
-      { name, email, phone, address }
+    const supplier = await Supplier.findByIdAndUpdate(
+      id,
+      { name, email, phone, address, country },
+      { new: true, runValidators: true }
     );
 
-    res.status(201).json({ success: true, updateUser });
+    if (!supplier) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Supplier Not Found" });
+    }
+
+    return res.status(200).json({ success: true, supplier });
   } catch (error) {
-    console.error("Error editing employee:", error);
-    res
+    console.error("Error editing supplier:", error);
+    return res
       .status(500)
       .json({ success: false, error: "Server error " + error.message });
   }
 };
 
+// DELETE /api/supplier/:id
 const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,19 +92,73 @@ const deleteSupplier = async (req, res) => {
       });
     }
 
-    const supplier = await Supplier.findByIdAndDelete({ _id: id });
+    const supplier = await Supplier.findByIdAndDelete(id);
     if (!supplier) {
-      res
+      return res
         .status(404)
-        .json({ success: false, error: "document not found " + error.message });
+        .json({ success: false, error: "Supplier not found" });
     }
-    res.status(201).json({ success: true, supplier });
+
+    return res.status(200).json({ success: true, supplier });
   } catch (error) {
-    console.error("Error editing employee:", error);
-    res
+    console.error("Error deleting supplier:", error);
+    return res
       .status(500)
       .json({ success: false, error: "Server error " + error.message });
   }
 };
 
-export { addSupplier, getSuppliers, updateSupplier, deleteSupplier };
+// GET /api/supplier/:id/products  (NEW)
+const getSupplierProducts = async (req, res) => {
+  console.log("=== getSupplierProducts CALLED ===");
+  console.log("Params:", req.params);
+  console.log("Path:", req.path);
+  console.log("Original URL:", req.originalUrl);
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid supplier ID format" });
+    }
+
+    const supplier = await Supplier.findById(id);
+    if (!supplier) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Supplier not found" });
+    }
+
+    const products = await Product.find({
+      supplier: id,
+      isDeleted: { $ne: true },
+    })
+      .select("code name price stock size createdAt")
+      .populate("category", "name")
+      .populate("brand", "name")
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      supplier,
+      totalProducts: products.length,
+      products,
+    });
+  } catch (error) {
+    console.error("Error fetching supplier products:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Server error",
+    });
+  }
+};
+
+export {
+  addSupplier,
+  getSuppliers,
+  updateSupplier,
+  deleteSupplier,
+  getSupplierProducts,
+};
