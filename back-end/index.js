@@ -62,51 +62,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRouter);
 
-// Debug: Verify supplier router is being used
-console.log("[INDEX] Registering supplier router at /api/supplier");
-console.log("[INDEX] Supplier router type:", typeof supplierRouter);
-console.log(
-  "[INDEX] Supplier router stack length:",
-  supplierRouter.stack?.length || "unknown"
-);
-
-app.use(
-  "/api/supplier",
-  (req, res, next) => {
-    console.log("[MOUNT TAP] hit /api/supplier →", req.method, req.path);
-    next();
-  },
-  supplierRouter
-);
-
-function dumpAppRoutes(label) {
-  try {
-    const list = [];
-    (app._router?.stack || []).forEach((layer) => {
-      if (layer.route?.path) {
-        list.push({
-          method: Object.keys(layer.route.methods).join(","),
-          path: layer.route.path,
-        });
-      } else if (layer.name === "router" && layer.regexp) {
-        // mounted router: drill down
-        const mountPath = layer.regexp?.toString(); // shows mount regex
-        (layer.handle?.stack || []).forEach((r) => {
-          if (r.route) {
-            list.push({
-              method: Object.keys(r.route.methods).join(","),
-              path: `/api/supplier${r.route.path}`, // we know this mount
-            });
-          }
-        });
-      }
-    });
-    console.log(`[APP ROUTES ${label}]`, list);
-  } catch (e) {
-    console.log("[APP ROUTES] failed:", e.message);
-  }
-}
-dumpAppRoutes("AFTER SUPPLIER MOUNT");
+app.use("/api/supplier", supplierRouter);
 
 app.use("/api/products", productRouter);
 app.use("/api/sales", salesRouter);

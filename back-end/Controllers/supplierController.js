@@ -110,10 +110,6 @@ const deleteSupplier = async (req, res) => {
 
 // GET /api/supplier/:id/products  (NEW)
 const getSupplierProducts = async (req, res) => {
-  console.log("=== getSupplierProducts CALLED ===");
-  console.log("Params:", req.params);
-  console.log("Path:", req.path);
-  console.log("Original URL:", req.originalUrl);
   try {
     const { id } = req.params;
 
