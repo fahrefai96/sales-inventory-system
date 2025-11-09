@@ -41,7 +41,12 @@ const Sidebar = () => {
       icon: <FaTruck />,
       isParent: false,
     },
-
+    {
+      name: "Purchases",
+      path: "/admin-dashboard/purchases",
+      icon: <FaShoppingCart />,
+      isParent: false,
+    },
     {
       name: "Sales",
       path: "/admin-dashboard/sales",

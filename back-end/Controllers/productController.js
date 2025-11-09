@@ -43,15 +43,36 @@ const addProduct = async (req, res) => {
       code,
     } = req.body || {};
 
-    // Base validations
+    // ---- Basic validations ----
     if (!code?.trim()) {
       return res
         .status(400)
         .json({ success: false, error: "Product code is required" });
     }
-
+    if (!name?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Product name is required" });
+    }
     const trimmedCode = code.trim();
 
+    // Price (allow 0, but not negative / NaN)
+    const priceNum = Number(price ?? 0);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Price must be a non-negative number" });
+    }
+
+    // Stock defaults to 0 if not provided
+    const initialStock = Number(stock ?? 0);
+    if (Number.isNaN(initialStock) || initialStock < 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Stock must be a non-negative number" });
+    }
+
+    // Validate refs
     const cat = await Category.findById(category);
     if (!cat) {
       return res
@@ -73,7 +94,7 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Invalid supplier" });
     }
 
-    // size must be one of category.sizeOptions
+    // Size must match category.sizeOptions (if defined)
     if (!size) {
       return res
         .status(400)
@@ -85,30 +106,31 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Invalid size for this category" });
     }
 
-    // 1) Hard check for an ACTIVE duplicate by code
+    // ---- Duplicates by code ----
+    // Active duplicate?
     const activeDup = await Product.findOne({
       code: trimmedCode,
       isDeleted: false,
     }).lean();
-
     if (activeDup) {
       return res
         .status(409)
         .json({ success: false, error: "Product code already exists" });
     }
 
-    // 2) If there is a DELETED match, restore it instead of creating a new one
+    // Soft-deleted duplicate? Restore instead of create
     const deletedMatch = await Product.findOne({
       code: trimmedCode,
       isDeleted: true,
     });
 
     if (deletedMatch) {
+      const beforeQty = 0; // treat restore as from 0
       deletedMatch.isDeleted = false;
       deletedMatch.name = name;
       deletedMatch.description = description;
-      deletedMatch.price = price;
-      deletedMatch.stock = stock;
+      deletedMatch.price = priceNum;
+      deletedMatch.stock = initialStock;
       deletedMatch.category = category;
       deletedMatch.supplier = supplier;
       deletedMatch.brand = brand;
@@ -117,12 +139,12 @@ const addProduct = async (req, res) => {
 
       await deletedMatch.save();
 
-      // INVENTORY LOG: restoring a product (0 -> current stock)
+      // Log only if stock actually differs
       await writeInventoryLog({
         productId: deletedMatch._id,
         action: "product.restore",
-        beforeQty: 0,
-        afterQty: deletedMatch.stock,
+        beforeQty,
+        afterQty: Number(deletedMatch.stock || 0),
         userId: req.user?._id,
       });
 
@@ -133,25 +155,27 @@ const addProduct = async (req, res) => {
       });
     }
 
-    // 3) No duplicates at all -> create new
+    // ---- Create new product ----
     const newProduct = await Product.create({
       name,
       description,
       code: trimmedCode,
-      price,
-      stock,
+      price: priceNum,
+      stock: initialStock, // default 0 if not provided
       category,
       supplier,
       brand,
       size,
+      avgCost: 0,
+      lastCost: 0,
     });
 
-    // INVENTORY LOG: new product creation (0 -> initial stock)
+    // Inventory log (0 -> initialStock)
     await writeInventoryLog({
       productId: newProduct._id,
       action: "product.create",
       beforeQty: 0,
-      afterQty: newProduct.stock,
+      afterQty: Number(newProduct.stock || 0),
       userId: req.user?._id,
     });
 
@@ -162,7 +186,6 @@ const addProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding product:", error);
-    // If unique index on code fires, surface a clear message
     if (error?.code === 11000) {
       return res
         .status(409)

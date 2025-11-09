@@ -23,6 +23,7 @@ const productSchema = new mongoose.Schema({
   },
   stock: {
     type: Number,
+    default: 0,
     required: [true, "Stock quantity is required"],
     min: [0, "Stock cannot be negative"],
   },
@@ -43,8 +44,9 @@ const productSchema = new mongoose.Schema({
     required: [true, "Supplier is required"],
   },
 
-  // size label from category.sizeOptions
   size: { type: String, required: [true, "Size is required"] },
+  avgCost: { type: Number, default: 0 },
+  lastCost: { type: Number, default: 0 },
 
   isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },

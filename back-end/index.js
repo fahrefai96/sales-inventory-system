@@ -15,6 +15,7 @@ import customerRouter from "./routes/customer.js";
 import usersRoute from "./routes/users.js";
 import brandRoutes from "./routes/brands.js";
 import inventoryLogsRoutes from "./routes/inventory-logs.js";
+import purchaseRouter from "./routes/purchase.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -47,17 +48,6 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// Debug: Log ALL incoming requests (moved before route registration)
-app.use((req, res, next) => {
-  console.log(`\n[REQUEST] ${req.method} ${req.path}`);
-  console.log(`[REQUEST] Full URL: ${req.originalUrl}`);
-  console.log(
-    `[REQUEST] Headers:`,
-    req.headers["authorization"] ? "Has Auth" : "No Auth"
-  );
-  next();
-});
-
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRouter);
@@ -70,27 +60,7 @@ app.use("/api/customers", customerRouter);
 app.use("/api/users", usersRoute);
 app.use("/api/brands", brandRoutes);
 app.use("/api/inventory-logs", inventoryLogsRoutes);
-
-// Catch-all for debugging 404s
-app.use((req, res, next) => {
-  if (req.path.includes("supplier") && req.path.includes("products")) {
-    console.log(`[404 DEBUG] Unmatched route: ${req.method} ${req.path}`);
-    console.log(
-      `[404 DEBUG] Full URL: ${req.protocol}://${req.get("host")}${
-        req.originalUrl
-      }`
-    );
-  }
-  res.status(404).json({
-    success: false,
-    error: `Route not found: ${req.method} ${req.path}`,
-    availableRoutes: [
-      "GET /api/supplier",
-      "GET /api/supplier/:id/products",
-      "POST /api/supplier/add",
-    ],
-  });
-});
+app.use("/api/purchases", purchaseRouter);
 
 app.listen(process.env.PORT, () => {
   connectdb();

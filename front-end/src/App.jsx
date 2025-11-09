@@ -13,6 +13,7 @@ import Users from "./pages/Users.jsx";
 import Logout from "./pages/Logout.jsx";
 import Catalog from "./components/Catalog.jsx";
 import InventoryLogs from "./components/InventoryLogs";
+import Purchases from "./components/Purchases";
 
 function App() {
   return (
@@ -33,6 +34,8 @@ function App() {
           <Route path="catalog" element={<Catalog />}></Route>
           <Route path="products" element={<Products />}></Route>
           <Route path="suppliers" element={<Suppliers />}></Route>
+          <Route path="purchases" element={<Purchases />} />
+
           <Route path="sales" element={<Sales />}></Route>
           <Route path="customers" element={<Customer />} />
           <Route path="users" element={<Users />} />

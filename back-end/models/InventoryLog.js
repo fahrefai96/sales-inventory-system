@@ -16,8 +16,11 @@ const inventoryLogSchema = new mongoose.Schema(
         "sale.delete.restore",
         "product.create",
         "product.update",
+        "product.restore",
         "product.delete",
-        "stock.adjust", // keep for future manual stock tools
+        "stock.adjust",
+        "purchase.post",
+        "purchase.cancel",
       ],
       required: true,
     },
