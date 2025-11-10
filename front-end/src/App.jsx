@@ -14,6 +14,7 @@ import Logout from "./pages/Logout.jsx";
 import Catalog from "./components/Catalog.jsx";
 import InventoryLogs from "./components/InventoryLogs";
 import Purchases from "./components/Purchases";
+import Reports from "./components/Reports/index.jsx";
 
 function App() {
   return (
@@ -40,6 +41,8 @@ function App() {
           <Route path="customers" element={<Customer />} />
           <Route path="users" element={<Users />} />
           <Route path="inventory-logs" element={<InventoryLogs />} />
+          <Route path="reports" element={<Reports />} />
+
           <Route path="logout" element={<Logout />} />
         </Route>
         <Route path="/staff/dashboard" element={<h1>Staff Dashboard</h1>} />

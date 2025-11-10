@@ -16,6 +16,7 @@ import usersRoute from "./routes/users.js";
 import brandRoutes from "./routes/brands.js";
 import inventoryLogsRoutes from "./routes/inventory-logs.js";
 import purchaseRouter from "./routes/purchase.js";
+import reportRouter from "./routes/report.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -61,6 +62,7 @@ app.use("/api/users", usersRoute);
 app.use("/api/brands", brandRoutes);
 app.use("/api/inventory-logs", inventoryLogsRoutes);
 app.use("/api/purchases", purchaseRouter);
+app.use("/api/reports", reportRouter);
 
 app.listen(process.env.PORT, () => {
   connectdb();
