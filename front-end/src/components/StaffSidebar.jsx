@@ -1,86 +1,46 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
-  FiHome,
-  FiGrid,
-  FiPackage,
-  FiTruck,
-  FiShoppingCart,
-  FiDollarSign,
-  FiUsers,
-  FiBarChart2,
-  FiTrendingUp,
-  FiMessageSquare,
-  FiUserCheck,
-  FiClipboard,
-  FiLogOut,
-} from "react-icons/fi";
+  FaBox,
+  FaHome,
+  FaShoppingCart,
+  FaTable,
+  FaTruck,
+  FaUser,
+  FaMoneyBillWave,
+  FaChartLine,
+  FaClipboardList,
+  FaSignOutAlt,
+} from "react-icons/fa";
 
-const Sidebar = () => {
+const StaffSidebar = () => {
   const menuItemsTop = [
     {
       name: "Dashboard",
-      path: "/admin-dashboard",
-      icon: <FiHome />,
+      path: "/staff/dashboard",
+      icon: <FaHome />,
       isParent: true,
     },
-    {
-      name: "Categories & Brands",
-      path: "/admin-dashboard/catalog",
-      icon: <FiGrid />,
-    },
-    {
-      name: "Products",
-      path: "/admin-dashboard/products",
-      icon: <FiPackage />,
-    },
-    {
-      name: "Suppliers",
-      path: "/admin-dashboard/suppliers",
-      icon: <FiTruck />,
-    },
-    {
-      name: "Purchases",
-      path: "/admin-dashboard/purchases",
-      icon: <FiShoppingCart />,
-    },
-    { name: "Sales", path: "/admin-dashboard/sales", icon: <FiDollarSign /> },
-    {
-      name: "Customers",
-      path: "/admin-dashboard/customers",
-      icon: <FiUsers />,
-    },
-    {
-      name: "Reports",
-      path: "/admin-dashboard/reports",
-      icon: <FiBarChart2 />,
-    },
-    {
-      name: "Forecasting",
-      path: "/admin-dashboard/forecasting",
-      icon: <FiTrendingUp />,
-    },
-    {
-      name: "Chatbot",
-      path: "/admin-dashboard/chatbot",
-      icon: <FiMessageSquare />,
-    },
-
+    { name: "Categories & Brands", path: "/staff/catalog", icon: <FaTable /> }, // ← added
+    { name: "Products", path: "/staff/products", icon: <FaBox /> },
+    { name: "Suppliers", path: "/staff/suppliers", icon: <FaTruck /> },
+    { name: "Purchases", path: "/staff/purchases", icon: <FaShoppingCart /> },
+    { name: "Sales", path: "/staff/sales", icon: <FaMoneyBillWave /> },
+    { name: "Customers", path: "/staff/customers", icon: <FaUser /> },
+    { name: "Reports (Sales)", path: "/staff/reports", icon: <FaChartLine /> }, // optional; safe to keep
     {
       name: "Inventory Logs",
-      path: "/admin-dashboard/inventory-logs",
-      icon: <FiClipboard />,
-    },
-    { name: "Users", path: "/admin-dashboard/users", icon: <FiUserCheck /> },
+      path: "/staff/inventory-logs",
+      icon: <FaClipboardList />,
+    }, // optional view-only
   ];
 
   const logoutItem = {
     name: "Logout",
-    path: "/admin-dashboard/logout",
-    icon: <FiLogOut />,
+    path: "/staff/logout",
+    icon: <FaSignOutAlt />,
   };
 
-  // Smaller labels + slightly smaller icons (kept from your version)
   const baseItem =
     "group relative flex items-center rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-zinc-300";
   const textCls = "ml-3 hidden md:block truncate text-[16px] font-medium";
@@ -110,34 +70,31 @@ const Sidebar = () => {
     </NavLink>
   );
 
+  const user = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("pos-user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-16 md:w-64 bg-zinc-900 text-zinc-100 border-r border-zinc-800 flex flex-col">
       {/* Brand Header */}
       <div className="h-16 px-3 border-b border-zinc-800 flex items-center">
         <div className="w-full">
-          {/* Main heading */}
           <div className="hidden md:block text-[20px] font-semibold leading-5 truncate">
             Sales & Inventory MS
           </div>
           <div className="md:hidden text-base font-semibold leading-5 truncate">
             SIMS
           </div>
-
-          {/* User info */}
-          {(() => {
-            try {
-              const user = JSON.parse(localStorage.getItem("pos-user") || "{}");
-              if (!user?.name) return null;
-              return (
-                <div className="text-zinc-400 text-[16px] leading-5 truncate">
-                  {user.name}{" "}
-                  <span className="capitalize opacity-80">({user.role})</span>
-                </div>
-              );
-            } catch {
-              return null;
-            }
-          })()}
+          {user?.name && (
+            <div className="text-zinc-400 text-[16px] leading-5 truncate">
+              {user.name}{" "}
+              <span className="capitalize opacity-80">({user.role})</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,4 +121,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default StaffSidebar;

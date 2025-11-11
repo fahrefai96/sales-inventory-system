@@ -1,48 +1,60 @@
+// back-end/Controllers/dashboardController.js
 import Product from "../models/Product.js";
 
 const getSummary = async (req, res) => {
   try {
-    // Total Products
-    const totalProducts = await Product.countDocuments();
+    // Only consider active (not soft-deleted) products
+    const activeFilter = { isDeleted: false };
 
-    // Total Stock
-    const stockResult = await Product.aggregate([
+    // Total Products (active only)
+    const totalProducts = await Product.countDocuments(activeFilter);
+
+    // Total Stock (exclude soft-deleted)
+    const stockAgg = await Product.aggregate([
+      { $match: activeFilter },
       { $group: { _id: null, totalStock: { $sum: "$stock" } } },
     ]);
-    const totalStock = stockResult[0]?.totalStock || 0;
+    const totalStock = stockAgg[0]?.totalStock || 0;
 
-    // Out of Stock Products
-    const outOfStock = await Product.find({ stock: 0 })
-      .select("name category stock sold") // include sold if needed
-      .populate("category", "name");
-
-    // Low Stock Products
-    const lowStock = await Product.find({ stock: { $gt: 0, $lt: 5 } })
+    // Out of Stock (active only)
+    const outOfStock = await Product.find({
+      ...activeFilter,
+      stock: 0,
+    })
       .select("name category stock sold")
-      .populate("category", "name");
+      .populate("category", "name")
+      .lean();
 
-    // Highest Sale Product (based on product.sold field)
-    const highestSaleProduct = await Product.findOne()
-      .sort({ sold: -1 }) // highest sold first
+    // Low Stock (active only, threshold < 5 for now)
+    const lowStock = await Product.find({
+      ...activeFilter,
+      stock: { $gt: 0, $lt: 5 },
+    })
+      .select("name category stock sold")
+      .populate("category", "name")
+      .lean();
+
+    // Highest Sale Product (active only)
+    const highestSaleProduct = (await Product.findOne(activeFilter)
+      .sort({ sold: -1 })
       .select("name category sold")
       .populate("category", "name")
-      .lean(); // optional, to get plain JS object
+      .lean()) || { message: "No sales data available" };
 
-    // Combine all data
     const dashboardData = {
       totalProducts,
       totalStock,
       outOfStock,
       lowStock,
-      highestSaleProduct: highestSaleProduct || { message: "No sales data available" },
+      highestSaleProduct,
     };
 
     return res.status(200).json(dashboardData);
   } catch (error) {
-    res.status(500).json({
+    console.error("Dashboard summary error:", error);
+    return res.status(500).json({
       success: false,
       message: "Error fetching dashboard summary",
-      error,
     });
   }
 };

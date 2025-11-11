@@ -16,13 +16,20 @@ import InventoryLogs from "./components/InventoryLogs";
 import Purchases from "./components/Purchases";
 import Reports from "./components/Reports/index.jsx";
 
+// NEW: staff shell + panel
+import StaffDashboard from "./pages/StaffDashboard.jsx";
+import StaffDashboardPanel from "./components/StaffDashboardPanel.jsx";
+
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public */}
         <Route path="/" element={<Root />} />
         <Route path="/login" element={<Login />} />
         <Route path="/logout" element={<Logout />} />
+
+        {/* Admin */}
         <Route
           path="/admin-dashboard"
           element={
@@ -32,20 +39,40 @@ function App() {
           }
         >
           <Route index element={<DashboardPanel />} />
-          <Route path="catalog" element={<Catalog />}></Route>
-          <Route path="products" element={<Products />}></Route>
-          <Route path="suppliers" element={<Suppliers />}></Route>
+          <Route path="catalog" element={<Catalog />} />
+          <Route path="products" element={<Products />} />
+          <Route path="suppliers" element={<Suppliers />} />
           <Route path="purchases" element={<Purchases />} />
-
-          <Route path="sales" element={<Sales />}></Route>
+          <Route path="sales" element={<Sales />} />
           <Route path="customers" element={<Customer />} />
           <Route path="users" element={<Users />} />
           <Route path="inventory-logs" element={<InventoryLogs />} />
-          <Route path="reports" element={<Reports />} />
 
+          <Route path="reports" element={<Reports />} />
           <Route path="logout" element={<Logout />} />
         </Route>
-        <Route path="/staff/dashboard" element={<h1>Staff Dashboard</h1>} />
+
+        {/* Staff */}
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute requireRole={["staff"]}>
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<StaffDashboardPanel />} />
+          <Route path="catalog" element={<Catalog />} />
+          <Route path="products" element={<Products />} />
+          <Route path="suppliers" element={<Suppliers />} />
+          <Route path="purchases" element={<Purchases />} />
+          <Route path="sales" element={<Sales />} />
+          <Route path="customers" element={<Customer />} />
+          <Route path="inventory-logs" element={<InventoryLogs />} />
+          <Route path="logout" element={<Logout />} />
+        </Route>
+
+        {/* Unauthorized fallback */}
         <Route
           path="/unauthorized"
           element={
@@ -56,4 +83,5 @@ function App() {
     </Router>
   );
 }
+
 export default App;
