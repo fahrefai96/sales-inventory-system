@@ -1,9 +1,25 @@
-import express from 'express';
-import authMiddleware from '../middleware/authMiddleware.js'
-import {getSummary} from '../Controllers/dashboardController.js';
+import express from "express";
+import authMiddleware from "../middleware/authMiddleware.js";
+import {
+  getSummary,
+  getReceivablesSummary,
+  getTopProducts,
+  getCombinedTrend,
+  exportLowStockCsv,
+} from "../Controllers/dashboardController.js";
 
 const router = express.Router();
 
-router.get('/', authMiddleware, getSummary);
+// Protect all routes
+router.use(authMiddleware);
 
-export default router 
+// Main dashboard summary (existing)
+router.get("/", getSummary);
+
+// --- Admin-only widgets (new) ---
+router.get("/receivables", getReceivablesSummary);
+router.get("/top-products", getTopProducts);
+router.get("/combined-trend", getCombinedTrend);
+router.get("/low-stock/export.csv", exportLowStockCsv);
+
+export default router;

@@ -204,7 +204,7 @@ export default function Performance() {
 
   // ---- Exports in toolbar (Users + Products) ----
   const exportExtras = (
-    <div className="flex flex-col gap-2">
+    <div className="flex ">
       {/* Users */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-600 min-w-[64px] text-right">

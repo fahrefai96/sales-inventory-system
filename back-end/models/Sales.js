@@ -60,12 +60,44 @@ const saleSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    paymentStatus: {
+      type: String,
+      enum: ["paid", "unpaid", "partial"],
+      default: "paid",
+    },
+    amountPaid: { type: Number, default: 0 },
+    amountDue: { type: Number, default: 0 },
   },
   {
     //  automatic updatedAt
     timestamps: true,
   }
 );
+
+saleSchema.pre("save", function (next) {
+  // prefer discountedAmount if present, else grandTotal
+  const baseTotal = Number(
+    this.discountedAmount != null ? this.discountedAmount : this.grandTotal || 0
+  );
+
+  // initialize on create if not set
+  if (this.isNew) {
+    if (this.amountPaid == null) {
+      // default: fully paid if paymentStatus is "paid", else 0
+      this.amountPaid = this.paymentStatus === "paid" ? baseTotal : 0;
+    }
+  }
+
+  // recompute amountDue and status every save
+  const paid = Number(this.amountPaid || 0);
+  this.amountDue = Math.max(0, baseTotal - paid);
+
+  if (this.amountDue === 0) this.paymentStatus = "paid";
+  else if (paid > 0) this.paymentStatus = "partial";
+  else this.paymentStatus = "unpaid";
+
+  next();
+});
 saleSchema.index({ customer: 1, createdAt: -1 });
 
 const Sale = mongoose.model("Sale", saleSchema);

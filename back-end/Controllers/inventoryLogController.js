@@ -6,6 +6,16 @@ import User from "../models/User.js";
 
 const isObjectId = (v) => mongoose.Types.ObjectId.isValid(v || "");
 
+/**
+ * GET /api/inventory-logs
+ * Query params supported:
+ *  - product: ObjectId | code | name
+ *  - action: string (e.g., "product.create", "purchase.post", "sale.payment")
+ *  - actor: ObjectId | name/email/role (admin|staff)
+ *  - actorIds: CSV of ObjectIds
+ *  - roles: CSV of roles (admin,staff)
+ *  - from, to: ISO date range
+ */
 export const getInventoryLogs = async (req, res) => {
   try {
     const { product, action, actor, actorIds, roles, from, to } = req.query;
@@ -110,4 +120,34 @@ export const getInventoryLogs = async (req, res) => {
   }
 };
 
+/**
+ * Helper: log a payment against a sale into InventoryLog
+ * Safe to call from saleController.recordPayment; ignores failures silently.
+ * Usage:
+ *   await logSalePayment({ saleId, actorId, amount, note })
+ */
+export const logSalePayment = async ({
+  saleId,
+  actorId,
+  amount,
+  note = "",
+}) => {
+  try {
+    // Only store positive amounts
+    const delta = Math.max(0, Number(amount || 0));
+    if (!delta || !saleId) return;
+
+    await InventoryLog.create({
+      action: "sale.payment",
+      sale: saleId,
+      actor: actorId || null,
+      delta,
+      note,
+    });
+  } catch (_err) {
+    // swallow log errors — we never block payments due to logging
+  }
+};
+
+// Keep default export compatibility
 export { getInventoryLogs as default };

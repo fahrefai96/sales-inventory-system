@@ -1218,3 +1218,551 @@ export const exportPerformanceProductsPdf = async (req, res) => {
       res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const getReceivables = async (req, res) => {
+  try {
+    const { from, to } = req.query || {};
+    const match = { paymentStatus: { $ne: "paid" } };
+
+    // If your Sale has saleDate/createdAt, include an optional range filter
+    if (from || to) {
+      const range = {};
+      if (from) range.$gte = new Date(from);
+      if (to) range.$lte = new Date(to);
+      // prefer saleDate if you have it; otherwise createdAt
+      match.saleDate ? (match.saleDate = range) : (match.createdAt = range);
+    }
+
+    const agg = await Sale.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalOutstanding: { $sum: "$amountDue" },
+          invoiceCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const result =
+      agg && agg.length
+        ? {
+            totalOutstanding: agg[0].totalOutstanding,
+            invoiceCount: agg[0].invoiceCount,
+          }
+        : { totalOutstanding: 0, invoiceCount: 0 };
+
+    return res.json(result);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to load receivables." });
+  }
+};
+
+const asNumber = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+
+export const getCustomerBalances = async (req, res) => {
+  try {
+    const {
+      search = "",
+      min = "",
+      max = "",
+      from = "",
+      to = "",
+      sortBy = "outstandingTotal", // outstandingTotal | pendingCount | name | lastSale
+      sortDir = "desc",
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const qPage = Math.max(1, parseInt(page, 10) || 1);
+    const qLimit = Math.max(1, Math.min(200, parseInt(limit, 10) || 10));
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+    const qSearch = String(search || "").trim();
+
+    // Date range on sales
+    const saleDateMatch = {};
+    if (from) saleDateMatch.$gte = new Date(from);
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      saleDateMatch.$lte = end;
+    }
+
+    const matchStage = {};
+    if (from || to) {
+      // prefer saleDate if present else createdAt
+      matchStage.$expr = {
+        $and: [
+          {
+            $gte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$gte || new Date("1970-01-01"),
+            ],
+          },
+          {
+            $lte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$lte || new Date("2999-12-31"),
+            ],
+          },
+        ],
+      };
+    }
+
+    // Core aggregation: compute per-customer balances
+    const agg = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$customer",
+          pendingCount: {
+            $sum: {
+              $cond: [{ $gt: [{ $ifNull: ["$amountDue", 0] }, 0] }, 1, 0],
+            },
+          },
+          outstandingTotal: {
+            $sum: { $max: [{ $ifNull: ["$amountDue", 0] }, 0] },
+          },
+          paidTotal: { $sum: { $max: [{ $ifNull: ["$amountPaid", 0] }, 0] } },
+          lastSale: {
+            $max: { $ifNull: ["$saleDate", "$createdAt"] },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+    ];
+
+    // Search by customer name/email/phone
+    if (qSearch) {
+      agg.push({
+        $match: {
+          $or: [
+            { "customer.name": { $regex: qSearch, $options: "i" } },
+            { "customer.email": { $regex: qSearch, $options: "i" } },
+            { "customer.phone": { $regex: qSearch, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    // Min/Max outstanding filter
+    if (qMin !== null || qMax !== null) {
+      const range = {};
+      if (qMin !== null) range.$gte = qMin;
+      if (qMax !== null) range.$lte = qMax;
+      agg.push({ $match: { outstandingTotal: range } });
+    }
+
+    // Project view model
+    agg.push({
+      $project: {
+        _id: 0,
+        customerId: "$_id",
+        name: { $ifNull: ["$customer.name", "—"] },
+        email: { $ifNull: ["$customer.email", ""] },
+        phone: { $ifNull: ["$customer.phone", ""] },
+        outstandingTotal: 1,
+        pendingCount: 1,
+        paidTotal: 1,
+        lastSale: 1,
+      },
+    });
+
+    // Sorting
+    const dir = sortDir === "asc" ? 1 : -1;
+    const sortStage = {};
+    if (sortBy === "name") sortStage.name = dir;
+    else if (sortBy === "pendingCount") sortStage.pendingCount = dir;
+    else if (sortBy === "lastSale") sortStage.lastSale = dir;
+    else sortStage.outstandingTotal = dir;
+
+    // Facet for pagination
+    agg.push({
+      $facet: {
+        rows: [
+          { $sort: sortStage },
+          { $skip: (qPage - 1) * qLimit },
+          { $limit: qLimit },
+        ],
+        meta: [{ $count: "total" }],
+      },
+    });
+
+    const result = await Sale.aggregate(agg);
+    const rows = result?.[0]?.rows ?? [];
+    const total = result?.[0]?.meta?.[0]?.total ?? 0;
+
+    res.json({
+      success: true,
+      page: qPage,
+      limit: qLimit,
+      total,
+      rows,
+    });
+  } catch (err) {
+    console.error("getCustomerBalances error:", err);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to load customer balances." });
+  }
+};
+
+export const exportCustomerBalancesCsv = async (req, res) => {
+  try {
+    // Reuse same filters but no pagination; optional cap for safety
+    req.query.page = "1";
+    req.query.limit = "100000";
+    // Call the same aggregation pipeline (without facet) to avoid duplicate logic:
+    const {
+      search = "",
+      min = "",
+      max = "",
+      from = "",
+      to = "",
+      sortBy = "outstandingTotal",
+      sortDir = "desc",
+    } = req.query;
+
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+    const qSearch = String(search || "").trim();
+
+    const matchStage = {};
+    if (from || to) {
+      const saleDateMatch = {};
+      if (from) saleDateMatch.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        saleDateMatch.$lte = end;
+      }
+      matchStage.$expr = {
+        $and: [
+          {
+            $gte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$gte || new Date("1970-01-01"),
+            ],
+          },
+          {
+            $lte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$lte || new Date("2999-12-31"),
+            ],
+          },
+        ],
+      };
+    }
+
+    const agg = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$customer",
+          pendingCount: {
+            $sum: {
+              $cond: [{ $gt: [{ $ifNull: ["$amountDue", 0] }, 0] }, 1, 0],
+            },
+          },
+          outstandingTotal: {
+            $sum: { $max: [{ $ifNull: ["$amountDue", 0] }, 0] },
+          },
+          paidTotal: { $sum: { $max: [{ $ifNull: ["$amountPaid", 0] }, 0] } },
+          lastSale: { $max: { $ifNull: ["$saleDate", "$createdAt"] } },
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+    ];
+
+    if (qSearch) {
+      agg.push({
+        $match: {
+          $or: [
+            { "customer.name": { $regex: qSearch, $options: "i" } },
+            { "customer.email": { $regex: qSearch, $options: "i" } },
+            { "customer.phone": { $regex: qSearch, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    if (qMin !== null || qMax !== null) {
+      const range = {};
+      if (qMin !== null) range.$gte = qMin;
+      if (qMax !== null) range.$lte = qMax;
+      agg.push({ $match: { outstandingTotal: range } });
+    }
+
+    agg.push({
+      $project: {
+        _id: 0,
+        name: { $ifNull: ["$customer.name", "—"] },
+        email: { $ifNull: ["$customer.email", ""] },
+        phone: { $ifNull: ["$customer.phone", ""] },
+        outstandingTotal: 1,
+        pendingCount: 1,
+        paidTotal: 1,
+        lastSale: 1,
+      },
+    });
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    const sortStage = {};
+    if (sortBy === "name") sortStage.name = dir;
+    else if (sortBy === "pendingCount") sortStage.pendingCount = dir;
+    else if (sortBy === "lastSale") sortStage.lastSale = dir;
+    else sortStage.outstandingTotal = dir;
+    agg.push({ $sort: sortStage });
+
+    const rows = await Sale.aggregate(agg);
+
+    // CSV
+    const header = [
+      "Name",
+      "Email",
+      "Phone",
+      "Outstanding",
+      "PendingInvoices",
+      "PaidTotal",
+      "LastSale",
+    ];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      const line = [
+        (r.name || "").replace(/,/g, " "),
+        (r.email || "").replace(/,/g, " "),
+        (r.phone || "").replace(/,/g, " "),
+        asNumber(r.outstandingTotal, 0).toFixed(2),
+        asNumber(r.pendingCount, 0),
+        asNumber(r.paidTotal, 0).toFixed(2),
+        r.lastSale ? new Date(r.lastSale).toISOString() : "",
+      ].join(",");
+      lines.push(line);
+    }
+    const csv = lines.join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="customer_balances_${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv"`
+    );
+    res.status(200).send(csv);
+  } catch (err) {
+    console.error("exportCustomerBalancesCsv error:", err);
+    res.status(500).json({ success: false, error: "Failed to export CSV." });
+  }
+};
+
+const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const daysBetween = (a, b) => Math.floor((a - b) / (1000 * 60 * 60 * 24));
+
+// Default overdue rule: > 30 days since saleDate (tweak if you store dueDate/creditDays)
+const OVERDUE_DAYS = 30;
+
+// Build match for date & optional customer
+function buildReceivablesMatch({ from, to, customer }) {
+  const m = {};
+  // only unpaid/partially paid
+  m.$or = [{ paymentStatus: { $ne: "paid" } }, { amountDue: { $gt: 0 } }];
+
+  if (from || to) {
+    m.saleDate = {};
+    if (from) m.saleDate.$gte = new Date(from);
+    if (to) m.saleDate.$lte = new Date(to);
+  }
+  if (customer) {
+    m.customer = customer;
+  }
+  return m;
+}
+
+// GET /reports/receivables
+export const getReceivablesReport = async (req, res) => {
+  try {
+    const { from, to, customer } = req.query || {};
+
+    const match = buildReceivablesMatch({ from, to, customer });
+
+    // pull the rows we need (not huge in FYP scale)
+    const rows = await Sale.find(match)
+      .populate({ path: "customer", select: "name email phone" })
+      .select(
+        "saleId saleDate createdAt paymentStatus discountedAmount totalAmount amountPaid amountDue customer"
+      )
+      .lean();
+
+    const now = new Date();
+
+    let outstandingTotal = 0;
+    let pendingCount = 0;
+    let overdueCount = 0;
+    let daysAccum = 0;
+
+    const aging = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
+
+    const detailRows = rows.map((r) => {
+      const total = safeNum(r.discountedAmount) || safeNum(r.totalAmount) || 0;
+      const paid = safeNum(r.amountPaid);
+      const due = safeNum(r.amountDue) || Math.max(0, total - paid);
+
+      if (due > 0) {
+        outstandingTotal += due;
+        pendingCount += 1;
+
+        const saleDt = r.saleDate
+          ? new Date(r.saleDate)
+          : new Date(r.createdAt);
+        const d = daysBetween(now, saleDt);
+        daysAccum += d;
+
+        if (d > OVERDUE_DAYS) overdueCount += 1;
+
+        // aging buckets by days outstanding
+        if (d <= 30) aging["0-30"] += due;
+        else if (d <= 60) aging["31-60"] += due;
+        else if (d <= 90) aging["61-90"] += due;
+        else aging["90+"] += due;
+      }
+
+      return {
+        _id: String(r._id),
+        saleId: r.saleId || String(r._id),
+        customerName: r?.customer?.name || "-",
+        saleDate: r.saleDate || r.createdAt,
+        total,
+        amountPaid: paid,
+        amountDue: due,
+        paymentStatus: r.paymentStatus || (due > 0 ? "unpaid" : "paid"),
+        daysOutstanding:
+          r.saleDate || r.createdAt
+            ? daysBetween(now, new Date(r.saleDate || r.createdAt))
+            : 0,
+      };
+    });
+
+    const avgDaysOutstanding =
+      pendingCount > 0 ? Math.round(daysAccum / pendingCount) : 0;
+
+    // Top debtors by sum of dues
+    const map = new Map();
+    for (const r of detailRows) {
+      if (r.amountDue <= 0) continue;
+      const key = r.customerName || "-";
+      const agg = map.get(key) || {
+        customer: key,
+        invoices: 0,
+        outstanding: 0,
+      };
+      agg.invoices += 1;
+      agg.outstanding += r.amountDue;
+      map.set(key, agg);
+    }
+    const topDebtors = Array.from(map.values())
+      .sort((a, b) => b.outstanding - a.outstanding)
+      .slice(0, 10);
+
+    return res.json({
+      KPIs: {
+        outstandingTotal,
+        pendingCount,
+        overdueCount,
+        avgDaysOutstanding,
+      },
+      aging,
+      topDebtors,
+      rows: detailRows,
+    });
+  } catch (err) {
+    console.error("receivables report error:", err);
+    return res
+      .status(500)
+      .json({ success: false, error: "Failed to build receivables report." });
+  }
+};
+
+// GET /reports/receivables/export/csv
+export const exportReceivablesCsv = async (req, res) => {
+  try {
+    const { from, to, customer } = req.query || {};
+    const match = buildReceivablesMatch({ from, to, customer });
+
+    const rows = await Sale.find(match)
+      .populate({ path: "customer", select: "name email phone" })
+      .select(
+        "saleId saleDate createdAt paymentStatus discountedAmount totalAmount amountPaid amountDue customer"
+      )
+      .lean();
+
+    const now = new Date();
+    const lines = [];
+    lines.push(
+      [
+        "Invoice",
+        "Customer",
+        "Date",
+        "Total",
+        "Paid",
+        "Due",
+        "Status",
+        "Days Outstanding",
+      ].join(",")
+    );
+
+    for (const r of rows) {
+      const total = safeNum(r.discountedAmount) || safeNum(r.totalAmount) || 0;
+      const paid = safeNum(r.amountPaid);
+      const due = safeNum(r.amountDue) || Math.max(0, total - paid);
+      if (due <= 0) continue;
+
+      const dt = r.saleDate || r.createdAt;
+      const days = dt ? daysBetween(now, new Date(dt)) : 0;
+
+      const row = [
+        JSON.stringify(r.saleId || String(r._id)),
+        JSON.stringify(r?.customer?.name || "-"),
+        JSON.stringify(dt ? new Date(dt).toISOString() : ""),
+        total.toFixed(2),
+        paid.toFixed(2),
+        due.toFixed(2),
+        JSON.stringify(r.paymentStatus || "unpaid"),
+        String(days),
+      ];
+      lines.push(row.join(","));
+    }
+
+    const csv = lines.join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="receivables_${(from || "").slice(0, 10)}_${(
+        to || ""
+      ).slice(0, 10)}.csv"`
+    );
+    return res.send(csv);
+  } catch (err) {
+    console.error("receivables csv error:", err);
+    return res
+      .status(500)
+      .json({ success: false, error: "Failed to export receivables CSV." });
+  }
+};

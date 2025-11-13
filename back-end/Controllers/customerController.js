@@ -106,3 +106,92 @@ export const getCustomerPurchases = async (req, res) => {
     return res.status(500).json({ success: false, error: "Server error" });
   }
 };
+
+// GET /api/customers/:id/receivables
+export const getCustomerReceivables = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const exists = await Customer.exists({ _id: id });
+    if (!exists)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
+
+    const unpaidSales = await Sale.find({
+      customer: id,
+      paymentStatus: { $in: ["unpaid", "partial"] },
+    }).select("amountDue");
+
+    const outstandingTotal = unpaidSales.reduce(
+      (sum, s) => sum + Number(s.amountDue || 0),
+      0
+    );
+
+    res.json({
+      success: true,
+      customerId: id,
+      outstandingTotal,
+      pendingCount: unpaidSales.length,
+    });
+  } catch (error) {
+    console.error("getCustomerReceivables error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// GET /api/customers/:id/sales?paymentStatus=pending|paid|all&from&to
+export const getCustomerSalesByPaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      paymentStatus = "all",
+      from,
+      to,
+      sortBy = "saleDate",
+      sortDir = "desc",
+      page = 1,
+      limit = 25,
+    } = req.query;
+
+    const exists = await Customer.exists({ _id: id });
+    if (!exists)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
+
+    const match = { customer: id };
+
+    if (paymentStatus === "pending")
+      match.paymentStatus = { $in: ["unpaid", "partial"] };
+    else if (paymentStatus === "paid") match.paymentStatus = "paid";
+
+    if (from || to) {
+      match.saleDate = {};
+      if (from) match.saleDate.$gte = new Date(from);
+      if (to) match.saleDate.$lte = new Date(to);
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const sales = await Sale.find(match)
+      .select(
+        "saleId saleDate discountedAmount amountPaid amountDue paymentStatus createdAt"
+      )
+      .sort({ [sortBy]: sortDir === "asc" ? 1 : -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Sale.countDocuments(match);
+
+    res.json({
+      success: true,
+      rows: sales,
+      page: Number(page),
+      limit: Number(limit),
+      total,
+    });
+  } catch (error) {
+    console.error("getCustomerSalesByPaymentStatus error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

@@ -529,4 +529,64 @@ const getSaleInvoicePdf = async (req, res) => {
   }
 };
 
-export { addSale, getSales, updateSale, deleteSale, getSaleInvoicePdf };
+const recordPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, note } = req.body || {};
+
+    const payment = Number(amount);
+    if (!id) return res.status(400).json({ message: "Sale ID is required." });
+    if (isNaN(payment) || payment <= 0) {
+      return res.status(400).json({ message: "Payment amount must be > 0." });
+    }
+
+    const sale = await Sale.findById(id);
+    if (!sale) return res.status(404).json({ message: "Sale not found." });
+
+    const grandTotal = Number(sale.discountedAmount ?? sale.totalAmount ?? 0);
+    const currentPaid = Number(sale.amountPaid || 0);
+    const currentDue = Math.max(0, grandTotal - currentPaid);
+
+    const applied = Math.min(payment, currentDue);
+    sale.amountPaid = currentPaid + applied;
+    sale.amountDue = Math.max(0, grandTotal - sale.amountPaid);
+
+    if (sale.amountDue === 0) sale.paymentStatus = "paid";
+    else if (sale.amountPaid > 0) sale.paymentStatus = "partial";
+    else sale.paymentStatus = "unpaid";
+
+    await sale.save();
+
+    try {
+      await InventoryLog.create({
+        action: "sale.payment",
+        sale: sale._id,
+        actor: req.user?._id,
+        delta: applied,
+        note: note || "",
+      });
+    } catch (e) {
+      //   // swallow log errors
+    }
+
+    return res.json({
+      _id: sale._id,
+      grandTotal: grandTotal,
+      amountPaid: sale.amountPaid,
+      amountDue: sale.amountDue,
+      paymentStatus: sale.paymentStatus,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to record payment." });
+  }
+};
+
+export {
+  addSale,
+  getSales,
+  updateSale,
+  deleteSale,
+  getSaleInvoicePdf,
+  recordPayment,
+};

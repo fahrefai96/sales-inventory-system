@@ -1,6 +1,6 @@
 // /src/components/Customers.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import axiosInstance from "../utils/api";
+import api from "../utils/api";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
@@ -39,24 +39,44 @@ const Customers = () => {
     address: "",
   });
 
-  // profile modal (purchase history)
+  // profile modal (purchases + payments)
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileCustomer, setProfileCustomer] = useState(null);
+  const [profileTab, setProfileTab] = useState("purchases"); // 'purchases' | 'payments'
+
+  // Purchases tab state
   const [purchaseHistory, setPurchaseHistory] = useState([]);
 
-  // -------- Fetch --------
+  // Payments tab state
+  const [recvLoading, setRecvLoading] = useState(false);
+  const [recvError, setRecvError] = useState("");
+  const [receivables, setReceivables] = useState({
+    outstandingTotal: 0,
+    pendingCount: 0,
+  });
+
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [paidLoading, setPaidLoading] = useState(false);
+  const [pendingRows, setPendingRows] = useState([]);
+  const [paidRows, setPaidRows] = useState([]);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [paidPage, setPaidPage] = useState(1);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [paidTotal, setPaidTotal] = useState(0);
+  const [pendingLimit, setPendingLimit] = useState(10);
+  const [paidLimit, setPaidLimit] = useState(10);
+
+  const token = localStorage.getItem("pos-token");
+
+  // -------- Fetch customers --------
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get("/customers", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
+      const res = await api.get("/customers", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.success) {
-        setCustomers(res.data.customers || []);
-      }
+      if (res.data?.success) setCustomers(res.data.customers || []);
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
     } finally {
@@ -66,7 +86,29 @@ const Customers = () => {
 
   useEffect(() => {
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // -------- Global ESC to close (only when a panel is open) --------
+  useEffect(() => {
+    if (!drawerOpen && !profileOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (profileOpen) {
+          setProfileOpen(false);
+          setPurchaseHistory([]);
+          setProfileCustomer(null);
+          setProfileTab("purchases");
+        }
+        if (drawerOpen) {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen, profileOpen]);
 
   // -------- Search (debounced) --------
   const debounceRef = useRef(null);
@@ -127,13 +169,10 @@ const Customers = () => {
     );
   };
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
+  const fmt = (n) =>
+    Number(n || 0).toLocaleString("en-LK", { maximumFractionDigits: 2 });
 
-  // -------- Drawer (create/edit) --------
-  const openDrawerForCreate = () => {
-    setEditingId(null);
-    setFormData({ name: "", email: "", phone: "", address: "" });
-    setDrawerOpen(true);
-  };
+  // -------- Edit/Delete handlers --------
   const openDrawerForEdit = (c) => {
     setEditingId(c._id);
     setFormData({
@@ -144,80 +183,33 @@ const Customers = () => {
     });
     setDrawerOpen(true);
   };
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setEditingId(null);
-  };
-  const onFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return;
-
-    try {
-      if (editingId) {
-        const res = await axiosInstance.put(
-          `/customers/${editingId}`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-            },
-          }
-        );
-        if (res.data?.success) await fetchCustomers();
-      } else {
-        const res = await axiosInstance.post(`/customers`, formData, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-          },
-        });
-        if (res.data?.success) await fetchCustomers();
-      }
-      closeDrawer();
-    } catch (err) {
-      alert(err?.response?.data?.error || err.message);
-    }
-  };
 
   const onDelete = async (id) => {
-    if (!confirm("Delete this customer?")) return;
+    if (!window.confirm("Delete this customer?")) return;
     try {
-      const res = await axiosInstance.delete(`/customers/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
+      await api.delete(`/customers/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.success) {
-        setCustomers((prev) => prev.filter((c) => c._id !== id));
-        // keep pagination stable
-        const newTotal = total - 1;
-        const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
-        if (page > newTotalPages) setPage(newTotalPages);
-      }
+      await fetchCustomers();
+      const newTotal = total - 1;
+      const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
+      if (page > newTotalPages) setPage(newTotalPages);
     } catch (err) {
-      alert(err?.response?.data?.error || err.message);
+      alert(err?.response?.data?.error || "Failed to delete customer.");
     }
   };
 
-  // -------- Profile modal (purchase history) --------
+  // -------- Profile: Purchases --------
   const fetchCustomerPurchases = async (customerId) => {
     setProfileLoading(true);
     try {
-      const res = await axiosInstance.get(
-        `/customers/${customerId}/purchases`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-          },
-        }
-      );
+      const res = await api.get(`/customers/${customerId}/purchases`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.data?.success) {
         setProfileCustomer(res.data.customer || null);
         setPurchaseHistory(res.data.purchases || []);
+        setProfileTab("purchases");
         setProfileOpen(true);
       } else {
         alert("Failed to load purchase history");
@@ -230,6 +222,168 @@ const Customers = () => {
     }
   };
 
+  // -------- Profile: Payments (summary + lists) --------
+  const fetchReceivables = async (customerId) => {
+    setRecvLoading(true);
+    setRecvError("");
+    try {
+      const res = await api.get(`/customers/${customerId}/receivables`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data?.success) {
+        setReceivables({
+          outstandingTotal: Number(res.data.outstandingTotal || 0),
+          pendingCount: Number(res.data.pendingCount || 0),
+        });
+      } else {
+        setRecvError("Failed to load receivables");
+      }
+    } catch (e) {
+      setRecvError(e?.response?.data?.message || "Failed to load receivables");
+    } finally {
+      setRecvLoading(false);
+    }
+  };
+
+  const fetchCustomerSales = async ({
+    customerId,
+    status, // 'pending' | 'paid'
+    page = 1,
+    limit = 10,
+  }) => {
+    const params = {
+      paymentStatus: status,
+      page,
+      limit,
+      sortBy: "saleDate",
+      sortDir: "desc",
+    };
+    const url = `/customers/${customerId}/sales`;
+    const headers = { Authorization: `Bearer ${token}` };
+    if (status === "pending") setPendingLoading(true);
+    else setPaidLoading(true);
+    try {
+      const res = await api.get(url, { params, headers });
+      if (res.data?.success) {
+        const rows = Array.isArray(res.data.rows) ? res.data.rows : [];
+        if (status === "pending") {
+          setPendingRows(rows);
+          setPendingTotal(Number(res.data.total || 0));
+        } else {
+          setPaidRows(rows);
+          setPaidTotal(Number(res.data.total || 0));
+        }
+      } else {
+        if (status === "pending") setPendingRows([]);
+        else setPaidRows([]);
+      }
+    } catch (e) {
+      if (status === "pending") setPendingRows([]);
+      else setPaidRows([]);
+    } finally {
+      if (status === "pending") setPendingLoading(false);
+      else setPaidLoading(false);
+    }
+  };
+
+  const openPaymentsTab = async (customerId) => {
+    if (!profileCustomer || profileCustomer._id !== customerId) {
+      try {
+        setProfileLoading(true);
+        const res = await api.get(`/customers/${customerId}/purchases`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data?.success) {
+          setProfileCustomer(res.data.customer || null);
+        }
+      } catch {
+      } finally {
+        setProfileLoading(false);
+      }
+    }
+
+    setProfileTab("payments");
+    setProfileOpen(true);
+    await Promise.all([
+      fetchReceivables(customerId),
+      fetchCustomerSales({
+        customerId,
+        status: "pending",
+        page: pendingPage,
+        limit: pendingLimit,
+      }),
+      fetchCustomerSales({
+        customerId,
+        status: "paid",
+        page: paidPage,
+        limit: paidLimit,
+      }),
+    ]);
+  };
+
+  const recordPayment = async (sale) => {
+    const due = Math.max(0, Number(sale.amountDue || 0));
+    const base = Number(sale.discountedAmount ?? sale.totalAmount ?? 0);
+    const paid = Number(sale.amountPaid || 0);
+
+    const input = prompt(
+      `Record payment for ${sale.saleId || sale._id}\n` +
+        `Total: Rs ${fmt(base)} | Paid: Rs ${fmt(paid)} | Due: Rs ${fmt(
+          due
+        )}\n\n` +
+        `Enter amount to pay now:`
+    );
+    if (!input) return;
+
+    const amount = Number(input);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert("Enter a valid amount greater than 0.");
+      return;
+    }
+    if (amount > due) {
+      if (
+        !confirm(
+          `Amount exceeds due (Rs ${fmt(due)}). Apply Rs ${fmt(due)} instead?`
+        )
+      )
+        return;
+    }
+
+    try {
+      const apply = Math.min(amount, due);
+      await api.patch(
+        `/sales/${sale._id}/payment`,
+        { amount: apply },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (profileCustomer?._id) {
+        await fetchReceivables(profileCustomer._id);
+        await fetchCustomerSales({
+          customerId: profileCustomer._id,
+          status: "pending",
+          page: pendingPage,
+          limit: pendingLimit,
+        });
+        await fetchCustomerSales({
+          customerId: profileCustomer._id,
+          status: "paid",
+          page: paidPage,
+          limit: paidLimit,
+        });
+      }
+      alert("Payment recorded.");
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to record payment."
+      );
+    }
+  };
+
+  // -------- UI --------
   return (
     <div className="p-6">
       {/* Page header */}
@@ -237,7 +391,7 @@ const Customers = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
           <p className="text-sm text-gray-500">
-            Manage customer records and view purchase history.
+            Manage customer records and view purchase history & payments.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -286,7 +440,11 @@ const Customers = () => {
           </div>
           {/* Add */}
           <button
-            onClick={openDrawerForCreate}
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ name: "", email: "", phone: "", address: "" });
+              setDrawerOpen(true);
+            }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             Add Customer
@@ -368,11 +526,20 @@ const Customers = () => {
                     </td>
                     <td className={`${dens.cell} ${dens.text}`}>
                       <div className="flex flex-wrap gap-3">
+                        {/* Order: Purchases → Payments → Edit → Delete */}
                         <button
                           onClick={() => fetchCustomerPurchases(c._id)}
-                          className="text-green-600 hover:text-green-800 font-medium"
+                          className="text-emerald-700 hover:text-emerald-900 font-medium"
+                          title="View purchases"
                         >
-                          View Profile
+                          Purchases
+                        </button>
+                        <button
+                          onClick={() => openPaymentsTab(c._id)}
+                          className="text-indigo-600 hover:text-indigo-800 font-medium"
+                          title="View payments"
+                        >
+                          Payments
                         </button>
                         <button
                           onClick={() => openDrawerForEdit(c)}
@@ -402,7 +569,16 @@ const Customers = () => {
                         started.
                       </p>
                       <button
-                        onClick={openDrawerForCreate}
+                        onClick={() => {
+                          setEditingId(null);
+                          setFormData({
+                            name: "",
+                            email: "",
+                            phone: "",
+                            address: "",
+                          });
+                          setDrawerOpen(true);
+                        }}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                       >
                         Add Customer
@@ -447,16 +623,21 @@ const Customers = () => {
 
       {/* Drawer: Add/Edit */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40"
-            onClick={closeDrawer}
+            onClick={() => {
+              setDrawerOpen(false);
+              setEditingId(null);
+            }}
             aria-hidden
           />
-
           {/* Panel */}
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0">
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 ">
               <div>
@@ -468,7 +649,10 @@ const Customers = () => {
                 </p>
               </div>
               <button
-                onClick={closeDrawer}
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setEditingId(null);
+                }}
                 className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
                 aria-label="Close"
               >
@@ -478,7 +662,31 @@ const Customers = () => {
 
             {/* Content */}
             <form
-              onSubmit={onSubmit}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!formData.name.trim()) return;
+                try {
+                  if (editingId) {
+                    const res = await api.put(
+                      `/customers/${editingId}`,
+                      formData,
+                      {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }
+                    );
+                    if (res.data?.success) await fetchCustomers();
+                  } else {
+                    const res = await api.post(`/customers`, formData, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (res.data?.success) await fetchCustomers();
+                  }
+                  setDrawerOpen(false);
+                  setEditingId(null);
+                } catch (err) {
+                  alert(err?.response?.data?.error || err.message);
+                }
+              }}
               className="flex flex-1 flex-col overflow-y-auto min-h-0"
             >
               <div className="flex-1 px-5 py-4 space-y-3 pb-28">
@@ -487,7 +695,9 @@ const Customers = () => {
                     type="text"
                     name="name"
                     value={formData.name}
-                    onChange={onFormChange}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, name: e.target.value }))
+                    }
                     required
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -497,7 +707,9 @@ const Customers = () => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={onFormChange}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, email: e.target.value }))
+                    }
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </Field>
@@ -506,7 +718,9 @@ const Customers = () => {
                     type="text"
                     name="phone"
                     value={formData.phone}
-                    onChange={onFormChange}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, phone: e.target.value }))
+                    }
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </Field>
@@ -515,7 +729,9 @@ const Customers = () => {
                     type="text"
                     name="address"
                     value={formData.address}
-                    onChange={onFormChange}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, address: e.target.value }))
+                    }
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </Field>
@@ -526,7 +742,10 @@ const Customers = () => {
                 <div className="flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    onClick={closeDrawer}
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      setEditingId(null);
+                    }}
                     className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Cancel
@@ -544,10 +763,23 @@ const Customers = () => {
         </div>
       )}
 
-      {/* Profile Modal */}
+      {/* Profile Modal (tabs: Purchases & Payments) */}
       {profileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setProfileOpen(false);
+            setPurchaseHistory([]);
+            setProfileCustomer(null);
+            setProfileTab("purchases");
+          }}
+        >
+          <div
+            className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
@@ -555,7 +787,7 @@ const Customers = () => {
                   {profileCustomer?.name || "Customer"} — Profile
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
-                  Contact & purchase history for this customer.
+                  Contact, purchase history, and payments for this customer.
                 </p>
               </div>
               <button
@@ -563,6 +795,7 @@ const Customers = () => {
                   setProfileOpen(false);
                   setPurchaseHistory([]);
                   setProfileCustomer(null);
+                  setProfileTab("purchases");
                 }}
                 className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -570,10 +803,9 @@ const Customers = () => {
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4">
-              {/* Customer info */}
-              {profileCustomer && (
+            {/* Customer info */}
+            {profileCustomer && (
+              <div className="px-5 pt-4">
                 <div className="grid sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded">
                   <div>
                     <span className="font-semibold">Email:</span>{" "}
@@ -588,68 +820,352 @@ const Customers = () => {
                     {profileCustomer.address || "—"}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Purchases */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Purchase History
-                </h3>
-                {profileLoading ? (
-                  <div className="py-6 text-center text-gray-500">
-                    Loading purchases…
+            {/* Tabs */}
+            <div className="px-5 pt-4">
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    profileTab === "purchases" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => setProfileTab("purchases")}
+                >
+                  Purchases
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    profileTab === "payments" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => {
+                    if (profileCustomer?._id)
+                      openPaymentsTab(profileCustomer._id);
+                  }}
+                >
+                  Payments
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {profileTab === "purchases" ? (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Purchase History
+                  </h3>
+                  {profileLoading ? (
+                    <div className="py-6 text-center text-gray-500">
+                      Loading purchases…
+                    </div>
+                  ) : purchaseHistory.length === 0 ? (
+                    <div className="py-6 text-center text-gray-500">
+                      No purchases yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded border border-gray-200">
+                      <div className="max-h-[50vh] overflow-auto">
+                        <table className="min-w-full table-auto">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                              <th className="px-4 py-3">Date</th>
+                              <th className="px-4 py-3">Invoice</th>
+                              <th className="px-4 py-3">Items</th>
+                              <th className="px-4 py-3">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                            {purchaseHistory.map((s) => {
+                              const itemCount = Array.isArray(s.products)
+                                ? s.products.reduce(
+                                    (n, it) => n + (it.quantity || 0),
+                                    0
+                                  )
+                                : 0;
+                              const total =
+                                typeof s.discountedAmount === "number"
+                                  ? s.discountedAmount
+                                  : typeof s.totalAmount === "number"
+                                  ? s.totalAmount
+                                  : 0;
+                              return (
+                                <tr key={s._id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3">
+                                    {formatDateTime(s.createdAt)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {s.saleId || s.invoiceNo || s._id}
+                                  </td>
+                                  <td className="px-4 py-3">{itemCount}</td>
+                                  <td className="px-4 py-3">Rs {fmt(total)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {/* Payments Summary */}
+                  <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded bg-white border border-gray-200 p-3">
+                      <div className="text-xs text-gray-500 uppercase">
+                        Outstanding
+                      </div>
+                      <div className="text-xl font-semibold">
+                        {recvLoading
+                          ? "…"
+                          : `Rs ${fmt(receivables.outstandingTotal)}`}
+                      </div>
+                    </div>
+                    <div className="rounded bg-white border border-gray-200 p-3">
+                      <div className="text-xs text-gray-500 uppercase">
+                        Pending Invoices
+                      </div>
+                      <div className="text-xl font-semibold">
+                        {recvLoading
+                          ? "…"
+                          : recvablesSafe(
+                              recvLoading,
+                              receivables.pendingCount
+                            )}
+                      </div>
+                    </div>
                   </div>
-                ) : purchaseHistory.length === 0 ? (
-                  <div className="py-6 text-center text-gray-500">
-                    No purchases yet.
-                  </div>
-                ) : (
-                  <div className="overflow-hidden rounded border border-gray-200">
-                    <div className="max-h-[50vh] overflow-auto">
+                  {recvError && (
+                    <div className="text-sm text-red-600">{recvError}</div>
+                  )}
+
+                  {/* Pending table */}
+                  <h3 className="text-base font-semibold text-gray-900 mt-4 mb-2">
+                    Pending
+                  </h3>
+                  <div className="overflow-hidden rounded border border-gray-200 mb-4">
+                    <div className="max-h-[35vh] overflow-auto">
                       <table className="min-w-full table-auto">
                         <thead className="bg-gray-50 sticky top-0">
                           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                            <th className="px-4 py-3">Date</th>
                             <th className="px-4 py-3">Invoice</th>
-                            <th className="px-4 py-3">Items</th>
+                            <th className="px-4 py-3">Date</th>
                             <th className="px-4 py-3">Total</th>
+                            <th className="px-4 py-3">Paid</th>
+                            <th className="px-4 py-3">Due</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                          {purchaseHistory.map((s) => {
-                            const itemCount = Array.isArray(s.products)
-                              ? s.products.reduce(
-                                  (n, it) => n + (it.quantity || 0),
-                                  0
-                                )
-                              : 0;
-                            const total =
-                              typeof s.discountedAmount === "number"
-                                ? s.discountedAmount
-                                : typeof s.totalAmount === "number"
-                                ? s.totalAmount
-                                : 0;
-                            return (
-                              <tr key={s._id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3">
-                                  {formatDateTime(s.createdAt)}
-                                </td>
-                                <td className="px-4 py-3">
-                                  {s.saleId || s.invoiceNo || s._id}
-                                </td>
-                                <td className="px-4 py-3">{itemCount}</td>
-                                <td className="px-4 py-3">
-                                  Rs {Number(total).toLocaleString()}
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          {pendingLoading ? (
+                            <SkeletonRows rows={5} dens={dens} cols={7} />
+                          ) : pendingRows.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan="7"
+                                className="px-4 py-6 text-center text-gray-500"
+                              >
+                                No pending invoices.
+                              </td>
+                            </tr>
+                          ) : (
+                            pendingRows.map((s) => {
+                              const base = Number(
+                                s.discountedAmount ?? s.totalAmount ?? 0
+                              );
+                              const paid = Number(s.amountPaid || 0);
+                              const due = Math.max(
+                                0,
+                                Number(s.amountDue ?? base - paid)
+                              );
+                              return (
+                                <tr key={s._id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3">
+                                    {s.saleId || s._id}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {formatDateTime(s.saleDate || s.createdAt)}
+                                  </td>
+                                  <td className="px-4 py-3">Rs {fmt(base)}</td>
+                                  <td className="px-4 py-3">Rs {fmt(paid)}</td>
+                                  <td className="px-4 py-3">Rs {fmt(due)}</td>
+                                  <td className="px-4 py-3 capitalize">
+                                    {s.paymentStatus || "unpaid"}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => recordPayment(s)}
+                                      className="text-blue-600 hover:text-blue-800 font-medium"
+                                    >
+                                      Record Payment
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Pending pager */}
+                    <div className="border-t border-gray-200 p-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Rows:</span>
+                        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                          {[10, 20, 50].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => {
+                                setPendingLimit(n);
+                                setPendingPage(1);
+                                if (profileCustomer?._id)
+                                  fetchCustomerSales({
+                                    customerId: profileCustomer._id,
+                                    status: "pending",
+                                    page: 1,
+                                    limit: n,
+                                  });
+                              }}
+                              className={`px-3 py-1.5 text-sm ${
+                                pendingLimit === n
+                                  ? "bg-gray-100 font-medium"
+                                  : "bg-white"
+                              }`}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <SmallPager
+                        page={pendingPage}
+                        setPage={(p) => {
+                          setPendingPage(p);
+                          if (profileCustomer?._id)
+                            fetchCustomerSales({
+                              customerId: profileCustomer._id,
+                              status: "pending",
+                              page: p,
+                              limit: pendingLimit,
+                            });
+                        }}
+                        total={pendingTotal}
+                        limit={pendingLimit}
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Paid table */}
+                  <h3 className="text-base font-semibold text-gray-900 mt-6 mb-2">
+                    Paid
+                  </h3>
+                  <div className="overflow-hidden rounded border border-gray-200">
+                    <div className="max-h-[35vh] overflow-auto">
+                      <table className="min-w-full table-auto">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                            <th className="px-4 py-3">Invoice</th>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Total</th>
+                            <th className="px-4 py-3">Paid</th>
+                            <th className="px-4 py-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                          {paidLoading ? (
+                            <SkeletonRows rows={5} dens={dens} cols={5} />
+                          ) : paidRows.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan="5"
+                                className="px-4 py-6 text-center text-gray-500"
+                              >
+                                No paid invoices yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            paidRows.map((s) => {
+                              const base = Number(
+                                s.discountedAmount ?? s.totalAmount ?? 0
+                              );
+                              const paid = Number(s.amountPaid || base);
+                              return (
+                                <tr key={s._id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3">
+                                    {s.saleId || s._id}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {formatDateTime(s.saleDate || s.createdAt)}
+                                  </td>
+                                  <td className="px-4 py-3">Rs {fmt(base)}</td>
+                                  <td className="px-4 py-3">Rs {fmt(paid)}</td>
+                                  <td className="px-4 py-3 capitalize">
+                                    {s.paymentStatus || "paid"}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Paid pager */}
+                    <div className="border-t border-gray-200 p-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Rows:</span>
+                        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                          {[10, 20, 50].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => {
+                                setPaidLimit(n);
+                                setPaidPage(1);
+                                if (profileCustomer?._id)
+                                  fetchCustomerSales({
+                                    customerId: profileCustomer._id,
+                                    status: "paid",
+                                    page: 1,
+                                    limit: n,
+                                  });
+                              }}
+                              className={`px-3 py-1.5 text-sm ${
+                                paidLimit === n
+                                  ? "bg-gray-100 font-medium"
+                                  : "bg-white"
+                              }`}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <SmallPager
+                        page={paidPage}
+                        setPage={(p) => {
+                          setPaidPage(p);
+                          if (profileCustomer?._id)
+                            fetchCustomerSales({
+                              customerId: profileCustomer._id,
+                              status: "paid",
+                              page: p,
+                              limit: paidLimit,
+                            });
+                        }}
+                        total={paidTotal}
+                        limit={paidLimit}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -658,7 +1174,7 @@ const Customers = () => {
   );
 };
 
-// Reusable parts
+// Reusable bits
 const Field = ({ label, required, children }) => (
   <label className="block">
     <span className="mb-1 block text-sm font-medium text-gray-700">
@@ -688,63 +1204,45 @@ const Th = ({ label, sortKey, sortBy, setSort }) => {
   );
 };
 
-const SkeletonRows = ({ rows = 6, dens, cols = 6 }) => {
-  return (
-    <>
-      {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className={dens.row}>
-          {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} className={`${dens.cell}`}>
-              <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-};
+const SkeletonRows = ({ rows = 6, dens, cols = 6 }) => (
+  <>
+    {Array.from({ length: rows }).map((_, i) => (
+      <tr key={i} className={dens.row}>
+        {Array.from({ length: cols }).map((__, j) => (
+          <td key={j} className={`${dens.cell}`}>
+            <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
+          </td>
+        ))}
+      </tr>
+    ))}
+  </>
+);
 
-/* Same Pagination UX as Products (with Jump to page) */
 const Pagination = ({ page, setPage, totalPages }) => {
   const [jump, setJump] = React.useState(String(page));
-
-  React.useEffect(() => {
-    setJump(String(page));
-  }, [page, totalPages]);
-
+  React.useEffect(() => setJump(String(page)), [page, totalPages]);
   const clamp = (p) => Math.max(1, Math.min(totalPages, p || 1));
   const go = (p) => setPage(clamp(p));
 
-  const singlePage = totalPages <= 1;
-
-  // Compact page list (max 7 items incl. ellipses)
   const pages = [];
   const add = (p) => pages.push(p);
-  const addEllipsis = () => pages.push("…");
+  const dots = () => pages.push("…");
 
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) add(i);
   } else {
     add(1);
-    if (page > 4) addEllipsis();
-    const start = Math.max(2, page - 1);
-    const end = Math.min(totalPages - 1, page + 1);
-    for (let i = start; i <= end; i++) add(i);
-    if (page < totalPages - 3) addEllipsis();
+    if (page > 4) dots();
+    const s = Math.max(2, page - 1);
+    const e = Math.min(totalPages - 1, page + 1);
+    for (let i = s; i <= e; i++) add(i);
+    if (page < totalPages - 3) dots();
     add(totalPages);
   }
-
-  const onSubmitJump = (e) => {
-    e.preventDefault();
-    go(Number(jump));
-  };
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
       <div className="flex items-center gap-1">
-        {singlePage && (
-          <span className="text-xs text-gray-500 mr-2">Page 1 of 1</span>
-        )}
         <button
           type="button"
           onClick={() => go(page - 1)}
@@ -754,7 +1252,6 @@ const Pagination = ({ page, setPage, totalPages }) => {
         >
           Prev
         </button>
-
         {pages.map((p, idx) =>
           p === "…" ? (
             <span key={`e-${idx}`} className="px-2 text-sm text-gray-500">
@@ -776,7 +1273,6 @@ const Pagination = ({ page, setPage, totalPages }) => {
             </button>
           )
         )}
-
         <button
           type="button"
           onClick={() => go(page + 1)}
@@ -788,22 +1284,30 @@ const Pagination = ({ page, setPage, totalPages }) => {
         </button>
       </div>
 
-      {/* Jump to page */}
-      <form onSubmit={onSubmitJump} className="flex items-center gap-2">
-        <label className="text-sm text-gray-600">Jump to:</label>
+      {/* Jump */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const input = e.currentTarget.elements.jump?.value;
+          const num = Number(input);
+          if (Number.isFinite(num)) go(num);
+        }}
+        className="flex items-center gap-2"
+      >
+        <label className="text-sm text-gray-600" htmlFor="jump">
+          Jump to:
+        </label>
         <input
+          id="jump"
+          name="jump"
           type="number"
           min={1}
           max={totalPages}
-          value={jump}
-          onChange={(e) => setJump(e.target.value)}
+          defaultValue={page}
           className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Jump to page"
         />
-        <button
-          type="submit"
-          className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-        >
+        <button className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
           Go
         </button>
         <span className="text-xs text-gray-500">/ {totalPages}</span>
@@ -811,5 +1315,37 @@ const Pagination = ({ page, setPage, totalPages }) => {
     </div>
   );
 };
+
+function SmallPager({ page, setPage, total, limit }) {
+  const totalPages = Math.max(1, Math.ceil((total || 0) / (limit || 10)));
+  const clamp = (p) => Math.max(1, Math.min(totalPages, p || 1));
+  const go = (p) => setPage(clamp(p));
+  const label = `Page ${page} of ${totalPages}`;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-500">{label}</span>
+      <button
+        onClick={() => go(page - 1)}
+        disabled={page <= 1}
+        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-50"
+      >
+        Prev
+      </button>
+      <button
+        onClick={() => go(page + 1)}
+        disabled={page >= totalPages}
+        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
+  );
+}
+
+function recvablesSafe(loading, count) {
+  if (loading) return "…";
+  const n = Number(count || 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default Customers;

@@ -12,6 +12,10 @@ import {
   FaUserPlus,
   FaPlusCircle,
   FaDownload,
+  FaFileCsv,
+  FaMoneyBillWave,
+  FaChartLine,
+  FaBalanceScale,
 } from "react-icons/fa";
 import api from "../utils/api";
 import ChartCard from "./Reports/ChartCard.jsx";
@@ -48,6 +52,16 @@ const StickyHeader = ({ children }) => (
   </div>
 );
 
+// small header component for KPI cards (monochrome, centered)
+const KpiHeader = ({ icon, label }) => (
+  <div className="flex flex-col items-center justify-center gap-1 text-xs uppercase tracking-wide text-gray-600 text-center">
+    <span className="bg-gray-100 p-1.5 rounded-full leading-none">
+      <span className="text-gray-600 opacity-80 text-base">{icon}</span>
+    </span>
+    <span>{label}</span>
+  </div>
+);
+
 export default function DashboardPanel() {
   // ---- UI state ----
   const [density, setDensity] = useState("comfortable"); // "compact" | "comfortable"
@@ -66,9 +80,15 @@ export default function DashboardPanel() {
   // ---- data ----
   const [dashboard, setDashboard] = useState(null); // /dashboard (totals + lists)
   const [salesReport, setSalesReport] = useState(null); // /reports/sales
+  const [inventoryReport, setInventoryReport] = useState(null); // /reports/inventory
   const [recentSales, setRecentSales] = useState([]); // /sales
   const [recentPurchases, setRecentPurchases] = useState([]); // /purchases
   const [activity, setActivity] = useState([]); // /inventory-logs
+
+  // --- admin-only data ---
+  const [receivables, setReceivables] = useState(null);
+  const [topProducts, setTopProducts] = useState(null);
+  const [combinedTrend, setCombinedTrend] = useState(null);
 
   // role-based visibility
   const role = (() => {
@@ -80,7 +100,36 @@ export default function DashboardPanel() {
     }
   })();
 
-  // ---- fetchers ----
+  // preset range helper
+  const setPreset = (key) => {
+    const today = new Date();
+    if (key === "today") {
+      setRange({
+        from: startOfDay(today),
+        to: endOfDay(today),
+        key,
+      });
+      return;
+    }
+    if (key === "7d") {
+      setRange({
+        from: startOfDay(addDays(today, -6)),
+        to: endOfDay(today),
+        key,
+      });
+      return;
+    }
+    if (key === "30d") {
+      setRange({
+        from: startOfDay(addDays(today, -29)),
+        to: endOfDay(today),
+        key,
+      });
+      return;
+    }
+  };
+
+  // ---- fetchers (existing) ----
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -96,9 +145,9 @@ export default function DashboardPanel() {
       try {
         const [sumRes, salesRes, invRes, salesListRes, purchaseRes, logsRes] =
           await Promise.all([
-            api.get("/dashboard"), // exclude soft-deleted (backend fix)
-            api.get("/reports/sales", { params }), // KPIs + series + top
-            api.get("/reports/inventory"), // KPIs for inventory totals (not shown directly)
+            api.get("/dashboard"),
+            api.get("/reports/sales", { params }),
+            api.get("/reports/inventory"),
             api.get("/sales", {
               params: {
                 from: params.from,
@@ -118,6 +167,7 @@ export default function DashboardPanel() {
         if (!mounted) return;
         setDashboard(sumRes?.data || null);
         setSalesReport(salesRes?.data || null);
+        setInventoryReport(invRes?.data || null);
 
         const salesList = (salesListRes?.data?.sales || []).slice(0, 10);
         setRecentSales(salesList);
@@ -141,6 +191,39 @@ export default function DashboardPanel() {
     };
   }, [range.from, range.to]);
 
+  // ---- admin-only fetchers ----
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      try {
+        if (role !== "admin") {
+          setReceivables(null);
+          setTopProducts(null);
+          setCombinedTrend(null);
+          return;
+        }
+        const params = {
+          from: toISODate(range.from),
+          to: toISODate(range.to),
+          groupBy: "day",
+        };
+        const [recv, top, trend] = await Promise.all([
+          api.get("/dashboard/receivables", { params }).catch(() => null),
+          api.get("/dashboard/top-products", { params }).catch(() => null),
+          api.get("/dashboard/combined-trend", { params }).catch(() => null),
+        ]);
+        if (!mounted) return;
+        setReceivables(recv?.data || null);
+        setTopProducts(top?.data || null);
+        setCombinedTrend(trend?.data || null);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    run();
+    return () => (mounted = false);
+  }, [range.from, range.to, role]);
+
   // ---- derived ----
   const densityCls = DENSITIES[density];
   const outOfStockCount = dashboard?.outOfStock?.length || 0;
@@ -156,7 +239,22 @@ export default function DashboardPanel() {
     };
   }, [salesReport]);
 
-  // Recharts expects array of objects; we already have that from /reports/sales
+  const inventoryKpis = useMemo(() => {
+    const KPIs = inventoryReport?.KPIs || {};
+    return {
+      value: KPIs?.stockValue || 0,
+      totalSkus: KPIs?.totalSkus || 0,
+      totalUnits: KPIs?.totalUnits || 0,
+    };
+  }, [inventoryReport]);
+
+  const turnoverRatio = useMemo(() => {
+    const revenue = Number(kpis.revenue || 0);
+    const inv = Number(inventoryKpis.value || 0);
+    if (!revenue || !inv) return 0;
+    return revenue / inv;
+  }, [kpis.revenue, inventoryKpis.value]);
+
   const revenueSeries = useMemo(() => {
     const s = Array.isArray(salesReport?.series) ? salesReport.series : [];
     return s.map((r) => ({
@@ -165,30 +263,18 @@ export default function DashboardPanel() {
     }));
   }, [salesReport]);
 
-  // ---- controls ----
-  const setPreset = (key) => {
-    const today = new Date();
-    if (key === "today") {
-      setRange({ from: startOfDay(today), to: endOfDay(today), key });
-    } else if (key === "7d") {
-      setRange({
-        from: startOfDay(addDays(today, -6)),
-        to: endOfDay(today),
-        key,
-      });
-    } else if (key === "30d") {
-      setRange({
-        from: startOfDay(addDays(today, -29)),
-        to: endOfDay(today),
-        key,
-      });
-    }
-  };
+  const combinedSeries = useMemo(() => {
+    const s = Array.isArray(combinedTrend?.series) ? combinedTrend.series : [];
+    return s.map((r) => ({
+      period: r.period,
+      salesRevenue: Number(r.salesRevenue || 0),
+      purchaseTotal: Number(r.purchaseTotal || 0),
+    }));
+  }, [combinedTrend]);
 
-  // Authenticated CSV export (blob)
+  // sales CSV
   const handleExportCsv = async () => {
     try {
-      const base = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
       const url = `/reports/sales/export/csv?from=${encodeURIComponent(
         toISODate(range.from)
       )}&to=${encodeURIComponent(toISODate(range.to))}&groupBy=day`;
@@ -210,13 +296,37 @@ export default function DashboardPanel() {
     }
   };
 
+  // low-stock CSV
+  const handleExportLowStock = async () => {
+    try {
+      const res = await api.get("/dashboard/low-stock/export.csv", {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = "low_stock.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export Low-Stock CSV.");
+    }
+  };
+
   // ---- skeletons ----
   const SkeletonCard = () => (
     <div className={`rounded shadow bg-white ${densityCls.card} animate-pulse`}>
-      <div className="h-4 w-24 bg-gray-200 rounded mb-3"></div>
-      <div className="h-6 w-32 bg-gray-200 rounded"></div>
+      <div className="h-4 w-28 bg-gray-200 rounded mb-3"></div>
+      <div className="h-6 w-36 bg-gray-200 rounded"></div>
     </div>
   );
+
+  // KPI grid columns (5 per row for admin, smaller for others)
+  const kpiGridCols = role === "admin" ? "xl:grid-cols-5" : "xl:grid-cols-3";
 
   // ---- rendering ----
   return (
@@ -226,8 +336,7 @@ export default function DashboardPanel() {
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-gray-600">
-              Monitor sales, inventory health, and recent activity—jump straight
-              into actions and reports.
+              Monitor sales, inventory health, and recent activity
             </p>
           </div>
 
@@ -315,7 +424,7 @@ export default function DashboardPanel() {
               </button>
             </div>
 
-            {/* Authenticated Export */}
+            {/* Sales CSV Export */}
             <button
               onClick={handleExportCsv}
               className="flex items-center bg-white rounded shadow px-2 py-1 text-sm hover:bg-gray-50"
@@ -329,7 +438,9 @@ export default function DashboardPanel() {
       </StickyHeader>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${kpiGridCols} gap-4`}
+      >
         {loading ? (
           <>
             <SkeletonCard />
@@ -343,10 +454,33 @@ export default function DashboardPanel() {
           <div className="text-red-600">{err}</div>
         ) : (
           <>
-            {/* Sales KPIs */}
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="text-xs uppercase text-gray-500">Revenue</div>
-              <div className="text-2xl font-semibold">{fmt(kpis.revenue)}</div>
+            {/* === ROW 1 === */}
+            {/* 1. Outstanding Receivables (admin only) */}
+            {role === "admin" && (
+              <div
+                className={`rounded shadow bg-white ${densityCls.card} text-center`}
+              >
+                <KpiHeader
+                  icon={<FaMoneyBillWave />}
+                  label="Outstanding Receivables"
+                />
+                <div className="text-2xl font-semibold mt-1">
+                  {fmt(receivables?.outstanding?.amount || 0)}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Invoices: {fmt(receivables?.outstanding?.count || 0)}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Revenue */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader icon={<FaChartLine />} label="Revenue" />
+              <div className="text-2xl font-semibold mt-1">
+                {fmt(kpis.revenue)}
+              </div>
               {kpis.deltas && (
                 <div className="text-xs text-gray-500 mt-1">
                   vs prev range:{" "}
@@ -360,9 +494,45 @@ export default function DashboardPanel() {
               )}
             </div>
 
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="text-xs uppercase text-gray-500">Orders</div>
-              <div className="text-2xl font-semibold">{fmt(kpis.orders)}</div>
+            {/* 3. Sales Turnover (admin only, next to revenue) */}
+            {role === "admin" && (
+              <div
+                className={`rounded shadow bg-white ${densityCls.card} text-center`}
+              >
+                <KpiHeader icon={<FaBalanceScale />} label="Sales Turnover" />
+                <div className="text-2xl font-semibold mt-1">
+                  {turnoverRatio ? turnoverRatio.toFixed(2) : "0.00"}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Revenue / Inventory value (range)
+                </div>
+              </div>
+            )}
+
+            {/* 4. Inventory Value (admin only) */}
+            {role === "admin" && (
+              <div
+                className={`rounded shadow bg-white ${densityCls.card} text-center`}
+              >
+                <KpiHeader icon={<FaBoxes />} label="Inventory Value" />
+                <div className="text-2xl font-semibold mt-1">
+                  {fmt(inventoryKpis.value)}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  SKUs: {fmt(inventoryKpis.totalSkus)} • Units:{" "}
+                  {fmt(inventoryKpis.totalUnits)}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Orders */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader icon={<FaShoppingCart />} label="Orders" />
+              <div className="text-2xl font-semibold mt-1">
+                {fmt(kpis.orders)}
+              </div>
               {kpis.deltas && (
                 <div className="text-xs text-gray-500 mt-1">
                   vs prev:{" "}
@@ -376,9 +546,13 @@ export default function DashboardPanel() {
               )}
             </div>
 
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="text-xs uppercase text-gray-500">AOV</div>
-              <div className="text-2xl font-semibold">{fmt(kpis.aov)}</div>
+            {/* === ROW 2 === */}
+            {/* 6. AOV */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader icon={<FaBalanceScale />} label="AOV" />
+              <div className="text-2xl font-semibold mt-1">{fmt(kpis.aov)}</div>
               {kpis.deltas && (
                 <div className="text-xs text-gray-500 mt-1">
                   vs prev:{" "}
@@ -392,29 +566,50 @@ export default function DashboardPanel() {
               )}
             </div>
 
-            {/* Inventory health */}
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="flex items-center gap-2 text-xs uppercase text-gray-500">
-                <FaExclamationTriangle className="text-red-500" /> Out of stock
-              </div>
-              <div className="text-2xl font-semibold">
+            {/* 7. Out of Stock */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader
+                icon={<FaExclamationTriangle />}
+                label="Out of Stock"
+              />
+              <div className="text-2xl font-semibold mt-1">
                 {fmt(outOfStockCount)}
               </div>
             </div>
 
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="flex items-center gap-2 text-xs uppercase text-gray-500">
-                <FaArrowDown className="text-orange-500" /> Low stock (&lt;5)
+            {/* 8. Low Stock */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader icon={<FaArrowDown />} label="Low Stock (<5)" />
+              <div className="text-2xl font-semibold mt-1">
+                {fmt(lowStockCount)}
               </div>
-              <div className="text-2xl font-semibold">{fmt(lowStockCount)}</div>
             </div>
 
-            {/* Highest sold product */}
-            <div className={`rounded shadow bg-white ${densityCls.card}`}>
-              <div className="flex items-center gap-2 text-xs uppercase text-gray-500">
-                <FaStar className="text-yellow-500" /> Top Product
+            {/* 9. Dead Stock (admin only) */}
+            {role === "admin" && (
+              <div
+                className={`rounded shadow bg-white ${densityCls.card} text-center`}
+              >
+                <KpiHeader icon={<FaWarehouse />} label="Dead Stock" />
+                <div className="text-2xl font-semibold mt-1">
+                  {fmt(dashboard?.deadStockCount || 0)}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Products in stock with no sales
+                </div>
               </div>
-              <div className="text-base font-semibold">
+            )}
+
+            {/* 10. Top Product */}
+            <div
+              className={`rounded shadow bg-white ${densityCls.card} text-center`}
+            >
+              <KpiHeader icon={<FaStar />} label="Top Product" />
+              <div className="text-base font-semibold mt-1">
                 {dashboard?.highestSaleProduct?.name ||
                   dashboard?.highestSaleProduct?.message ||
                   "-"}
@@ -429,9 +624,9 @@ export default function DashboardPanel() {
         )}
       </div>
 
-      {/* Revenue chart + quick actions */}
+      {/* Charts + Top 5 */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* FIXED: proper chart using ChartCard (provides h-64) + ResponsiveContainer */}
+        {/* Sales revenue chart */}
         <ChartCard title="Revenue (by day)" className="xl:col-span-2">
           {loading ? (
             <div className="h-10 bg-gray-100 animate-pulse rounded w-full" />
@@ -467,54 +662,95 @@ export default function DashboardPanel() {
           )}
         </ChartCard>
 
-        {/* Quick actions (working paths) */}
-        <div className={`rounded shadow bg-white ${densityCls.card}`}>
-          <div className="text-sm font-semibold mb-2">Quick Actions</div>
-          <div className="grid grid-cols-2 gap-2">
-            {(role === "admin" || role === "staff") && (
-              <Link
-                to="/admin-dashboard/sales"
-                className="flex items-center gap-2 px-3 py-2 rounded bg-gray-900 text-white"
-              >
-                <FaShoppingCart /> New Sale
-              </Link>
+        {/* Top 5 Products (admin-only) */}
+        {role === "admin" && (
+          <ChartCard title="Top 5 Products" className="">
+            {topProducts ? (
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <div>
+                  <div className="text-xs uppercase text-gray-500 mb-1">
+                    By Quantity
+                  </div>
+                  <ul className="space-y-1">
+                    {(topProducts.byQuantity || []).map((p) => (
+                      <li
+                        key={p.productId}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="truncate">
+                          {p.name || p.code || p.productId}
+                        </span>
+                        <span className="text-gray-600">{fmt(p.qty)}</span>
+                      </li>
+                    ))}
+                    {(topProducts.byQuantity || []).length === 0 && (
+                      <li className="text-sm text-gray-500">No data.</li>
+                    )}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-gray-500 mb-1">
+                    By Revenue
+                  </div>
+                  <ul className="space-y-1">
+                    {(topProducts.byRevenue || []).map((p) => (
+                      <li
+                        key={p.productId}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="truncate">
+                          {p.name || p.code || p.productId}
+                        </span>
+                        <span className="text-gray-600">{fmt(p.revenue)}</span>
+                      </li>
+                    ))}
+                    {(topProducts.byRevenue || []).length === 0 && (
+                      <li className="text-sm text-gray-500">No data.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">Loading...</div>
             )}
-            {role === "admin" && (
-              <Link
-                to="/admin-dashboard/purchases"
-                className="flex items-center gap-2 px-3 py-2 rounded bg-gray-900 text-white"
-              >
-                <FaTruck /> New Purchase
-              </Link>
-            )}
-            {(role === "admin" || role === "staff") && (
-              <Link
-                to="/admin-dashboard/products"
-                className="flex items-center gap-2 px-3 py-2 rounded bg-gray-900 text-white"
-              >
-                <FaPlusCircle /> Add Product
-              </Link>
-            )}
-            {(role === "admin" || role === "staff") && (
-              <Link
-                to="/admin-dashboard/customers"
-                className="flex items-center gap-2 px-3 py-2 rounded bg-gray-900 text-white"
-              >
-                <FaUserPlus /> Add Customer
-              </Link>
-            )}
-          </div>
-
-          <div className="mt-3 text-right">
-            <Link
-              to="/admin-dashboard/reports"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              Go to Reports →
-            </Link>
-          </div>
-        </div>
+          </ChartCard>
+        )}
       </div>
+
+      {/* Purchases vs Sales Trend (admin-only) */}
+      {role === "admin" && (
+        <ChartCard title="Purchases vs Sales (by day)" className="w-full">
+          {combinedSeries.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={combinedSeries}
+                margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis tickFormatter={(v) => Number(v || 0).toLocaleString()} />
+                <Tooltip formatter={(v) => Number(v || 0).toLocaleString()} />
+                <Line
+                  type="monotone"
+                  dataKey="salesRevenue"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="purchaseTotal"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No data for the selected range.
+            </div>
+          )}
+        </ChartCard>
+      )}
 
       {/* Tables & feeds */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -572,12 +808,24 @@ export default function DashboardPanel() {
         <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">Low Stock (&lt;5)</div>
-            <Link
-              to="/admin-dashboard/products"
-              className="text-xs text-blue-600 hover:underline"
-            >
-              View all
-            </Link>
+            <div className="flex items-center gap-2">
+              {/* Low-stock CSV export (admin only) */}
+              {role === "admin" && (
+                <button
+                  onClick={handleExportLowStock}
+                  className="text-xs flex items-center gap-1 px-2 py-1 rounded bg-white border border-gray-200 hover:bg-gray-50"
+                  title="Export Low-Stock (CSV)"
+                >
+                  <FaFileCsv className="opacity-70" /> Export CSV
+                </button>
+              )}
+              <Link
+                to="/admin-dashboard/products"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View all
+              </Link>
+            </div>
           </div>
           <div className="mt-2">
             {loading ? (
@@ -613,7 +861,7 @@ export default function DashboardPanel() {
           </div>
         </div>
 
-        {/* Activity log (inventory-related for now) */}
+        {/* Activity log */}
         <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">Activity</div>
@@ -663,7 +911,7 @@ export default function DashboardPanel() {
         </div>
       </div>
 
-      {/* Recent purchases (role: admin & inventory people) */}
+      {/* Recent purchases */}
       {(role === "admin" || role === "inventory" || role === "staff") && (
         <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between">

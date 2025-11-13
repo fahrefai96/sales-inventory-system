@@ -1,18 +1,22 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
+import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   // Core JSON
   getSalesReport,
   getInventoryReport,
   getUserPerformance,
   getProductTrends,
+  getReceivables,
+  getCustomerBalances,
+  getReceivablesReport,
 
   // CSV exports
   exportSalesCsv,
   exportInventoryCsv,
   exportPerformanceUsersCsv,
   exportPerformanceProductsCsv,
-
+  exportCustomerBalancesCsv,
+  exportReceivablesCsv,
   // PDF exports
   exportSalesPdf,
   exportInventoryPdf,
@@ -30,12 +34,24 @@ router.get("/sales", getSalesReport);
 router.get("/inventory", getInventoryReport);
 router.get("/performance/users", getUserPerformance);
 router.get("/performance/products", getProductTrends);
+router.get(
+  "/receivables",
+  authMiddleware,
+  requireRole(["admin", "staff"]),
+  getReceivables
+);
+
+router.get("/customer-balances", getCustomerBalances);
+router.get("/receivables", getReceivablesReport);
 
 // Exports — CSV
 router.get("/sales/export/csv", exportSalesCsv);
 router.get("/inventory/export/csv", exportInventoryCsv);
 router.get("/performance/users/export/csv", exportPerformanceUsersCsv);
 router.get("/performance/products/export/csv", exportPerformanceProductsCsv);
+router.get("/customer-balances/export/csv", exportCustomerBalancesCsv);
+
+router.get("/receivables/export/csv", exportReceivablesCsv);
 
 // Exports — PDF
 router.get("/sales/export/pdf", exportSalesPdf);

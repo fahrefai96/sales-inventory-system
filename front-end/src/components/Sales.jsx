@@ -47,6 +47,14 @@ const Sales = () => {
 
   const token = localStorage.getItem("pos-token");
 
+  // ===== NEW: Payment modal state =====
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paySale, setPaySale] = useState(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payNote, setPayNote] = useState("");
+  const [payError, setPayError] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
+
   // ===== Dropdown loaders (unchanged logic) =====
   const loadProductOptions = async (inputValue) => {
     try {
@@ -139,6 +147,69 @@ const Sales = () => {
 
   const handleQuantityChange = (productId, value) => {
     setQuantities((prev) => ({ ...prev, [productId]: Number(value) }));
+  };
+
+  // ===== NEW: Payment helpers =====
+  const getPaid = (s) => Number(s?.amountPaid ?? 0);
+  const getBaseTotal = (s) =>
+    Number(
+      s?.discountedAmount != null
+        ? s.discountedAmount
+        : s?.totalAmount != null
+        ? s.totalAmount
+        : 0
+    );
+  const getDue = (s) => Math.max(0, getBaseTotal(s) - getPaid(s));
+  const getStatus = (s) => {
+    if (s?.paymentStatus) return s.paymentStatus;
+    const due = getDue(s);
+    const paid = getPaid(s);
+    if (due === 0) return "paid";
+    if (paid > 0) return "partial";
+    return "unpaid";
+  };
+
+  const openPaymentModal = (sale) => {
+    setPayError("");
+    setPaySale(sale);
+    const due = getDue(sale);
+    setPayAmount(due > 0 ? String(due) : "");
+    setPayNote("");
+    setIsPaymentOpen(true);
+  };
+
+  const submitPayment = async (e) => {
+    e.preventDefault();
+    if (!paySale) return;
+    const amt = Number(payAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setPayError("Enter a valid amount greater than 0.");
+      return;
+    }
+    setPayLoading(true);
+    setPayError("");
+    try {
+      await axios.patch(
+        `http://localhost:3000/api/sales/${paySale._id}/payment`,
+        { amount: amt, note: payNote },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setIsPaymentOpen(false);
+      setPaySale(null);
+      setPayAmount("");
+      setPayNote("");
+      // refresh list to reflect new paid/due/status
+      fetchSales();
+    } catch (err) {
+      console.error("Error recording payment:", err);
+      setPayError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to record payment."
+      );
+    } finally {
+      setPayLoading(false);
+    }
   };
 
   // ===== Edit open (kept same logic, UI is drawer) =====
@@ -544,114 +615,165 @@ const Sales = () => {
                 <th className="px-4 py-3">Unit Price(s)</th>
                 <th className="px-4 py-3">Quantities</th>
                 <th className="px-4 py-3">Total Amount</th>
+                {/* NEW */}
+                <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
-                <SkeletonRows rows={pageSize} dens={dens} cols={9} />
+                <SkeletonRows rows={pageSize} dens={dens} cols={10} />
               ) : pageRows.length > 0 ? (
-                pageRows.map((sale) => (
-                  <tr key={sale._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td
-                      className={`${dens.cell} ${dens.text} text-blue-600 font-semibold`}
+                pageRows.map((sale) => {
+                  const status = getStatus(sale);
+                  const due = getDue(sale);
+                  const paid = getPaid(sale);
+
+                  return (
+                    <tr
+                      key={sale._id}
+                      className={`hover:bg-gray-50 ${dens.row}`}
                     >
-                      {sale.saleId}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {sale.customer?.name}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {formatDateTime(sale.createdAt || sale.saleDate)}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {Array.isArray(sale.products) &&
-                        sale.products.map((p) => {
-                          const key = p?.product?._id || Math.random();
-                          const name = p?.product?.name || "-";
-                          const brand = p?.product?.brand?.name || "";
-                          const size = p?.product?.size || "";
-                          const hasMeta = brand || size;
-                          return (
-                            <div key={key} className="relative group w-fit">
-                              <span
-                                className={
-                                  hasMeta ? "cursor-help hover:underline" : ""
-                                }
-                              >
-                                {name}
-                              </span>
-                              {hasMeta && (
-                                <div className="pointer-events-none absolute left-0 top-[120%] z-10 hidden w-max max-w-xs rounded-md bg-black/90 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
-                                  {brand ? (
-                                    <div>
-                                      <strong>Brand:</strong> {brand}
-                                    </div>
-                                  ) : null}
-                                  {size ? (
-                                    <div>
-                                      <strong>Size:</strong> {size}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {sale.discount}%
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {sale.products.map((p) => (
-                        <div key={p?.product?._id || Math.random()}>
-                          $
-                          {Number(
-                            p?.unitPrice ?? p?.product?.price ?? 0
-                          ).toFixed(2)}
+                      <td
+                        className={`${dens.cell} ${dens.text} text-blue-600 font-semibold`}
+                      >
+                        {sale.saleId}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {sale.customer?.name}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {formatDateTime(sale.createdAt || sale.saleDate)}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {Array.isArray(sale.products) &&
+                          sale.products.map((p) => {
+                            const key = p?.product?._id || Math.random();
+                            const name = p?.product?.name || "-";
+                            const brand = p?.product?.brand?.name || "";
+                            const size = p?.product?.size || "";
+                            const hasMeta = brand || size;
+                            return (
+                              <div key={key} className="relative group w-fit">
+                                <span
+                                  className={
+                                    hasMeta ? "cursor-help hover:underline" : ""
+                                  }
+                                >
+                                  {name}
+                                </span>
+                                {hasMeta && (
+                                  <div className="pointer-events-none absolute left-0 top-[120%] z-10 hidden w-max max-w-xs rounded-md bg-black/90 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                                    {brand ? (
+                                      <div>
+                                        <strong>Brand:</strong> {brand}
+                                      </div>
+                                    ) : null}
+                                    {size ? (
+                                      <div>
+                                        <strong>Size:</strong> {size}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {sale.discount}%
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {sale.products.map((p) => (
+                          <div key={p?.product?._id || Math.random()}>
+                            $
+                            {Number(
+                              p?.unitPrice ?? p?.product?.price ?? 0
+                            ).toFixed(2)}
+                          </div>
+                        ))}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {sale.products.map((p) => (
+                          <div key={p?.product?._id || Math.random()}>
+                            {p.quantity}
+                          </div>
+                        ))}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        ${Number(sale.discountedAmount || 0).toFixed(2)}
+                      </td>
+
+                      {/* NEW: payment summary */}
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
+                              status === "paid"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : status === "partial"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                          <div className="text-xs text-gray-600">
+                            Paid: ${paid.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            Due: ${due.toFixed(2)}
+                          </div>
                         </div>
-                      ))}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {sale.products.map((p) => (
-                        <div key={p?.product?._id || Math.random()}>
-                          {p.quantity}
+                      </td>
+
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() => openModalForEdit(sale)}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(sale._id)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() =>
+                              downloadInvoice(sale._id, sale.saleId)
+                            }
+                            className="text-emerald-700 hover:text-emerald-900 font-medium"
+                            title="Download invoice PDF"
+                          >
+                            Invoice (PDF)
+                          </button>
+
+                          {/* NEW: record payment */}
+                          <button
+                            onClick={() => openPaymentModal(sale)}
+                            className={`font-medium ${
+                              due > 0
+                                ? "text-indigo-700 hover:text-indigo-900"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                            disabled={due <= 0}
+                            title={due > 0 ? "Record a payment" : "Fully paid"}
+                          >
+                            Record Payment
+                          </button>
                         </div>
-                      ))}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      ${Number(sale.discountedAmount || 0).toFixed(2)}
-                    </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={() => openModalForEdit(sale)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(sale._id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() => downloadInvoice(sale._id, sale.saleId)}
-                          className="text-emerald-700 hover:text-emerald-900 font-medium"
-                          title="Download invoice PDF"
-                        >
-                          Invoice (PDF)
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
                     className="px-6 py-10 text-center text-gray-500"
-                    colSpan={9}
+                    colSpan={10}
                   >
                     No sales found.
                   </td>
@@ -828,6 +950,84 @@ const Sales = () => {
                       : "Add Sale"}
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== NEW: Record Payment Modal ===== */}
+      {isPaymentOpen && paySale && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsPaymentOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl">
+            <form onSubmit={submitPayment}>
+              <div className="border-b border-gray-200 px-5 py-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Record Payment
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Sale <span className="font-medium">{paySale.saleId}</span>
+                </p>
+              </div>
+
+              <div className="px-5 py-4 space-y-3">
+                {payError ? (
+                  <div className="rounded border border-red-200 bg-red-50 text-red-700 p-2">
+                    {payError}
+                  </div>
+                ) : null}
+
+                <div className="text-sm text-gray-600">
+                  <div>
+                    Base total: ${getBaseTotal(paySale).toFixed(2)}{" "}
+                    &nbsp;|&nbsp; Paid: ${getPaid(paySale).toFixed(2)}
+                  </div>
+                  <div>Due now: ${getDue(paySale).toFixed(2)}</div>
+                </div>
+
+                <Field label="Amount" required>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    placeholder="e.g. 2500"
+                  />
+                </Field>
+
+                <Field label="Note (optional)">
+                  <input
+                    type="text"
+                    value={payNote}
+                    onChange={(e) => setPayNote(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    placeholder="cash / bank / reference"
+                  />
+                </Field>
+              </div>
+
+              <div className="border-t border-gray-200 bg-gray-50 px-5 py-4 rounded-b-xl flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentOpen(false)}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={payLoading}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {payLoading ? "Recording..." : "Record Payment"}
+                </button>
               </div>
             </form>
           </div>

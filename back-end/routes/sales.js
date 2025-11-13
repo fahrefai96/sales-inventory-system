@@ -1,12 +1,12 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
+import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   addSale,
   getSales,
   updateSale,
   deleteSale,
-  // NEW:
   getSaleInvoicePdf,
+  recordPayment,
 } from "../Controllers/saleController.js";
 
 const router = express.Router();
@@ -25,5 +25,13 @@ router.put("/:id", authMiddleware, updateSale);
 
 // Delete sale
 router.delete("/:id", authMiddleware, deleteSale);
+
+// Record a payment against a sale
+router.patch(
+  "/:id/payment",
+  authMiddleware,
+  requireRole(["admin", "staff"]),
+  recordPayment
+);
 
 export default router;
