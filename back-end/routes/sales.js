@@ -7,6 +7,7 @@ import {
   deleteSale,
   getSaleInvoicePdf,
   recordPayment,
+  adjustPayment,
 } from "../Controllers/saleController.js";
 
 const router = express.Router();
@@ -17,7 +18,7 @@ router.post("/add", authMiddleware, addSale);
 // Get all sales (supports filters from your existing controller)
 router.get("/", authMiddleware, getSales);
 
-// NEW: Generate & download invoice PDF
+// Generate & download invoice PDF
 router.get("/:id/invoice.pdf", authMiddleware, getSaleInvoicePdf);
 
 // Update sale
@@ -33,5 +34,8 @@ router.patch(
   requireRole(["admin", "staff"]),
   recordPayment
 );
+
+// Adjust payment (admin only)
+router.post("/:id/payment-adjust", requireRole(["admin"]), adjustPayment);
 
 export default router;

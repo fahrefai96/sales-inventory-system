@@ -57,13 +57,21 @@ const Sales = () => {
     }
   })();
 
-  // ===== NEW: Payment modal state =====
+  // ===== Payment modal state =====
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paySale, setPaySale] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [payError, setPayError] = useState("");
   const [payLoading, setPayLoading] = useState(false);
+
+  // ===== Admin Payment Adjustment modal state =====
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [adjustSale, setAdjustSale] = useState(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
+  const [adjustError, setAdjustError] = useState("");
+  const [adjustLoading, setAdjustLoading] = useState(false);
 
   // ===== Dropdown loaders (unchanged logic) =====
   const loadProductOptions = async (inputValue) => {
@@ -87,7 +95,7 @@ const Sales = () => {
       const res = await axios.get(
         `http://localhost:3000/api/customers?dropdown=true&search=${encodeURIComponent(
           inputValue || ""
-        )}`,
+        )}}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const customers = Array.isArray(res.data.customers)
@@ -159,7 +167,7 @@ const Sales = () => {
     setQuantities((prev) => ({ ...prev, [productId]: Number(value) }));
   };
 
-  // ===== NEW: Payment helpers =====
+  // ===== Payment helpers =====
   const getPaid = (s) => Number(s?.amountPaid ?? 0);
   const getBaseTotal = (s) =>
     Number(
@@ -219,6 +227,54 @@ const Sales = () => {
       );
     } finally {
       setPayLoading(false);
+    }
+  };
+
+  // ===== Admin Payment Adjustment helpers =====
+  const openAdjustModal = (sale) => {
+    setAdjustError("");
+    setAdjustSale(sale);
+    setAdjustAmount("");
+    setAdjustNote("");
+    setIsAdjustOpen(true);
+  };
+
+  const submitAdjustment = async (e) => {
+    e.preventDefault();
+    if (!adjustSale) return;
+
+    const amt = Number(adjustAmount);
+
+    if (isNaN(amt) || amt === 0) {
+      setAdjustError("Enter a non-zero amount.");
+      return;
+    }
+
+    setAdjustLoading(true);
+    setAdjustError("");
+
+    try {
+      await axios.post(
+        `http://localhost:3000/api/sales/${adjustSale._id}/payment-adjust`,
+        { amount: amt, note: adjustNote },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setIsAdjustOpen(false);
+      setAdjustSale(null);
+      setAdjustAmount("");
+      setAdjustNote("");
+      // refresh list so paid/due/status updates
+      fetchSales();
+    } catch (err) {
+      console.error("Error adjusting payment:", err);
+      setAdjustError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to adjust payment."
+      );
+    } finally {
+      setAdjustLoading(false);
     }
   };
 
@@ -777,6 +833,25 @@ const Sales = () => {
                           >
                             Record Payment
                           </button>
+
+                          {role === "admin" && (
+                            <button
+                              onClick={() => paid > 0 && openAdjustModal(sale)}
+                              className={`font-medium ${
+                                paid > 0
+                                  ? "text-purple-700 hover:text-purple-900"
+                                  : "text-gray-400 cursor-not-allowed"
+                              }`}
+                              disabled={paid <= 0}
+                              title={
+                                paid > 0
+                                  ? "Adjust existing payments"
+                                  : "No payments recorded yet to adjust"
+                              }
+                            >
+                              Payment Adjustment
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -997,8 +1072,8 @@ const Sales = () => {
 
                 <div className="text-sm text-gray-600">
                   <div>
-                    Base total: ${getBaseTotal(paySale).toFixed(2)}{" "}
-                    &nbsp;|&nbsp; Paid: ${getPaid(paySale).toFixed(2)}
+                    Base total: ${getBaseTotal(paySale).toFixed(2)} | Paid: $
+                    {getPaid(paySale).toFixed(2)}
                   </div>
                   <div>Due now: ${getDue(paySale).toFixed(2)}</div>
                 </div>
@@ -1040,6 +1115,87 @@ const Sales = () => {
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {payLoading ? "Recording..." : "Record Payment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Admin Payment Adjustment Modal ===== */}
+      {isAdjustOpen && adjustSale && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsAdjustOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl">
+            <form onSubmit={submitAdjustment}>
+              <div className="border-b border-gray-200 px-5 py-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Payment Adjustment (Admin)
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Sale <span className="font-medium">{adjustSale.saleId}</span>
+                </p>
+              </div>
+
+              <div className="px-5 py-4 space-y-3">
+                {adjustError ? (
+                  <div className="rounded border border-red-200 bg-red-50 text-red-700 p-2">
+                    {adjustError}
+                  </div>
+                ) : null}
+
+                <div className="text-sm text-gray-600">
+                  <div>
+                    Base total: ${getBaseTotal(adjustSale).toFixed(2)} | Paid: $
+                    {getPaid(adjustSale).toFixed(2)}
+                  </div>
+                  <div>Due now: ${getDue(adjustSale).toFixed(2)}</div>
+                </div>
+
+                <Field label="Adjustment Amount (+ add, - correct)" required>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    placeholder="e.g. 2500 or -2500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Use a positive value to add more paid amount, or a negative
+                    value to correct an over-entered payment.
+                  </p>
+                </Field>
+
+                <Field label="Note (reason)" required>
+                  <input
+                    type="text"
+                    value={adjustNote}
+                    onChange={(e) => setAdjustNote(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    placeholder="Correction reason / reference"
+                  />
+                </Field>
+              </div>
+
+              <div className="border-t border-gray-200 bg-gray-50 px-5 py-4 rounded-b-xl flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustOpen(false)}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adjustLoading}
+                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {adjustLoading ? "Saving..." : "Save Adjustment"}
                 </button>
               </div>
             </form>

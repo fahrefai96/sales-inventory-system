@@ -1,4 +1,33 @@
 import mongoose from "mongoose";
+
+// NEW: individual payment / adjustment entries
+const paymentEntrySchema = new mongoose.Schema(
+  {
+    amount: {
+      type: Number,
+      required: true,
+    },
+    note: {
+      type: String,
+      default: "",
+    },
+    type: {
+      type: String,
+      enum: ["payment", "adjustment"],
+      default: "payment",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { _id: false }
+);
+
 const saleSchema = new mongoose.Schema(
   {
     saleId: {
@@ -60,6 +89,7 @@ const saleSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
     paymentStatus: {
       type: String,
       enum: ["paid", "unpaid", "partial"],
@@ -67,6 +97,9 @@ const saleSchema = new mongoose.Schema(
     },
     amountPaid: { type: Number, default: 0 },
     amountDue: { type: Number, default: 0 },
+
+    // payment history (normal payments + admin adjustments)
+    payments: [paymentEntrySchema],
   },
   {
     //  automatic updatedAt
@@ -98,6 +131,7 @@ saleSchema.pre("save", function (next) {
 
   next();
 });
+
 saleSchema.index({ customer: 1, createdAt: -1 });
 
 const Sale = mongoose.model("Sale", saleSchema);

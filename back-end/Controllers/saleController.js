@@ -555,12 +555,26 @@ const recordPayment = async (req, res) => {
     const currentDue = Math.max(0, grandTotal - currentPaid);
 
     const applied = Math.min(payment, currentDue);
-    sale.amountPaid = currentPaid + applied;
-    sale.amountDue = Math.max(0, grandTotal - sale.amountPaid);
+    const newPaid = currentPaid + applied;
+
+    sale.amountPaid = newPaid;
+    sale.amountDue = Math.max(0, grandTotal - newPaid);
 
     if (sale.amountDue === 0) sale.paymentStatus = "paid";
     else if (sale.amountPaid > 0) sale.paymentStatus = "partial";
     else sale.paymentStatus = "unpaid";
+
+    if (!Array.isArray(sale.payments)) {
+      sale.payments = [];
+    }
+
+    sale.payments.push({
+      amount: applied,
+      note: note || "",
+      type: "payment",
+      createdBy: req.user?._id,
+      createdAt: new Date(),
+    });
 
     await sale.save();
 
@@ -573,7 +587,7 @@ const recordPayment = async (req, res) => {
         note: note || "",
       });
     } catch (e) {
-      //   // swallow log errors
+      // ignore log errors
     }
 
     return res.json({
@@ -589,6 +603,96 @@ const recordPayment = async (req, res) => {
   }
 };
 
+const adjustPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, note } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ message: "Sale ID is required." });
+    }
+
+    const adj = Number(amount);
+    if (isNaN(adj) || adj === 0) {
+      return res
+        .status(400)
+        .json({ message: "Adjustment amount must be a non-zero number." });
+    }
+
+    // extra safety: only admin should reach here (route will also guard)
+    if (req.user?.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Only admin can adjust payments." });
+    }
+
+    const sale = await Sale.findById(id);
+    if (!sale) {
+      return res.status(404).json({ message: "Sale not found." });
+    }
+
+    const grandTotal = Number(sale.discountedAmount ?? sale.totalAmount ?? 0);
+    const currentPaid = Number(sale.amountPaid || 0);
+    const newPaid = currentPaid + adj;
+
+    if (newPaid < -0.01) {
+      return res.status(400).json({
+        message: "Adjustment would make total paid negative.",
+      });
+    }
+
+    if (newPaid > grandTotal + 0.01) {
+      return res.status(400).json({
+        message: "Adjustment would make total paid exceed sale total.",
+      });
+    }
+
+    sale.amountPaid = newPaid;
+    sale.amountDue = Math.max(0, grandTotal - newPaid);
+
+    if (sale.amountDue === 0) sale.paymentStatus = "paid";
+    else if (sale.amountPaid > 0) sale.paymentStatus = "partial";
+    else sale.paymentStatus = "unpaid";
+
+    if (!Array.isArray(sale.payments)) {
+      sale.payments = [];
+    }
+
+    sale.payments.push({
+      amount: adj,
+      note: note || "",
+      type: "adjustment",
+      createdBy: req.user?._id,
+      createdAt: new Date(),
+    });
+
+    await sale.save();
+
+    try {
+      await InventoryLog.create({
+        action: "sale.payment.adjustment",
+        sale: sale._id,
+        actor: req.user?._id,
+        delta: adj,
+        note: note || "",
+      });
+    } catch (e) {
+      // ignore log errors
+    }
+
+    return res.json({
+      _id: sale._id,
+      grandTotal,
+      amountPaid: sale.amountPaid,
+      amountDue: sale.amountDue,
+      paymentStatus: sale.paymentStatus,
+    });
+  } catch (err) {
+    console.error("Error adjusting payment:", err);
+    return res.status(500).json({ message: "Failed to adjust payment." });
+  }
+};
+
 export {
   addSale,
   getSales,
@@ -596,4 +700,5 @@ export {
   deleteSale,
   getSaleInvoicePdf,
   recordPayment,
+  adjustPayment,
 };
