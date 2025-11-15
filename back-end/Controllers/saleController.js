@@ -277,6 +277,13 @@ const updateSale = async (req, res) => {
 // Delete Sale
 const deleteSale = async (req, res) => {
   try {
+    // only admin can delete sales
+    if (req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Only admin can delete sales" });
+    }
+
     const sale = await Sale.findById(req.params.id);
     if (!sale)
       return res

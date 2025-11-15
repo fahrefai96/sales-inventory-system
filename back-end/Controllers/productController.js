@@ -125,7 +125,15 @@ const addProduct = async (req, res) => {
     });
 
     if (deletedMatch) {
-      const beforeQty = 0; // treat restore as from 0
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          error:
+            "This product code belongs to a deleted product. Ask an admin to restore it.",
+        });
+      }
+
+      const beforeQty = 0;
       deletedMatch.isDeleted = false;
       deletedMatch.name = name;
       deletedMatch.description = description;
@@ -139,7 +147,6 @@ const addProduct = async (req, res) => {
 
       await deletedMatch.save();
 
-      // Log only if stock actually differs
       await writeInventoryLog({
         productId: deletedMatch._id,
         action: "product.restore",
@@ -154,7 +161,6 @@ const addProduct = async (req, res) => {
         product: deletedMatch,
       });
     }
-
     // ---- Create new product ----
     const newProduct = await Product.create({
       name,

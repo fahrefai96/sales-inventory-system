@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
+import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   getSummary,
   getReceivablesSummary,
@@ -10,16 +10,36 @@ import {
 
 const router = express.Router();
 
-// Protect all routes
-router.use(authMiddleware);
+// Shared summary used by both Admin & Staff dashboards
+router.get("/", authMiddleware, getSummary);
 
-// Main dashboard summary (existing)
-router.get("/", getSummary);
+// Admin-only widgets / exports
+router.get(
+  "/receivables",
+  authMiddleware,
+  requireRole(["admin"]),
+  getReceivablesSummary
+);
 
-// --- Admin-only widgets (new) ---
-router.get("/receivables", getReceivablesSummary);
-router.get("/top-products", getTopProducts);
-router.get("/combined-trend", getCombinedTrend);
-router.get("/low-stock/export.csv", exportLowStockCsv);
+router.get(
+  "/top-products",
+  authMiddleware,
+  requireRole(["admin"]),
+  getTopProducts
+);
+
+router.get(
+  "/combined-trend",
+  authMiddleware,
+  requireRole(["admin"]),
+  getCombinedTrend
+);
+
+router.get(
+  "/low-stock/export.csv",
+  authMiddleware,
+  requireRole(["admin"]),
+  exportLowStockCsv
+);
 
 export default router;

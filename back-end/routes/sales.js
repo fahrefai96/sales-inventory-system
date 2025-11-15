@@ -24,7 +24,7 @@ router.get("/:id/invoice.pdf", authMiddleware, getSaleInvoicePdf);
 router.put("/:id", authMiddleware, updateSale);
 
 // Delete sale
-router.delete("/:id", authMiddleware, deleteSale);
+router.delete("/:id", authMiddleware, requireRole(["admin"]), deleteSale);
 
 // Record a payment against a sale
 router.patch(

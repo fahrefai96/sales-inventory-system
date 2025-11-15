@@ -1,13 +1,24 @@
-import express from 'express';
-import authMiddleware from '../middleware/authMiddleware.js'
-import {addCategory, getCategorys, updateCategory, deleteCategory} from '../Controllers/categoryController.js';
-
+import express from "express";
+import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
+import {
+  addCategory,
+  getCategorys,
+  updateCategory,
+  deleteCategory,
+} from "../Controllers/categoryController.js";
 
 const router = express.Router();
 
-router.get('/', authMiddleware, getCategorys);
-router.post('/add', authMiddleware, addCategory);
-router.put('/:id', authMiddleware, updateCategory); 
-router.delete('/:id', authMiddleware, deleteCategory);
+// All category routes require a logged-in user
+router.get("/", authMiddleware, getCategorys);
 
-export default router 
+// Staff + admin can create categories
+router.post("/add", authMiddleware, addCategory);
+
+// Staff + admin can edit categories
+router.put("/:id", authMiddleware, updateCategory);
+
+// Only admin can delete categories
+router.delete("/:id", authMiddleware, requireRole(["admin"]), deleteCategory);
+
+export default router;

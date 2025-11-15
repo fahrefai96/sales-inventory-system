@@ -523,6 +523,16 @@ const Purchases = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
 
+  // user role (admin/staff)
+  const role = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.role || "staff";
+    } catch {
+      return "staff";
+    }
+  })();
+
   /** ---------- Fetchers ---------- */
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
@@ -1072,7 +1082,7 @@ const Purchases = () => {
                         </>
                       )}
 
-                      {isPosted(p.status) && (
+                      {isPosted(p.status) && role === "admin" && (
                         <button
                           onClick={() => cancelPosted(p._id)}
                           className="text-red-600 hover:text-red-800 font-medium"
@@ -1418,7 +1428,7 @@ const Purchases = () => {
                     </button>
                   </>
                 )}
-                {isPosted(viewData?.status) && (
+                {isPosted(viewData?.status) && role === "admin" && (
                   <button
                     onClick={() => cancelPosted(viewData._id)}
                     className="rounded-md border border-red-600 px-2 py-1 text-sm text-red-700 hover:bg-red-50"

@@ -1,44 +1,65 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
-  FaBox,
-  FaHome,
-  FaShoppingCart,
-  FaTable,
-  FaTruck,
-  FaUser,
-  FaMoneyBillWave,
-  FaChartLine,
-  FaClipboardList,
-  FaSignOutAlt,
-} from "react-icons/fa";
+  FiHome,
+  FiGrid,
+  FiPackage,
+  FiShoppingCart,
+  FiUsers,
+  FiClipboard,
+  FiLogOut,
+  FiTruck,
+} from "react-icons/fi";
 
 const StaffSidebar = () => {
   const menuItemsTop = [
     {
       name: "Dashboard",
       path: "/staff/dashboard",
-      icon: <FaHome />,
+      icon: <FiHome />,
       isParent: true,
     },
-    { name: "Categories & Brands", path: "/staff/catalog", icon: <FaTable /> }, // ← added
-    { name: "Products", path: "/staff/products", icon: <FaBox /> },
-    { name: "Suppliers", path: "/staff/suppliers", icon: <FaTruck /> },
-    { name: "Purchases", path: "/staff/purchases", icon: <FaShoppingCart /> },
-    { name: "Sales", path: "/staff/sales", icon: <FaMoneyBillWave /> },
-    { name: "Customers", path: "/staff/customers", icon: <FaUser /> },
-    { name: "Reports (Sales)", path: "/staff/reports", icon: <FaChartLine /> }, // optional; safe to keep
+    {
+      name: "Categories & Brands",
+      path: "/staff/catalog",
+      icon: <FiGrid />,
+    },
+    {
+      name: "Products",
+      path: "/staff/products",
+      icon: <FiPackage />,
+    },
+    {
+      name: "Suppliers",
+      path: "/staff/suppliers",
+      icon: <FiTruck />,
+    },
+    {
+      name: "Purchases",
+      path: "/staff/purchases",
+      icon: <FiShoppingCart />,
+    },
+    {
+      name: "Sales",
+      path: "/staff/sales",
+      icon: <FiShoppingCart />,
+    },
+    {
+      name: "Customers",
+      path: "/staff/customers",
+      icon: <FiUsers />,
+    },
     {
       name: "Inventory Logs",
       path: "/staff/inventory-logs",
-      icon: <FaClipboardList />,
-    }, // optional view-only
+      icon: <FiClipboard />,
+    },
   ];
 
   const logoutItem = {
     name: "Logout",
-    path: "/staff/logout",
-    icon: <FaSignOutAlt />,
+    path: "/logout",
+    icon: <FiLogOut />,
   };
 
   const baseItem =
@@ -70,14 +91,6 @@ const StaffSidebar = () => {
     </NavLink>
   );
 
-  const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("pos-user") || "{}");
-    } catch {
-      return {};
-    }
-  })();
-
   return (
     <aside className="fixed left-0 top-0 h-screen w-16 md:w-64 bg-zinc-900 text-zinc-100 border-r border-zinc-800 flex flex-col">
       {/* Brand Header */}
@@ -89,12 +102,24 @@ const StaffSidebar = () => {
           <div className="md:hidden text-base font-semibold leading-5 truncate">
             SIMS
           </div>
-          {user?.name && (
-            <div className="text-zinc-400 text-[16px] leading-5 truncate">
-              {user.name}{" "}
-              <span className="capitalize opacity-80">({user.role})</span>
-            </div>
-          )}
+
+          {/* User info */}
+          {(() => {
+            try {
+              const user = JSON.parse(localStorage.getItem("pos-user") || "{}");
+              if (!user?.name) return null;
+              return (
+                <div className="text-zinc-400 text-[16px] leading-5 truncate">
+                  {user.name}{" "}
+                  <span className="capitalize opacity-80">
+                    ({user.role || "staff"})
+                  </span>
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()}
         </div>
       </div>
 

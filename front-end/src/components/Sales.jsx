@@ -47,6 +47,16 @@ const Sales = () => {
 
   const token = localStorage.getItem("pos-token");
 
+  // role (admin / staff) from stored user
+  const role = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.role || "staff";
+    } catch {
+      return "staff";
+    }
+  })();
+
   // ===== NEW: Payment modal state =====
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paySale, setPaySale] = useState(null);
@@ -245,7 +255,7 @@ const Sales = () => {
     setIsModalOpen(true);
   };
 
-  // ===== Delete (unchanged) =====
+  // ===== Delete (admin-only in UI) =====
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this sale?")) return;
     try {
@@ -474,7 +484,7 @@ const Sales = () => {
         </div>
       ) : null}
 
-      {/* FILTER BAR (restyled only) */}
+      {/* FILTER BAR */}
       <div className="mb-4 rounded-xl border border-gray-200 bg-white px-5 py-4">
         <div className="grid gap-3 md:grid-cols-7">
           <div>
@@ -615,7 +625,6 @@ const Sales = () => {
                 <th className="px-4 py-3">Unit Price(s)</th>
                 <th className="px-4 py-3">Quantities</th>
                 <th className="px-4 py-3">Total Amount</th>
-                {/* NEW */}
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -704,7 +713,7 @@ const Sales = () => {
                         ${Number(sale.discountedAmount || 0).toFixed(2)}
                       </td>
 
-                      {/* NEW: payment summary */}
+                      {/* payment summary */}
                       <td className={`${dens.cell} ${dens.text}`}>
                         <div className="flex flex-col gap-1">
                           <span
@@ -735,12 +744,17 @@ const Sales = () => {
                           >
                             Edit
                           </button>
-                          <button
-                            onClick={() => handleDelete(sale._id)}
-                            className="text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Delete
-                          </button>
+
+                          {/* Delete visible only for admin */}
+                          {role === "admin" && (
+                            <button
+                              onClick={() => handleDelete(sale._id)}
+                              className="text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
+
                           <button
                             onClick={() =>
                               downloadInvoice(sale._id, sale.saleId)
@@ -751,7 +765,6 @@ const Sales = () => {
                             Invoice (PDF)
                           </button>
 
-                          {/* NEW: record payment */}
                           <button
                             onClick={() => openPaymentModal(sale)}
                             className={`font-medium ${
@@ -796,7 +809,7 @@ const Sales = () => {
         />
       </div>
 
-      {/* ===== Add/Edit Sale Drawer (matches your Add Customer pattern) ===== */}
+      {/* ===== Add/Edit Sale Drawer ===== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50">
           <div
@@ -956,7 +969,7 @@ const Sales = () => {
         </div>
       )}
 
-      {/* ===== NEW: Record Payment Modal ===== */}
+      {/* ===== Record Payment Modal ===== */}
       {isPaymentOpen && paySale && (
         <div className="fixed inset-0 z-50">
           <div

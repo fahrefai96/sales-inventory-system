@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Supplier from "../models/Supplier.js";
 import Product from "../models/Product.js";
+import Purchase from "../models/Purchase.js";
 
 // POST /api/supplier/add
 const addSupplier = async (req, res) => {
@@ -151,10 +152,47 @@ const getSupplierProducts = async (req, res) => {
   }
 };
 
+const getSupplierPurchases = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid supplier ID format" });
+    }
+
+    const supplier = await Supplier.findById(id);
+    if (!supplier) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Supplier not found" });
+    }
+
+    const purchases = await Purchase.find({ supplier: id })
+      .sort({ invoiceDate: -1, createdAt: -1 })
+      .select("invoiceNo invoiceDate status grandTotal items createdAt");
+
+    return res.json({
+      success: true,
+      supplier,
+      totalPurchases: purchases.length,
+      purchases,
+    });
+  } catch (error) {
+    console.error("Error fetching supplier purchases:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Server error",
+    });
+  }
+};
+
 export {
   addSupplier,
   getSuppliers,
   updateSupplier,
   deleteSupplier,
   getSupplierProducts,
+  getSupplierPurchases,
 };

@@ -51,11 +51,21 @@ const Products = () => {
 
   const [sortBy, setSortBy] = useState({ key: "lastUpdated", dir: "desc" });
 
-  // NEW: pagination state
-  const [pageSize, setPageSize] = useState(25); // 25 | 50 | 100
+  const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  // --- Data fetching ---
+  // role flag for admin-only actions like delete
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem("pos-user");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      isAdmin = parsed?.role === "admin";
+    }
+  } catch {
+    isAdmin = false;
+  }
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -96,7 +106,6 @@ const Products = () => {
     fetchBrands();
   }, []);
 
-  // --- Search debounce ---
   const debounceRef = useRef(null);
   const onSearchChange = (e) => {
     const value = e.target.value;
@@ -105,7 +114,6 @@ const Products = () => {
     debounceRef.current = setTimeout(() => setQuery((prev) => prev), 250);
   };
 
-  // --- Derived product list (search + filters + sort) ---
   const filtered = useMemo(() => {
     const q = (query || "").toLowerCase().trim();
     let list = [...products];
@@ -142,16 +150,13 @@ const Products = () => {
     return list;
   }, [products, query, filters, sortBy]);
 
-  // Keep original behavior (not strictly needed for pagination)
   useEffect(() => {
     setDisplay(filtered);
   }, [filtered]);
 
-  // NEW: compute pagination from filtered
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // Clamp page when data or pageSize changes
   useEffect(() => {
     setPage(1);
   }, [query, filters, sortBy, pageSize]);
@@ -164,7 +169,6 @@ const Products = () => {
   const endIdx = Math.min(startIdx + pageSize, total);
   const paged = filtered.slice(startIdx, endIdx);
 
-  // --- Helpers ---
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
   const chip = (label) => (
     <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
@@ -198,7 +202,6 @@ const Products = () => {
     });
   };
 
-  // --- Drawer & form ---
   const openDrawerForCreate = () => {
     setEditingId(null);
     setSelectedCategory(null);
@@ -304,7 +307,6 @@ const Products = () => {
       });
       if (res.data.success) {
         setProducts((prev) => prev.filter((p) => p._id !== id));
-        // ensure we don't get stuck on an empty last page
         const newTotal = total - 1;
         const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
         if (page > newTotalPages) setPage(newTotalPages);
@@ -314,7 +316,6 @@ const Products = () => {
     }
   };
 
-  // --- UI ---
   const dens = DENSITIES[density];
 
   return (
@@ -390,7 +391,6 @@ const Products = () => {
           />
         </div>
 
-        {/* Category filter */}
         <select
           value={filters.category}
           onChange={(e) =>
@@ -406,7 +406,6 @@ const Products = () => {
           ))}
         </select>
 
-        {/* Brand filter */}
         <select
           value={filters.brand}
           onChange={(e) => setFilters((f) => ({ ...f, brand: e.target.value }))}
@@ -420,7 +419,6 @@ const Products = () => {
           ))}
         </select>
 
-        {/* Stock status */}
         <select
           value={filters.stock}
           onChange={(e) => setFilters((f) => ({ ...f, stock: e.target.value }))}
@@ -553,12 +551,14 @@ const Products = () => {
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => onDelete(p._id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Delete
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => onDelete(p._id)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -588,9 +588,7 @@ const Products = () => {
           </table>
         </div>
 
-        {/* NEW: Pagination footer */}
         <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Rows per page */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Rows per page:</span>
             <select
@@ -620,24 +618,19 @@ const Products = () => {
             </span>
           </div>
 
-          {/* Page controls */}
           <Pagination page={page} setPage={setPage} totalPages={totalPages} />
         </div>
       </div>
 
-      {/* Slide-in Drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={closeDrawer}
             aria-hidden
           />
 
-          {/* Drawer panel */}
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 ">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -656,13 +649,11 @@ const Products = () => {
               </button>
             </div>
 
-            {/* Content (scrolls) */}
             <form
               onSubmit={onSubmit}
               className="flex flex-1 flex-col overflow-y-auto min-h-0"
             >
               <div className="flex-1 px-5 py-4 space-y-3 pb-28">
-                {/* Name & Code */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Name" required>
                     <input
@@ -687,7 +678,6 @@ const Products = () => {
                   </Field>
                 </div>
 
-                {/* Description */}
                 <Field label="Description">
                   <textarea
                     name="description"
@@ -698,7 +688,6 @@ const Products = () => {
                   />
                 </Field>
 
-                {/* Price & Stock */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Price" required>
                     <input
@@ -725,7 +714,6 @@ const Products = () => {
                   </Field>
                 </div>
 
-                {/* Catalog link */}
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-gray-700">
                     Catalog
@@ -741,7 +729,6 @@ const Products = () => {
                   </a>
                 </div>
 
-                {/* Category (searchable combobox) */}
                 <Field label="Category" required>
                   <Combo
                     value={formData.category}
@@ -763,7 +750,6 @@ const Products = () => {
                   />
                 </Field>
 
-                {/* Size (category driven) */}
                 {selectedCategory && (
                   <Field label="Size" required>
                     <select
@@ -783,7 +769,6 @@ const Products = () => {
                   </Field>
                 )}
 
-                {/* Brand (searchable combobox) */}
                 <Field label="Brand" required>
                   <Combo
                     value={formData.brand}
@@ -799,7 +784,6 @@ const Products = () => {
                   />
                 </Field>
 
-                {/* Supplier (searchable combobox) */}
                 <Field label="Supplier" required>
                   <Combo
                     value={formData.supplier}
@@ -816,7 +800,6 @@ const Products = () => {
                 </Field>
               </div>
 
-              {/* Sticky footer with safe-area padding */}
               <div
                 className="border-t border-gray-200 bg-white px-5 py-4 
              sticky bottom-0 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
@@ -845,7 +828,6 @@ const Products = () => {
   );
 };
 
-// Reusable components
 const Field = ({ label, required, children }) => (
   <label className="block">
     <span className="mb-1 block text-sm font-medium text-gray-700">
@@ -891,9 +873,6 @@ const SkeletonRows = ({ rows = 6, dens }) => {
   );
 };
 
-/**
- * Tiny accessible Combobox (searchable "select") with Tailwind styling
- */
 const Combo = ({
   value,
   onChange,
@@ -914,7 +893,6 @@ const Combo = ({
       )
     : options;
 
-  // close on outside click
   useEffect(() => {
     const onDoc = (e) => {
       if (!containerRef.current?.contains(e.target)) setOpen(false);
@@ -923,7 +901,6 @@ const Combo = ({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // keyboard handling
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef(null);
 
@@ -982,7 +959,6 @@ const Combo = ({
         required={required && !value}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-      {/* clear */}
       {value && !open && (
         <button
           type="button"
@@ -1010,7 +986,7 @@ const Combo = ({
                 aria-selected={opt.value === value}
                 data-index={idx}
                 onMouseDown={(e) => {
-                  e.preventDefault(); // commit before blur
+                  e.preventDefault();
                   onChange(opt.value);
                   setOpen(false);
                   setQuery("");
@@ -1033,7 +1009,6 @@ const Combo = ({
   );
 };
 
-/* NEW: Pagination controls with "Jump to page" */
 const Pagination = ({ page, setPage, totalPages }) => {
   const [jump, setJump] = React.useState(String(page));
 
@@ -1046,7 +1021,6 @@ const Pagination = ({ page, setPage, totalPages }) => {
 
   const singlePage = totalPages <= 1;
 
-  // Compact page list (max 7 items incl. ellipses)
   const pages = [];
   const add = (p) => pages.push(p);
   const addEllipsis = () => pages.push("…");
@@ -1117,7 +1091,6 @@ const Pagination = ({ page, setPage, totalPages }) => {
         </button>
       </div>
 
-      {/* Jump to page */}
       <form onSubmit={onSubmitJump} className="flex items-center gap-2">
         <label className="text-sm text-gray-600">Jump to:</label>
         <input

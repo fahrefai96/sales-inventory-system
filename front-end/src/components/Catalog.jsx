@@ -44,6 +44,18 @@ export default function Catalog() {
   const [brandPageSize, setBrandPageSize] = useState(25);
   const [brandPage, setBrandPage] = useState(1);
 
+  // ===== Role (admin vs staff) =====
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem("pos-user");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      isAdmin = parsed?.role === "admin";
+    }
+  } catch {
+    isAdmin = false;
+  }
+
   // ===== fetchers =====
   const fetchCategories = async () => {
     setCatLoading(true);
@@ -447,12 +459,14 @@ export default function Catalog() {
                           >
                             Edit
                           </button>
-                          <button
-                            onClick={() => deleteCategory(c._id)}
-                            className="text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Delete
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => deleteCategory(c._id)}
+                              className="text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -517,12 +531,14 @@ export default function Catalog() {
                           >
                             Edit
                           </button>
-                          <button
-                            onClick={() => deleteBrand(b._id)}
-                            className="text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Delete
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => deleteBrand(b._id)}
+                              className="text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -41,11 +41,15 @@ const Suppliers = () => {
     country: "",
   });
 
-  // profile (view products supplied)
+  // profile (view purchases)
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSupplier, setProfileSupplier] = useState(null);
-  const [supplierProducts, setSupplierProducts] = useState([]);
+  const [supplierPurchases, setSupplierPurchases] = useState([]);
+
+  // current user role
+  const currentUser = JSON.parse(localStorage.getItem("pos-user") || "{}");
+  const isAdmin = currentUser.role === "admin";
 
   // -------- Fetch --------
   const fetchSuppliers = async () => {
@@ -128,6 +132,29 @@ const Suppliers = () => {
     );
   };
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
+  const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-LK") : "—");
+  const formatMoney = (v) =>
+    `Rs ${Number(v || 0).toLocaleString("en-LK", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const formatStatus = (status) => {
+    if (!status) return "—";
+    const s = String(status).toLowerCase();
+    if (s === "posted") return "Posted";
+    if (s === "draft") return "Draft";
+    if (s === "cancelled" || s === "canceled") return "Cancelled";
+    return status;
+  };
+
+  const statusBadgeClass = (status) => {
+    const s = String(status || "").toLowerCase();
+    if (s === "posted") return "bg-emerald-100 text-emerald-700";
+    if (s === "draft") return "bg-amber-100 text-amber-700";
+    if (s === "cancelled" || s === "canceled") return "bg-red-100 text-red-700";
+    return "bg-gray-100 text-gray-700";
+  };
 
   // -------- Drawer (create/edit) --------
   const openDrawerForCreate = () => {
@@ -195,7 +222,6 @@ const Suppliers = () => {
       });
       if (res.data?.success) {
         setSuppliers((prev) => prev.filter((s) => s._id !== id));
-        // keep pagination stable
         const newTotal = total - 1;
         const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
         if (page > newTotalPages) setPage(newTotalPages);
@@ -205,21 +231,21 @@ const Suppliers = () => {
     }
   };
 
-  // -------- Profile (products supplied) --------
-  const openSupplierProducts = async (id) => {
+  // -------- Profile (purchases from supplier) --------
+  const openSupplierPurchases = async (id) => {
     setProfileLoading(true);
     try {
-      const { data } = await axiosInstance.get(`/supplier/${id}/products`, {
+      const { data } = await axiosInstance.get(`/supplier/${id}/purchases`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
         },
       });
       if (data?.success) {
         setProfileSupplier(data.supplier || null);
-        setSupplierProducts(data.products || []);
+        setSupplierPurchases(data.purchases || []);
         setProfileOpen(true);
       } else {
-        alert("Failed to load supplier products");
+        alert("Failed to load supplier purchases");
       }
     } catch (e) {
       alert(e?.response?.data?.error || e.message);
@@ -235,7 +261,7 @@ const Suppliers = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Suppliers</h1>
           <p className="text-sm text-gray-500">
-            Manage supplier records and view the products they supply.
+            Manage supplier records and view their purchase history.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -376,10 +402,10 @@ const Suppliers = () => {
                     <td className={`${dens.cell} ${dens.text}`}>
                       <div className="flex flex-wrap gap-3">
                         <button
-                          onClick={() => openSupplierProducts(s._id)}
+                          onClick={() => openSupplierPurchases(s._id)}
                           className="text-green-600 hover:text-green-800 font-medium"
                         >
-                          View Products
+                          View Purchases
                         </button>
                         <button
                           onClick={() => openDrawerForEdit(s)}
@@ -387,12 +413,14 @@ const Suppliers = () => {
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => onDelete(s._id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Delete
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => onDelete(s._id)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -561,7 +589,7 @@ const Suppliers = () => {
         </div>
       )}
 
-      {/* Profile Modal: Products supplied */}
+      {/* Profile Modal: Purchases from supplier */}
       {profileOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl">
@@ -569,16 +597,16 @@ const Suppliers = () => {
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {profileSupplier?.name || "Supplier"} — Products
+                  {profileSupplier?.name || "Supplier"} — Purchases
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
-                  Products linked to this supplier.
+                  Purchase invoices recorded for this supplier.
                 </p>
               </div>
               <button
                 onClick={() => {
                   setProfileOpen(false);
-                  setSupplierProducts([]);
+                  setSupplierPurchases([]);
                   setProfileSupplier(null);
                 }}
                 className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
@@ -591,9 +619,9 @@ const Suppliers = () => {
             <div className="p-5 space-y-4">
               {profileLoading ? (
                 <div className="py-6 text-center text-gray-500">Loading…</div>
-              ) : supplierProducts.length === 0 ? (
+              ) : supplierPurchases.length === 0 ? (
                 <div className="py-6 text-center text-gray-500">
-                  No products linked to this supplier.
+                  No purchases recorded for this supplier.
                 </div>
               ) : (
                 <div className="overflow-hidden rounded border border-gray-200">
@@ -601,31 +629,39 @@ const Suppliers = () => {
                     <table className="min-w-full table-auto">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                          <th className="px-4 py-3">Code</th>
-                          <th className="px-4 py-3">Name</th>
-                          <th className="px-4 py-3">Brand</th>
-                          <th className="px-4 py-3">Category</th>
-                          <th className="px-4 py-3">Size</th>
-                          <th className="px-4 py-3">Price</th>
-                          <th className="px-4 py-3">Stock</th>
+                          <th className="px-4 py-3">Invoice No</th>
+                          <th className="px-4 py-3">Invoice Date</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Items</th>
+                          <th className="px-4 py-3">Grand Total</th>
+                          <th className="px-4 py-3">Created</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                        {supplierProducts.map((p) => (
+                        {supplierPurchases.map((p) => (
                           <tr key={p._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">{p.code || "—"}</td>
-                            <td className="px-4 py-3">{p.name}</td>
+                            <td className="px-4 py-3">{p.invoiceNo || "—"}</td>
                             <td className="px-4 py-3">
-                              {p.brand?.name || "—"}
+                              {formatDate(p.invoiceDate || p.createdAt)}
                             </td>
                             <td className="px-4 py-3">
-                              {p.category?.name || "—"}
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
+                                  p.status
+                                )}`}
+                              >
+                                {formatStatus(p.status)}
+                              </span>
                             </td>
-                            <td className="px-4 py-3">{p.size || "—"}</td>
                             <td className="px-4 py-3">
-                              Rs {Number(p.price || 0).toLocaleString()}
+                              {Array.isArray(p.items) ? p.items.length : 0}
                             </td>
-                            <td className="px-4 py-3">{p.stock ?? "—"}</td>
+                            <td className="px-4 py-3">
+                              {formatMoney(p.grandTotal)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {formatDateTime(p.createdAt)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -687,7 +723,7 @@ const SkeletonRows = ({ rows = 6, dens, cols = 7 }) => {
   );
 };
 
-/* Pagination with Jump to page (same UX as Products) */
+/* Pagination with Jump to page */
 const Pagination = ({ page, setPage, totalPages }) => {
   const [jump, setJump] = React.useState(String(page));
 
@@ -700,7 +736,6 @@ const Pagination = ({ page, setPage, totalPages }) => {
 
   const singlePage = totalPages <= 1;
 
-  // Compact page list (max 7 items incl. ellipses)
   const pages = [];
   const add = (p) => pages.push(p);
   const addEllipsis = () => pages.push("…");

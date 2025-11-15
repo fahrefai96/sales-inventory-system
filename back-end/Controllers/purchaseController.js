@@ -121,10 +121,6 @@ export const postPurchase = async (req, res, next) => {
           ? +((prevQty * prevAvg + qty * cost) / denominator).toFixed(4)
           : cost;
 
-      // --- SUPPLIER RULE (Preferred supplier vs order supplier) ---
-      // Never overwrite the product's preferred supplier when posting a purchase.
-      // If (and only if) the product has no supplier yet, set it from the purchase's supplier.
-      // Your schema currently requires supplier, so this usually won't run — it's here for safety.
       if (!product.supplier && purchase.supplier) {
         product.supplier = purchase.supplier;
       }
@@ -165,6 +161,13 @@ export const postPurchase = async (req, res, next) => {
 };
 
 export const cancelPurchase = async (req, res, next) => {
+  // 🔒 Only admin can cancel posted purchases
+  if (!req.user || req.user.role !== "admin") {
+    return res
+      .status(403)
+      .json({ message: "Only admin can cancel posted purchases" });
+  }
+
   const session = await mongoose.startSession();
   try {
     session.startTransaction();

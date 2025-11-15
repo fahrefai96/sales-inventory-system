@@ -1,3 +1,4 @@
+// back-end/routes/report.js
 import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
@@ -17,6 +18,7 @@ import {
   exportPerformanceProductsCsv,
   exportCustomerBalancesCsv,
   exportReceivablesCsv,
+
   // PDF exports
   exportSalesPdf,
   exportInventoryPdf,
@@ -26,34 +28,37 @@ import {
 
 const router = express.Router();
 
-// Protect everything (authMiddleware should already accept ?token=)
-router.use(authMiddleware);
+// All /reports endpoints are admin-only
+router.use(authMiddleware, requireRole(["admin"]));
 
-// Core reports
+/* -------- Core JSON endpoints -------- */
+
+// Sales report (KPIs + series + top products/customers)
 router.get("/sales", getSalesReport);
+
+// Inventory report (stock, valuation, low stock, etc.)
 router.get("/inventory", getInventoryReport);
+
+// Performance reports
 router.get("/performance/users", getUserPerformance);
 router.get("/performance/products", getProductTrends);
-router.get(
-  "/receivables",
-  authMiddleware,
-  requireRole(["admin", "staff"]),
-  getReceivables
-);
 
-router.get("/customer-balances", getCustomerBalances);
+// Receivables + customer balances
 router.get("/receivables", getReceivablesReport);
+router.get("/receivables/summary", getReceivables);
+router.get("/customer-balances", getCustomerBalances);
 
-// Exports — CSV
+/* -------- CSV exports -------- */
+
 router.get("/sales/export/csv", exportSalesCsv);
 router.get("/inventory/export/csv", exportInventoryCsv);
 router.get("/performance/users/export/csv", exportPerformanceUsersCsv);
 router.get("/performance/products/export/csv", exportPerformanceProductsCsv);
 router.get("/customer-balances/export/csv", exportCustomerBalancesCsv);
-
 router.get("/receivables/export/csv", exportReceivablesCsv);
 
-// Exports — PDF
+/* -------- PDF exports -------- */
+
 router.get("/sales/export/pdf", exportSalesPdf);
 router.get("/inventory/export/pdf", exportInventoryPdf);
 router.get("/performance/users/export/pdf", exportPerformanceUsersPdf);

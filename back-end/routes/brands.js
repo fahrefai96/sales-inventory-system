@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
+import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   createBrand,
   listBrands,
@@ -9,10 +9,16 @@ import {
 
 const router = express.Router();
 
-// you can add an admin-only guard later if you create one; for now auth only
+// All brand routes require a logged-in user
 router.get("/", authMiddleware, listBrands);
+
+// Staff + admin can create brands
 router.post("/", authMiddleware, createBrand);
+
+// Staff + admin can edit brands
 router.put("/:id", authMiddleware, updateBrand);
-router.delete("/:id", authMiddleware, deleteBrand);
+
+// Only admin can delete brands
+router.delete("/:id", authMiddleware, requireRole(["admin"]), deleteBrand);
 
 export default router;

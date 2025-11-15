@@ -16,7 +16,7 @@ import InventoryLogs from "./components/InventoryLogs";
 import Purchases from "./components/Purchases";
 import Reports from "./components/Reports/index.jsx";
 
-// NEW: staff shell + panel
+// Staff shell + panel
 import StaffDashboard from "./pages/StaffDashboard.jsx";
 import StaffDashboardPanel from "./components/StaffDashboardPanel.jsx";
 
@@ -38,7 +38,9 @@ function App() {
             </ProtectedRoute>
           }
         >
+          {/* /admin-dashboard */}
           <Route index element={<DashboardPanel />} />
+
           <Route path="catalog" element={<Catalog />} />
           <Route path="products" element={<Products />} />
           <Route path="suppliers" element={<Suppliers />} />
@@ -61,7 +63,10 @@ function App() {
             </ProtectedRoute>
           }
         >
+          {/* /staff -> staff dashboard */}
+          <Route index element={<StaffDashboardPanel />} />
           <Route path="dashboard" element={<StaffDashboardPanel />} />
+
           <Route path="catalog" element={<Catalog />} />
           <Route path="products" element={<Products />} />
           <Route path="suppliers" element={<Suppliers />} />
