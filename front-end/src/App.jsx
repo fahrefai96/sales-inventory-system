@@ -15,6 +15,8 @@ import Catalog from "./components/Catalog.jsx";
 import InventoryLogs from "./components/InventoryLogs";
 import Purchases from "./components/Purchases";
 import Reports from "./components/Reports/index.jsx";
+import Forecasting from "./components/Forecasting.jsx";
+import Chatbot from "./components/Chatbot.jsx";
 
 // Staff shell + panel
 import StaffDashboard from "./pages/StaffDashboard.jsx";
@@ -49,8 +51,9 @@ function App() {
           <Route path="customers" element={<Customer />} />
           <Route path="users" element={<Users />} />
           <Route path="inventory-logs" element={<InventoryLogs />} />
-
+          <Route path="forecasting" element={<Forecasting />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="chatbot" element={<Chatbot />} />
           <Route path="logout" element={<Logout />} />
         </Route>
 
@@ -74,6 +77,7 @@ function App() {
           <Route path="sales" element={<Sales />} />
           <Route path="customers" element={<Customer />} />
           <Route path="inventory-logs" element={<InventoryLogs />} />
+          <Route path="forecasting" element={<Forecasting />} />
           <Route path="logout" element={<Logout />} />
         </Route>
 

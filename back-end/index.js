@@ -17,6 +17,8 @@ import brandRoutes from "./routes/brands.js";
 import inventoryLogsRoutes from "./routes/inventory-logs.js";
 import purchaseRouter from "./routes/purchase.js";
 import reportRouter from "./routes/report.js";
+import forecastRouter from "./routes/forecast.js";
+import chatbotRouter from "./routes/chatbot.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -66,7 +68,9 @@ app.use("/api/brands", brandRoutes);
 app.use("/api/inventory-logs", inventoryLogsRoutes);
 app.use("/api/purchases", purchaseRouter);
 app.use("/api/reports", reportRouter);
-
+app.use("/api/reports", reportRouter);
+app.use("/api/forecast", forecastRouter);
+app.use("/api/chatbot", chatbotRouter);
 app.listen(process.env.PORT, () => {
   connectdb();
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
