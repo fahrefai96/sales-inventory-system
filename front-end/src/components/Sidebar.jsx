@@ -84,7 +84,7 @@ const Sidebar = () => {
 
   // Smaller labels + slightly smaller icons (kept from your version)
   const baseItem =
-    "group relative flex items-center rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-zinc-300";
+    "group relative flex items-center rounded-lg transition-colors duration-200 focus:outline-none";
   const textCls = "ml-3 hidden md:block truncate text-[16px] font-medium";
   const iconCls = "text-[18px] shrink-0";
 

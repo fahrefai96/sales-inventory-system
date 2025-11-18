@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import api from "../utils/api";
 import { fuzzySearchCustomers } from "../utils/fuzzySearch";
 import axios from "axios";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
@@ -377,6 +377,167 @@ const Customers = () => {
     }
   };
 
+  // -------- Export handlers --------
+  const handleExportCsv = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("search", query.trim());
+      if (sortBy.key) params.set("sortBy", sortBy.key);
+      if (sortBy.dir) params.set("sortDir", sortBy.dir);
+
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const url = `${apiBase}/customers/export/csv${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await axios.get(url, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data && res.data.size > 0) {
+        const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `customers_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+      }
+    } catch (e) {
+      if (e.response && e.response.data instanceof Blob) {
+        const blob = new Blob([e.response.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `customers_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+        return;
+      }
+      console.error(e);
+      alert("Failed to export CSV.");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    if (sortBy.key) params.set("sortBy", sortBy.key);
+    if (sortBy.dir) params.set("sortDir", sortBy.dir);
+
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    params.set("token", token);
+    const url = `${apiBase}/customers/export/pdf?${params.toString()}`;
+    
+    // Use window.open for PDF exports to avoid streaming issues
+    window.open(url, "_blank");
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Customers - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Customers</h1>
+          <div class="info">
+            <div><strong>Total Records:</strong> ${displayCustomers.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            ${query ? `<div><strong>Search:</strong> ${query}</div>` : ""}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Added</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayCustomers.map((c) => `
+                <tr>
+                  <td>${c.name || "—"}</td>
+                  <td>${c.email || "—"}</td>
+                  <td>${c.phone || "—"}</td>
+                  <td>${c.address || "—"}</td>
+                  <td>${formatDateTime(c.createdAt)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   // -------- UI --------
   return (
     <div className="p-6">
@@ -425,14 +586,42 @@ const Customers = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           type="text"
           placeholder="Search by name, email, phone, or address…"
           value={query}
           onChange={onSearchChange}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:max-w-lg"
         />
+        <div className="flex justify-end items-center">
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <button
+              onClick={handlePrint}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
+              onClick={handleExportCsv}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export CSV"
+            >
+              <FaFileCsv className="text-xs" />
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportPdf}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <FaDownload className="text-xs" />
+              Export PDF
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Rows per page selector */}

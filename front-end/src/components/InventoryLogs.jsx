@@ -5,7 +5,7 @@ import React, {
   useCallback,
 } from "react";
 import api from "../utils/api.jsx";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 
 /** =========================
  * Small UI helpers (same vibe as Purchases)
@@ -566,6 +566,133 @@ const InventoryLogs = () => {
     window.open(`${apiBase}/inventory-logs/export/pdf?${params.toString()}`);
   };
 
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const productFilter = selectedProductId
+      ? productOptions.find((p) => p.value === selectedProductId)?.label || "All Products"
+      : "All Products";
+    const actionFilter = action || "All Actions";
+    const dateRange = dateFrom && dateTo
+      ? `${dateFrom} to ${dateTo}`
+      : dateFrom
+      ? `From ${dateFrom}`
+      : dateTo
+      ? `To ${dateTo}`
+      : "All dates";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Inventory Logs - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .positive {
+              color: #059669;
+            }
+            .negative {
+              color: #dc2626;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Inventory Logs</h1>
+          <div class="info">
+            <div><strong>Filters:</strong> Actor: ${actorSearch || "All"} | Product: ${productFilter} | Action: ${actionFilter} | Date Range: ${dateRange}</div>
+            <div><strong>Total Records:</strong> ${total} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Action</th>
+                <th>Delta</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>Actor</th>
+                <th>Sale</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs.map((log) => `
+                <tr>
+                  <td>${fmtDateTime(log.createdAt)}</td>
+                  <td>${log.product?.code || ""}${log.product?.name ? ` - ${log.product.name}` : ""}${!log.product?.name && !log.product?.code && log.product ? String(log.product) : ""}</td>
+                  <td>${log.action || ""}</td>
+                  <td class="${Number(log.delta) < 0 ? "negative" : "positive"}">${Number(log.delta) > 0 ? `+${log.delta}` : log.delta}</td>
+                  <td>${log.beforeQty || ""}</td>
+                  <td>${log.afterQty || ""}</td>
+                  <td>${log.actor?.name ? `${log.actor.name}${log.actor.role ? ` (${log.actor.role})` : ""}` : log.actor?.email || (log.actor ? String(log.actor) : "—")}</td>
+                  <td>${log.sale?.saleId || (log.sale ? String(log.sale) : "—")}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const clearFilters = () => {
     setActorSearch("");
     setSelectedProductId("");
@@ -736,8 +863,16 @@ const InventoryLogs = () => {
         <div className="flex items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
+              onClick={handlePrint}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
               onClick={exportCSV}
-              className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export CSV"
             >
               <FaFileCsv className="text-xs" />
@@ -745,7 +880,7 @@ const InventoryLogs = () => {
             </button>
             <button
               onClick={handleExportPdf}
-              className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export PDF"
             >
               <FaDownload className="text-xs" />

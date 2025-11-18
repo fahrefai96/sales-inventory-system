@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../utils/api";
 import { FiGrid, FiTag } from "react-icons/fi";
+import { FaPrint, FaFileCsv, FaDownload } from "react-icons/fa";
 
 const FIXED_SIZES = ["Small", "Medium", "Large"];
 
@@ -457,6 +458,275 @@ export default function Catalog() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [catDrawerOpen, brandDrawerOpen]);
 
+  // ===== Export & Print handlers =====
+  const handleExportCsv = () => {
+    const data = tab === "categories" ? catFiltered : brandFiltered;
+    const headers = tab === "categories" 
+      ? ["Name", "Sizes"]
+      : ["Name", "Active"];
+    
+    const rows = data.map((item) => {
+      if (tab === "categories") {
+        return {
+          Name: item.name || "",
+          Sizes: (item.sizeOptions || []).join(", ") || "",
+        };
+      } else {
+        return {
+          Name: item.name || "",
+          Active: item.active !== false ? "Yes" : "No",
+        };
+      }
+    });
+
+    const esc = (v) => `"${String(v ?? "").replaceAll('"', '""').replaceAll(/\r?\n/g, " ")}"`;
+    const csv = [
+      headers.map(esc).join(","),
+      ...rows.map((r) => headers.map((h) => esc(r[h])).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = `${tab}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
+  };
+
+  const handleExportPdf = () => {
+    const data = tab === "categories" ? catFiltered : brandFiltered;
+    const title = tab === "categories" ? "Categories" : "Brands";
+    const searchQuery = tab === "categories" ? catSearch : brandSearch;
+
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    const token = localStorage.getItem("pos-token");
+    
+    // For PDF, we'll use a simple approach: generate HTML and print it
+    // Since there's no backend endpoint, we'll create a print-friendly version
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title} - PDF Export</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <div class="info">
+            <div><strong>Total Records:</strong> ${data.length} | <strong>Generated:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            ${searchQuery ? `<div><strong>Search:</strong> ${searchQuery}</div>` : ""}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${tab === "categories" 
+                  ? "<th>Name</th><th>Sizes</th>"
+                  : "<th>Name</th><th>Active</th>"}
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map((item) => {
+                if (tab === "categories") {
+                  return `
+                    <tr>
+                      <td>${item.name || "—"}</td>
+                      <td>${(item.sizeOptions || []).join(", ") || "—"}</td>
+                    </tr>
+                  `;
+                } else {
+                  return `
+                    <tr>
+                      <td>${item.name || "—"}</td>
+                      <td>${item.active !== false ? "Yes" : "No"}</td>
+                    </tr>
+                  `;
+                }
+              }).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const handlePrint = () => {
+    const data = tab === "categories" ? catFiltered : brandFiltered;
+    const title = tab === "categories" ? "Categories" : "Brands";
+    const searchQuery = tab === "categories" ? catSearch : brandSearch;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title} - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <div class="info">
+            <div><strong>Total Records:</strong> ${data.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            ${searchQuery ? `<div><strong>Search:</strong> ${searchQuery}</div>` : ""}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${tab === "categories" 
+                  ? "<th>Name</th><th>Sizes</th>"
+                  : "<th>Name</th><th>Active</th>"}
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map((item) => {
+                if (tab === "categories") {
+                  return `
+                    <tr>
+                      <td>${item.name || "—"}</td>
+                      <td>${(item.sizeOptions || []).join(", ") || "—"}</td>
+                    </tr>
+                  `;
+                } else {
+                  return `
+                    <tr>
+                      <td>${item.name || "—"}</td>
+                      <td>${item.active !== false ? "Yes" : "No"}</td>
+                    </tr>
+                  `;
+                }
+              }).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   // ===== UI =====
   const dens = DENSITIES[density];
 
@@ -539,40 +809,104 @@ export default function Catalog() {
         </div>
       </div>
 
-      {/* Toolbar (search + rows per page) */}
+      {/* Toolbar (search + export buttons + rows per page) */}
       {tab === "categories" ? (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-          <input
-            type="text"
-            placeholder="Search categories…"
-            defaultValue={catSearch}
-            onChange={onCatSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <RowsPerPage
-            value={catPageSize}
-            onChange={(n) => {
-              setCatPageSize(n);
-              setCatPage(1);
-            }}
-          />
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <input
+              type="text"
+              placeholder="Search categories…"
+              defaultValue={catSearch}
+              onChange={onCatSearchChange}
+              className="flex-1 sm:max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex items-center ml-auto sm:ml-0">
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <button
+                  onClick={handlePrint}
+                  className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Print"
+                >
+                  <FaPrint className="text-xs" />
+                  Print
+                </button>
+                <button
+                  onClick={handleExportCsv}
+                  className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Export CSV"
+                >
+                  <FaFileCsv className="text-xs" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Export PDF"
+                >
+                  <FaDownload className="text-xs" />
+                  Export PDF
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <RowsPerPage
+              value={catPageSize}
+              onChange={(n) => {
+                setCatPageSize(n);
+                setCatPage(1);
+              }}
+            />
+          </div>
         </div>
       ) : (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-          <input
-            type="text"
-            placeholder="Search brands…"
-            defaultValue={brandSearch}
-            onChange={onBrandSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <RowsPerPage
-            value={brandPageSize}
-            onChange={(n) => {
-              setBrandPageSize(n);
-              setBrandPage(1);
-            }}
-          />
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <input
+              type="text"
+              placeholder="Search brands…"
+              defaultValue={brandSearch}
+              onChange={onBrandSearchChange}
+              className="flex-1 sm:max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex items-center ml-auto sm:ml-0">
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <button
+                  onClick={handlePrint}
+                  className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Print"
+                >
+                  <FaPrint className="text-xs" />
+                  Print
+                </button>
+                <button
+                  onClick={handleExportCsv}
+                  className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Export CSV"
+                >
+                  <FaFileCsv className="text-xs" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+                  title="Export PDF"
+                >
+                  <FaDownload className="text-xs" />
+                  Export PDF
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <RowsPerPage
+              value={brandPageSize}
+              onChange={(n) => {
+                setBrandPageSize(n);
+                setBrandPage(1);
+              }}
+            />
+          </div>
         </div>
       )}
 

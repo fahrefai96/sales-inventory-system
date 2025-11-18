@@ -161,30 +161,32 @@ const Chatbot = () => {
               Compact
             </button>
           </div>
-          {/* Clear Chat */}
-          <button
-            onClick={clearChat}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            title="Clear chat"
-          >
-            Clear
-          </button>
         </div>
       </div>
 
       {/* Suggestions */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => handleSuggestionClick(s)}
-            className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200"
-            disabled={loading}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => handleSuggestionClick(s)}
+              className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200"
+              disabled={loading}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        {/* Clear Chat */}
+        <button
+          onClick={clearChat}
+          className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          title="Clear chat"
+        >
+          Clear
+        </button>
       </div>
 
       {/* Error */}

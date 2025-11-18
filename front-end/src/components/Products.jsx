@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import { fuzzySearchProducts } from "../utils/fuzzySearch";
 
 const DENSITIES = {
@@ -378,6 +378,141 @@ const Products = () => {
     window.open(url, "_blank");
   };
 
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const categoryFilter = filters.category !== "all"
+      ? categories.find((c) => c._id === filters.category)?.name || "All Categories"
+      : "All Categories";
+    const brandFilter = filters.brand !== "all"
+      ? brands.find((b) => b._id === filters.brand)?.name || "All Brands"
+      : "All Brands";
+    const stockFilter = filters.stock === "low" ? "Low (≤5)" 
+      : filters.stock === "out" ? "Out (0)"
+      : filters.stock === "in" ? "In Stock (>5)"
+      : "All Stock";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Products - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .stock-zero {
+              color: #dc2626;
+            }
+            .stock-low {
+              color: #d97706;
+            }
+            .stock-ok {
+              color: #059669;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Products</h1>
+          <div class="info">
+            <div><strong>Total Records:</strong> ${displayProducts.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            <div><strong>Filters:</strong> Search: ${query || "All"} | Category: ${categoryFilter} | Brand: ${brandFilter} | Stock: ${stockFilter}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Category</th>
+                <th>Size</th>
+                <th>Supplier</th>
+                <th style="text-align: right;">Price</th>
+                <th style="text-align: right;">Stock</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayProducts.map((p) => {
+                const stock = Number(p.stock || 0);
+                const stockClass = stock === 0 ? "stock-zero" : stock <= 5 ? "stock-low" : "stock-ok";
+                return `
+                  <tr>
+                    <td>${p.code || "—"}</td>
+                    <td>${p.name || "—"}</td>
+                    <td>${p.brand?.name || "—"}</td>
+                    <td>${p.category?.name || "—"}</td>
+                    <td>${p.size || "—"}</td>
+                    <td>${p.supplier?.name || "—"}</td>
+                    <td style="text-align: right;">Rs. ${Number(p.price || 0).toFixed(2)}</td>
+                    <td style="text-align: right;" class="${stockClass}">${stock}</td>
+                    <td>${formatDateTime(p.lastUpdated)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   return (
     <div className="p-6">
       {/* Page header */}
@@ -468,8 +603,16 @@ const Products = () => {
         <div className="flex justify-end items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
+              onClick={handlePrint}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
               onClick={handleExportCsv}
-              className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export CSV"
             >
               <FaFileCsv className="text-xs" />
@@ -477,7 +620,7 @@ const Products = () => {
             </button>
             <button
               onClick={handleExportPdf}
-              className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export PDF"
             >
               <FaDownload className="text-xs" />

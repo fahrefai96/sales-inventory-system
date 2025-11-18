@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import { fuzzySearch } from "../utils/fuzzySearch";
 
 const DENSITIES = {
@@ -44,11 +44,19 @@ const Suppliers = () => {
     country: "",
   });
 
-  // profile (view purchases)
+  // profile (view purchases & documents)
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSupplier, setProfileSupplier] = useState(null);
   const [supplierPurchases, setSupplierPurchases] = useState([]);
+  const [profileTab, setProfileTab] = useState("purchases"); // 'purchases' | 'documents'
+  
+  // Documents state
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [documentTypeFilter, setDocumentTypeFilter] = useState("all");
+  const [uploadDocumentType, setUploadDocumentType] = useState("other");
 
   // current user role
   const currentUser = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -87,6 +95,8 @@ const Suppliers = () => {
           setProfileOpen(false);
           setSupplierPurchases([]);
           setProfileSupplier(null);
+          setDocuments([]);
+          setProfileTab("purchases");
         }
       }
     };
@@ -190,6 +200,111 @@ const Suppliers = () => {
     
     // Use window.open for PDF exports to avoid streaming issues
     window.open(url, "_blank");
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Suppliers - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Suppliers</h1>
+          <div class="info">
+            <div><strong>Total Records:</strong> ${filtered.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            ${query ? `<div><strong>Search:</strong> ${query}</div>` : ""}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Country</th>
+                <th>Added</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map((s) => `
+                <tr>
+                  <td>${s.name || "—"}</td>
+                  <td>${s.email || "—"}</td>
+                  <td>${s.phone || "—"}</td>
+                  <td>${s.address || "—"}</td>
+                  <td>${s.country || "—"}</td>
+                  <td>${formatDateTime(s.createdAt)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const setSort = (key) => {
@@ -311,7 +426,10 @@ const Suppliers = () => {
       if (data?.success) {
         setProfileSupplier(data.supplier || null);
         setSupplierPurchases(data.purchases || []);
+        setProfileTab("purchases");
         setProfileOpen(true);
+        // Also fetch documents
+        fetchDocuments(id);
       } else {
         alert("Failed to load supplier purchases");
       }
@@ -320,6 +438,111 @@ const Suppliers = () => {
     } finally {
       setProfileLoading(false);
     }
+  };
+
+  // -------- Documents --------
+  const fetchDocuments = async (supplierId, filter = null) => {
+    if (!supplierId) return;
+    setDocumentsLoading(true);
+    try {
+      const params = {};
+      const activeFilter = filter !== null ? filter : documentTypeFilter;
+      if (activeFilter !== "all") {
+        params.documentType = activeFilter;
+      }
+      const { data } = await axiosInstance.get(`/supplier/${supplierId}/documents`, {
+        params,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+        },
+      });
+      if (data?.success) {
+        setDocuments(data.documents || []);
+      }
+    } catch (e) {
+      console.error("Error fetching documents:", e);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+
+  const handleDocumentUpload = async (e, supplierId) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("documentType", uploadDocumentType);
+    formData.append("description", "");
+
+    setUploading(true);
+    try {
+      const { data } = await axiosInstance.post(`/supplier/${supplierId}/documents`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      if (data?.success) {
+        await fetchDocuments(supplierId);
+        e.target.value = ""; // Reset file input
+      } else {
+        alert(data?.error || "Failed to upload document");
+      }
+    } catch (e) {
+      alert(e?.response?.data?.error || e.message || "Failed to upload document");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDocumentDownload = async (supplierId, docId, fileName) => {
+    try {
+      const { data } = await axiosInstance.get(`/supplier/${supplierId}/documents/${docId}`, {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+        },
+      });
+      
+      const blob = new Blob([data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e?.response?.data?.error || "Failed to download document");
+    }
+  };
+
+  const handleDocumentDelete = async (supplierId, docId) => {
+    if (!confirm("Delete this document?")) return;
+    try {
+      const { data } = await axiosInstance.delete(`/supplier/${supplierId}/documents/${docId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+        },
+      });
+      if (data?.success) {
+        await fetchDocuments(supplierId);
+      } else {
+        alert(data?.error || "Failed to delete document");
+      }
+    } catch (e) {
+      alert(e?.response?.data?.error || "Failed to delete document");
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
   };
 
   return (
@@ -365,31 +588,41 @@ const Suppliers = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3 justify-between">
         <input
           type="text"
           placeholder="Search by name, email, phone, address, or country…"
           defaultValue={query}
           onChange={onSearchChange}
-          className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-[250px] max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <button
-            onClick={handleExportCsv}
-            className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
-            title="Export CSV"
-          >
-            <FaFileCsv className="text-xs" />
-            Export CSV
-          </button>
-          <button
-            onClick={handleExportPdf}
-            className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
-            title="Export PDF"
-          >
-            <FaDownload className="text-xs" />
-            Export PDF
-          </button>
+        <div className="flex items-center ml-auto">
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <button
+              onClick={handlePrint}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
+              onClick={handleExportCsv}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export CSV"
+            >
+              <FaFileCsv className="text-xs" />
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportPdf}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <FaDownload className="text-xs" />
+              Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -489,7 +722,7 @@ const Suppliers = () => {
                           onClick={() => openSupplierPurchases(s._id)}
                           className="text-green-600 hover:text-green-800 font-medium"
                         >
-                          View Purchases
+                          View
                         </button>
                         <button
                           onClick={() => openDrawerForEdit(s)}
@@ -673,18 +906,30 @@ const Suppliers = () => {
         </div>
       )}
 
-      {/* Profile Modal: Purchases from supplier */}
+      {/* Profile Modal: Purchases & Documents from supplier */}
       {profileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl">
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          onClick={() => {
+            setProfileOpen(false);
+            setSupplierPurchases([]);
+            setProfileSupplier(null);
+            setDocuments([]);
+            setProfileTab("purchases");
+          }}
+        >
+          <div 
+            className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {profileSupplier?.name || "Supplier"} — Purchases
+                  {profileSupplier?.name || "Supplier"} — Profile
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
-                  Purchase invoices recorded for this supplier.
+                  Purchase invoices and documents for this supplier.
                 </p>
               </div>
               <button
@@ -692,6 +937,8 @@ const Suppliers = () => {
                   setProfileOpen(false);
                   setSupplierPurchases([]);
                   setProfileSupplier(null);
+                  setDocuments([]);
+                  setProfileTab("purchases");
                 }}
                 className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -699,59 +946,277 @@ const Suppliers = () => {
               </button>
             </div>
 
+            {/* Tabs */}
+            <div className="px-5 pt-4">
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    profileTab === "purchases" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => {
+                    setProfileTab("purchases");
+                    if (profileSupplier?._id) {
+                      openSupplierPurchases(profileSupplier._id);
+                    }
+                  }}
+                >
+                  Purchases
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    profileTab === "documents" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => {
+                    setProfileTab("documents");
+                    if (profileSupplier?._id) {
+                      fetchDocuments(profileSupplier._id);
+                    }
+                  }}
+                >
+                  Documents
+                </button>
+              </div>
+            </div>
+
             {/* Body */}
             <div className="p-5 space-y-4">
-              {profileLoading ? (
-                <div className="py-6 text-center text-gray-500">Loading…</div>
-              ) : supplierPurchases.length === 0 ? (
-                <div className="py-6 text-center text-gray-500">
-                  No purchases recorded for this supplier.
-                </div>
+              {profileTab === "purchases" ? (
+                <>
+                  {profileLoading ? (
+                    <div className="py-6 text-center text-gray-500">Loading…</div>
+                  ) : supplierPurchases.length === 0 ? (
+                    <div className="py-6 text-center text-gray-500">
+                      No purchases recorded for this supplier.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded border border-gray-200">
+                      <div className="max-h-[55vh] overflow-auto">
+                        <table className="min-w-full table-auto">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                              <th className="px-4 py-3">Invoice No</th>
+                              <th className="px-4 py-3">Invoice Date</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Items</th>
+                              <th className="px-4 py-3">Grand Total</th>
+                              <th className="px-4 py-3">Created</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                            {supplierPurchases.map((p) => (
+                              <tr key={p._id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm text-gray-700">{p.invoiceNo || "—"}</td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {formatDate(p.invoiceDate || p.createdAt)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
+                                      p.status
+                                    )}`}
+                                  >
+                                    {formatStatus(p.status)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {Array.isArray(p.items) ? p.items.length : 0}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {formatMoney(p.grandTotal)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {formatDateTime(p.createdAt)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="overflow-hidden rounded border border-gray-200">
-                  <div className="max-h-[55vh] overflow-auto">
-                    <table className="min-w-full table-auto">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                          <th className="px-4 py-3">Invoice No</th>
-                          <th className="px-4 py-3">Invoice Date</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Items</th>
-                          <th className="px-4 py-3">Grand Total</th>
-                          <th className="px-4 py-3">Created</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                        {supplierPurchases.map((p) => (
-                          <tr key={p._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-700">{p.invoiceNo || "—"}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {formatDate(p.invoiceDate || p.createdAt)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
-                                  p.status
-                                )}`}
+                <>
+                  {/* Documents Tab */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Documents
+                    </h3>
+
+                    {/* Upload Section */}
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                        Upload New Document
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            Document Type
+                          </label>
+                          <Combo
+                            value={uploadDocumentType}
+                            onChange={(val) => setUploadDocumentType(val)}
+                            options={[
+                              { value: "invoice", label: "Invoice" },
+                              { value: "contract", label: "Contract" },
+                              { value: "import_document", label: "Import Document" },
+                              { value: "other", label: "Other" },
+                            ]}
+                            placeholder="Select Document Type"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            File
+                          </label>
+                          <label className="block cursor-pointer">
+                            <input
+                              type="file"
+                              onChange={(e) => handleDocumentUpload(e, profileSupplier?._id)}
+                              disabled={uploading || !profileSupplier?._id}
+                              accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
+                              className="hidden"
+                            />
+                            <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                              {uploading ? (
+                                <div className="text-sm text-gray-600">
+                                  <div className="mb-1">Uploading…</div>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-600">
+                                  <div className="mb-1 font-medium">Click to browse or drag and drop</div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    PDF, Images, Word, Excel (Max 10MB)
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter and Documents List */}
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h4 className="text-base font-semibold text-gray-900">
+                          Document Library
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">Filter by type:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: "all", label: "All Types" },
+                              { value: "invoice", label: "Invoice" },
+                              { value: "contract", label: "Contract" },
+                              { value: "import_document", label: "Import Document" },
+                              { value: "other", label: "Other" },
+                            ].map((option) => (
+                              <button
+                                key={option.value}
+                                onClick={() => {
+                                  setDocumentTypeFilter(option.value);
+                                  if (profileSupplier?._id) {
+                                    fetchDocuments(profileSupplier._id, option.value);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                  documentTypeFilter === option.value
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                                }`}
                               >
-                                {formatStatus(p.status)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {Array.isArray(p.items) ? p.items.length : 0}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {formatMoney(p.grandTotal)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {formatDateTime(p.createdAt)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {documentsLoading ? (
+                        <div className="py-8 text-center text-gray-500">
+                          Loading documents…
+                        </div>
+                      ) : documents.length === 0 ? (
+                        <div className="py-8 text-center rounded-lg border border-gray-200 bg-gray-50">
+                          <div className="text-gray-500">
+                            <div className="mb-2 text-lg">📄</div>
+                            <div className="text-sm font-medium">No documents uploaded yet</div>
+                            <div className="text-xs mt-1">Upload your first document above</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                          <div className="max-h-[55vh] overflow-auto">
+                            <table className="min-w-full table-auto">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                                  <th className="px-4 py-3">Document Name</th>
+                                  <th className="px-4 py-3">Type</th>
+                                  <th className="px-4 py-3">Size</th>
+                                  <th className="px-4 py-3">Uploaded</th>
+                                  <th className="px-4 py-3">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                                {documents.map((doc) => (
+                                  <tr key={doc._id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3">
+                                      <div className="font-medium text-gray-900">
+                                        {doc.originalFileName}
+                                      </div>
+                                      {doc.description && (
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                          {doc.description}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                                        {doc.documentType.replace("_", " ")}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600">
+                                      {formatFileSize(doc.fileSize)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600">
+                                      {formatDateTime(doc.uploadedAt)}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex gap-3">
+                                        <button
+                                          onClick={() =>
+                                            handleDocumentDownload(
+                                              profileSupplier._id,
+                                              doc._id,
+                                              doc.originalFileName
+                                            )
+                                          }
+                                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                        >
+                                          Download
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleDocumentDelete(profileSupplier._id, doc._id)
+                                          }
+                                          className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -804,6 +1269,142 @@ const SkeletonRows = ({ rows = 6, dens, cols = 7 }) => {
         </tr>
       ))}
     </>
+  );
+};
+
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(opt.value);
+                  setOpen(false);
+                  setQuery("");
+                  setActiveIndex(-1);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

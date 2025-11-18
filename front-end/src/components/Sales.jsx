@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import AsyncSelect from "react-select/async";
 import axios from "axios";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 
 // Density options to match other screens
 const DENSITIES = {
@@ -800,6 +800,167 @@ const Sales = () => {
     window.open(url, "_blank");
   };
 
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const statusFilterText = paymentStatus || "All statuses";
+    const dateRange = dateFrom && dateTo
+      ? `${dateFrom} to ${dateTo}`
+      : dateFrom
+      ? `From ${dateFrom}`
+      : dateTo
+      ? `To ${dateTo}`
+      : "All dates";
+    const amountRange = minAmount !== "" && maxAmount !== ""
+      ? `Rs. ${minAmount} - Rs. ${maxAmount}`
+      : minAmount !== ""
+      ? `Min: Rs. ${minAmount}`
+      : maxAmount !== ""
+      ? `Max: Rs. ${maxAmount}`
+      : "All amounts";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Sales - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .status-paid {
+              background-color: #d1fae5;
+              color: #065f46;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .status-partial {
+              background-color: #fef3c7;
+              color: #92400e;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .status-unpaid {
+              background-color: #fee2e2;
+              color: #991b1b;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Sales</h1>
+          <div class="info">
+            <div><strong>Filters:</strong> Search: ${unifiedSearch || "All"} | Status: ${statusFilterText} | Date Range: ${dateRange} | Amount Range: ${amountRange}</div>
+            <div><strong>Total Records:</strong> ${totalCount} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Sale ID</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Products</th>
+                <th>Discount</th>
+                <th style="text-align: right;">Total</th>
+                <th>Status</th>
+                <th style="text-align: right;">Paid</th>
+                <th style="text-align: right;">Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pageRows.map((sale) => {
+                const status = getStatus(sale);
+                const due = getDue(sale);
+                const paid = getPaid(sale);
+                const products = Array.isArray(sale.products) 
+                  ? sale.products.map((p) => p?.product?.name || "-").join(", ")
+                  : "";
+                
+                return `
+                  <tr>
+                    <td>${sale.saleId || ""}</td>
+                    <td>${sale.customer?.name || "—"}</td>
+                    <td>${formatDateTimeLocal(sale.createdAt || sale.saleDate)}</td>
+                    <td>${products}</td>
+                    <td>${sale.discount || 0}%</td>
+                    <td style="text-align: right;">Rs. ${Number(sale.discountedAmount || 0).toFixed(2)}</td>
+                    <td>
+                      <span class="status-${status}">
+                        ${status}
+                      </span>
+                    </td>
+                    <td style="text-align: right;">Rs. ${paid.toFixed(2)}</td>
+                    <td style="text-align: right;">Rs. ${due.toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -1010,8 +1171,16 @@ const Sales = () => {
         <div className="flex justify-end items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
+              onClick={handlePrint}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
               onClick={handleExportCsv}
-              className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export CSV"
             >
               <FaFileCsv className="text-xs" />
@@ -1019,7 +1188,7 @@ const Sales = () => {
             </button>
             <button
               onClick={handleExportPdf}
-              className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export PDF"
             >
               <FaDownload className="text-xs" />

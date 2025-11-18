@@ -1,6 +1,9 @@
 // back-end/routes/report.js
 import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
+import { getCustomerClusters } from "../Controllers/aiCustomerClustersController.js";
+import { getCustomerCreditRiskClusters } from "../Controllers/aiCreditRiskClustersController.js";
+
 import {
   // Core JSON
   getSalesReport,
@@ -65,5 +68,9 @@ router.get("/inventory/export/pdf", exportInventoryPdf);
 router.get("/performance/users/export/pdf", exportPerformanceUsersPdf);
 router.get("/performance/products/export/pdf", exportPerformanceProductsPdf);
 router.get("/customer-balances/export/pdf", exportCustomerBalancesPdf);
+
+/* -------- AI Customer Clusters -------- */
+router.get("/analytics/customer-clusters", getCustomerClusters);
+router.get("/analytics/customer-credit-risk-clusters", getCustomerCreditRiskClusters);
 
 export default router;

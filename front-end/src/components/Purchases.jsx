@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
-import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import { fuzzySearch } from "../utils/fuzzySearch";
 
 /** =========================
@@ -873,6 +873,143 @@ const Purchases = () => {
     window.open(url, "_blank");
   };
 
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const statusFilterText = statusFilter || "All statuses";
+    const dateRange = fromDate && toDate
+      ? `${fromDate} to ${toDate}`
+      : fromDate
+      ? `From ${fromDate}`
+      : toDate
+      ? `To ${toDate}`
+      : "All dates";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Purchases - Print</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            td {
+              border: 1px solid #d1d5db;
+              padding: 6px;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .status-draft {
+              background-color: #f3f4f6;
+              color: #374151;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .status-posted {
+              background-color: #d1fae5;
+              color: #065f46;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .status-cancelled {
+              background-color: #fee2e2;
+              color: #991b1b;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 11px;
+              color: #666;
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Purchases</h1>
+          <div class="info">
+            <div><strong>Filters:</strong> Status: ${statusFilterText} | Date Range: ${dateRange}</div>
+            <div><strong>Total Records:</strong> ${total} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice Date</th>
+                <th>Supplier</th>
+                <th>Items</th>
+                <th style="text-align: right;">Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayPurchases.map((p) => `
+                <tr>
+                  <td>${formatDateTime(p.invoiceDate || p.createdAt)}</td>
+                  <td>${p.supplier?.name || "—"}</td>
+                  <td>${p.items?.length || 0}</td>
+                  <td style="text-align: right;">${fmtLKR(p.grandTotal)}</td>
+                  <td>
+                    <span class="status-${String(p.status || "draft").toLowerCase()}">
+                      ${String(p.status || "draft").toLowerCase()}
+                    </span>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   /** ---------- Search & Filters (all server-side) ---------- */
   const onSearchChange = (e) => {
     setQuery(e.target.value);
@@ -1309,8 +1446,16 @@ const Purchases = () => {
         <div className="flex justify-end items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
-              onClick={handleExportCsv}
+              onClick={handlePrint}
               className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Print"
+            >
+              <FaPrint className="text-xs" />
+              Print
+            </button>
+            <button
+              onClick={handleExportCsv}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
               title="Export CSV"
             >
               <FaFileCsv className="text-xs" />
@@ -1760,8 +1905,14 @@ const Purchases = () => {
 
       {/* View modal */}
       {viewOpen && viewData && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl">
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          onClick={closeView}
+        >
+          <div 
+            className="bg-white w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
