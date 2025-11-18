@@ -24,6 +24,7 @@ import {
   exportInventoryPdf,
   exportPerformanceUsersPdf,
   exportPerformanceProductsPdf,
+  exportCustomerBalancesPdf,
 } from "../Controllers/reportController.js";
 
 const router = express.Router();
@@ -63,5 +64,6 @@ router.get("/sales/export/pdf", exportSalesPdf);
 router.get("/inventory/export/pdf", exportInventoryPdf);
 router.get("/performance/users/export/pdf", exportPerformanceUsersPdf);
 router.get("/performance/products/export/pdf", exportPerformanceProductsPdf);
+router.get("/customer-balances/export/pdf", exportCustomerBalancesPdf);
 
 export default router;

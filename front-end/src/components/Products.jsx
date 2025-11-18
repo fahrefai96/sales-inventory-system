@@ -1,26 +1,20 @@
 // /src/components/Products.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import axiosInstance from "../utils/api";
+import axios from "axios";
+import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { fuzzySearchProducts } from "../utils/fuzzySearch";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
 };
 
-const SORTERS = {
-  code: (a, b) => (a.code || "").localeCompare(b.code || ""),
-  name: (a, b) => (a.name || "").localeCompare(b.name || ""),
-  price: (a, b) => Number(a.price) - Number(b.price),
-  stock: (a, b) => Number(a.stock) - Number(b.stock),
-  lastUpdated: (a, b) =>
-    new Date(a.lastUpdated || 0).getTime() -
-    new Date(b.lastUpdated || 0).getTime(),
-};
-
 const Products = () => {
   const [products, setProducts] = useState([]);
-  const [display, setDisplay] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -66,10 +60,29 @@ const Products = () => {
     isAdmin = false;
   }
 
-  const fetchProducts = async () => {
+  const fetchProducts = React.useCallback(async () => {
     setLoading(true);
     try {
+      const params = {};
+      
+      // Search
+      if (query.trim()) params.search = query.trim();
+      
+      // Filters
+      if (filters.category !== "all") params.category = filters.category;
+      if (filters.brand !== "all") params.brand = filters.brand;
+      if (filters.stock !== "all") params.stock = filters.stock;
+      
+      // Sorting
+      if (sortBy.key) params.sortBy = sortBy.key;
+      if (sortBy.dir) params.sortDir = sortBy.dir;
+      
+      // Pagination
+      params.page = page;
+      params.limit = pageSize;
+
       const response = await axiosInstance.get("/products", {
+        params,
         headers: {
           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
         },
@@ -77,15 +90,22 @@ const Products = () => {
       if (response.data.success) {
         const list = response.data.products || [];
         setProducts(list);
+        setTotal(response.data.total ?? 0);
+        setTotalPages(response.data.totalPages ?? 1);
+        setPage(response.data.page ?? page);
         setCategories(response.data.categories || []);
         setSuppliers(response.data.suppliers || []);
+        setBrands(response.data.brands || []);
       }
     } catch (error) {
       alert(error?.response?.data?.error || error.message);
+      setProducts([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [query, filters.category, filters.brand, filters.stock, sortBy.key, sortBy.dir, page, pageSize]);
 
   const fetchBrands = async () => {
     try {
@@ -102,72 +122,44 @@ const Products = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
     fetchBrands();
   }, []);
 
-  const debounceRef = useRef(null);
-  const onSearchChange = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setQuery((prev) => prev), 250);
-  };
-
-  const filtered = useMemo(() => {
-    const q = (query || "").toLowerCase().trim();
-    let list = [...products];
-
-    if (q) {
-      list = list.filter(
-        (p) =>
-          (p.name || "").toLowerCase().includes(q) ||
-          (p.code || "").toLowerCase().includes(q)
-      );
-    }
-    if (filters.category !== "all") {
-      list = list.filter((p) => (p.category?._id || "") === filters.category);
-    }
-    if (filters.brand !== "all") {
-      list = list.filter((p) => (p.brand?._id || "") === filters.brand);
-    }
-    if (filters.stock !== "all") {
-      list = list.filter((p) => {
-        const s = Number(p.stock || 0);
-        if (filters.stock === "low") return s > 0 && s <= 5;
-        if (filters.stock === "out") return s === 0;
-        if (filters.stock === "in") return s > 5;
-        return true;
-      });
-    }
-
-    const sorter = SORTERS[sortBy.key] || SORTERS.lastUpdated;
-    list.sort((a, b) => {
-      const res = sorter(a, b);
-      return sortBy.dir === "asc" ? res : -res;
-    });
-
-    return list;
-  }, [products, query, filters, sortBy]);
-
+  // Auto-fetch when filters, sorting, or pagination changes
   useEffect(() => {
-    setDisplay(filtered);
-  }, [filtered]);
+    fetchProducts();
+  }, [fetchProducts]);
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
+  // Reset to page 1 when filters or sorting changes
   useEffect(() => {
     setPage(1);
-  }, [query, filters, sortBy, pageSize]);
+  }, [query, filters.category, filters.brand, filters.stock, sortBy.key, sortBy.dir]);
 
+  // Close drawer on ESC key press
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    const handleEsc = (e) => {
+      if (e.key === "Escape" && drawerOpen) {
+        setDrawerOpen(false);
+        setEditingId(null);
+        setSelectedCategory(null);
+      }
+    };
+    if (drawerOpen) {
+      document.addEventListener("keydown", handleEsc);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [drawerOpen]);
 
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, total);
-  const paged = filtered.slice(startIdx, endIdx);
+  const onSearchChange = (e) => {
+    setQuery(e.target.value);
+    setPage(1);
+  };
+
+  // Calculate display indices
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIdx = Math.min(page * pageSize, total);
 
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
   const chip = (label) => (
@@ -318,13 +310,81 @@ const Products = () => {
 
   const dens = DENSITIES[density];
 
+  // Apply fuzzy search to products (frontend only, on top of server results)
+  const displayProducts = useMemo(() => {
+    if (!query || !query.trim()) return products;
+    return fuzzySearchProducts(products, query);
+  }, [products, query]);
+
+  const handleExportCsv = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("search", query.trim());
+      if (filters.category !== "all") params.set("category", filters.category);
+      if (filters.brand !== "all") params.set("brand", filters.brand);
+      if (filters.stock !== "all") params.set("stock", filters.stock);
+
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const token = localStorage.getItem("pos-token");
+      const url = `${apiBase}/products/export/csv${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await axios.get(url, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data && res.data.size > 0) {
+        const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `products_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+      }
+    } catch (e) {
+      // Check if we got a blob response despite the error
+      if (e.response && e.response.data instanceof Blob) {
+        const blob = new Blob([e.response.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `products_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+        return;
+      }
+      console.error(e);
+      alert("Failed to export CSV.");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    if (filters.category !== "all") params.set("category", filters.category);
+    if (filters.brand !== "all") params.set("brand", filters.brand);
+    if (filters.stock !== "all") params.set("stock", filters.stock);
+
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    const token = localStorage.getItem("pos-token");
+    params.set("token", token);
+    const url = `${apiBase}/products/export/pdf?${params.toString()}`;
+    
+    // Use window.open for PDF exports to avoid streaming issues
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="p-6">
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+          <p className="text-gray-600 text-base">
             Manage your catalog, pricing, and stock levels.
           </p>
         </div>
@@ -349,99 +409,83 @@ const Products = () => {
               Compact
             </button>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows:</span>
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-              {[25, 50, 100].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(n);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-2 text-xs ${
-                    pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
-                  }`}
-                  title={`Show ${n} rows`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
           <button
             onClick={openDrawerForCreate}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Add Product
+            New Product
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2 lg:col-span-2">
-          <input
-            type="text"
-            placeholder="Search by name or code…"
-            defaultValue={query}
-            onChange={onSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <div className="mb-4 space-y-3">
+        <div className="grid grid-cols-4 gap-3">
+          <div>
+            <input
+              type="text"
+              placeholder="Search by name or code…"
+              defaultValue={query}
+              onChange={onSearchChange}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <Combo
+            value={filters.category}
+            onChange={(val) => setFilters((f) => ({ ...f, category: val }))}
+            options={[
+              { value: "all", label: "All Categories" },
+              ...categories.map((c) => ({ value: c._id, label: c.name })),
+            ]}
+            placeholder="All Categories"
+          />
+
+          <Combo
+            value={filters.brand}
+            onChange={(val) => setFilters((f) => ({ ...f, brand: val }))}
+            options={[
+              { value: "all", label: "All Brands" },
+              ...brands.map((b) => ({ value: b._id, label: b.name })),
+            ]}
+            placeholder="All Brands"
+          />
+
+          <Combo
+            value={filters.stock}
+            onChange={(val) => setFilters((f) => ({ ...f, stock: val }))}
+            options={[
+              { value: "all", label: "All Stock" },
+              { value: "low", label: "Low (≤5)" },
+              { value: "out", label: "Out (0)" },
+              { value: "in", label: "In Stock (>5)" },
+            ]}
+            placeholder="All Stock"
           />
         </div>
 
-        <select
-          value={filters.category}
-          onChange={(e) =>
-            setFilters((f) => ({ ...f, category: e.target.value }))
-          }
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">All Categories</option>
-          {categories.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filters.brand}
-          onChange={(e) => setFilters((f) => ({ ...f, brand: e.target.value }))}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">All Brands</option>
-          {brands.map((b) => (
-            <option key={b._id} value={b._id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filters.stock}
-          onChange={(e) => setFilters((f) => ({ ...f, stock: e.target.value }))}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">All Stock</option>
-          <option value="low">Low (≤5)</option>
-          <option value="out">Out (0)</option>
-          <option value="in">In Stock (&gt;5)</option>
-        </select>
-      </div>
-
-      {/* Active filters as chips */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {query ? chip(`Search: ${query}`) : null}
-        {filters.category !== "all" ? chip(`Category`) : null}
-        {filters.brand !== "all" ? chip(`Brand`) : null}
-        {filters.stock !== "all" ? chip(`Stock: ${filters.stock}`) : null}
-        {(query ||
-          filters.category !== "all" ||
-          filters.brand !== "all" ||
-          filters.stock !== "all") && (
+        {/* Clear Button and Export Buttons */}
+        <div className="flex justify-end items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <button
+              onClick={handleExportCsv}
+              className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export CSV"
+            >
+              <FaFileCsv className="text-xs" />
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportPdf}
+              className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <FaDownload className="text-xs" />
+              Export PDF
+            </button>
+          </div>
           <button
+            type="button"
             onClick={() => {
               setQuery("");
               setFilters({ category: "all", brand: "all", stock: "all" });
@@ -449,15 +493,38 @@ const Products = () => {
                 'input[placeholder^="Search"]'
               );
               if (input) input.value = "";
+              setPage(1);
             }}
-            className="text-sm text-blue-600 underline"
+            className="rounded-lg border border-gray-300 px-4 py-2 h-[38px] text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
           >
-            Clear filters
+            <span>Clear</span>
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Table */}
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+              title={`Show ${n} rows`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="max-h-[70vh] overflow-auto">
           <table className="min-w-full table-auto">
@@ -510,40 +577,40 @@ const Products = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
                 <SkeletonRows rows={pageSize} dens={dens} />
-              ) : paged.length > 0 ? (
-                paged.map((p) => (
+              ) : displayProducts.length > 0 ? (
+                displayProducts.map((p) => (
                   <tr key={p._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.code}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.name}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.brand?.name || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.category?.name || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.size || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.supplier?.name || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-700`}>
-                      ${Number(p.price).toFixed(2)}
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
+                      Rs. {Number(p.price).toFixed(2)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {stockPill(p.stock)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-500`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {formatDateTime(p.lastUpdated)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       <div className="flex gap-3">
                         <button
                           onClick={() => openDrawerForEdit(p)}
@@ -591,13 +658,6 @@ const Products = () => {
         <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Rows per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="hidden"
-              aria-hidden="true"
-              tabIndex={-1}
-            />
             <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
               {[25, 50, 100].map((n) => (
                 <button
@@ -752,20 +812,22 @@ const Products = () => {
 
                 {selectedCategory && (
                   <Field label="Size" required>
-                    <select
-                      name="size"
+                    <Combo
                       value={formData.size}
-                      onChange={onFormChange}
+                      onChange={(val) => {
+                        const fakeEvent = { target: { name: "size", value: val } };
+                        onFormChange(fakeEvent);
+                      }}
+                      options={[
+                        { value: "", label: "-- select --" },
+                        ...(selectedCategory.sizeOptions || []).map((opt) => ({
+                          value: opt,
+                          label: opt,
+                        })),
+                      ]}
+                      placeholder="-- select --"
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">-- select --</option>
-                      {(selectedCategory.sizeOptions || []).map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </Field>
                 )}
 
@@ -957,7 +1019,7 @@ const Combo = ({
         onFocus={() => setOpen(true)}
         onKeyDown={onInputKeyDown}
         required={required && !value}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       {value && !open && (
         <button

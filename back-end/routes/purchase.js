@@ -1,14 +1,15 @@
-// routes/purchase.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
   createDraft,
   postPurchase,
   cancelPurchase,
-  listPurchases,
   getPurchaseById,
   deleteDraft,
   updateDraft,
+  getPurchases,
+  exportPurchasesCsv,
+  exportPurchasesPdf,
 } from "../Controllers/purchaseController.js";
 
 const router = express.Router();
@@ -25,14 +26,20 @@ router.post("/:id/post", postPurchase);
 // Cancel posted -> reverse stock & logs
 router.post("/:id/cancel", cancelPurchase);
 
-// delete posted -> reverse stock & logs
-
+// Delete draft (draft only)
 router.delete("/:id", deleteDraft);
 
-// update a DRAFT purchase (no stock touch)
+// Update draft
 router.put("/:id", updateDraft);
-// Reads
-router.get("/", listPurchases);
+
+// READ SINGLE PURCHASE
 router.get("/:id", getPurchaseById);
+
+// READ ALL PURCHASES (filters + sorting + pagination)
+router.get("/", getPurchases);
+
+// Export endpoints
+router.get("/export/csv", exportPurchasesCsv);
+router.get("/export/pdf", exportPurchasesPdf);
 
 export default router;

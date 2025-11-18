@@ -97,19 +97,71 @@ const getSales = async (req, res) => {
       saleId, // partial match on saleId
       customer, // exact customer _id
       customerName, // fuzzy name -> resolves to ids
+      product, // exact product _id
       from, // ISO date (start) on saleDate
       to, // ISO date (end) on saleDate
       min, // min discountedAmount
       max, // max discountedAmount
       sortBy, // 'createdAt' | 'saleDate' | 'discountedAmount'
       sortDir, // 'asc' | 'desc'
+      page = 1, // page number (1-based)
+      limit = 25, // page size
+      search, // unified search (saleId / customerName)
     } = req.query || {};
 
     const q = {};
 
+    // --- Unified search: use OR logic (saleId OR customerName) ---
+    let effectiveSaleId = saleId;
+    let effectiveCustomerName = customerName;
+    const hasUnifiedSearch = search && search.trim();
+
+    if (hasUnifiedSearch) {
+      const s = search.trim();
+      if (!effectiveSaleId) effectiveSaleId = s;
+      if (!effectiveCustomerName) effectiveCustomerName = s;
+    }
+
+    // If unified search is used, build OR query for saleId OR customerName
+    if (hasUnifiedSearch && !saleId && !customerName) {
+      const orConditions = [];
+
+      // Try to match saleId
+      if (effectiveSaleId && effectiveSaleId.trim()) {
+        orConditions.push({
+          saleId: { $regex: effectiveSaleId.trim(), $options: "i" },
+        });
+      }
+
+      // Try to match customer names
+      if (effectiveCustomerName && effectiveCustomerName.trim()) {
+        const rx = new RegExp(effectiveCustomerName.trim(), "i");
+        const custs = await Customer.find({ name: rx }).select("_id").lean();
+        const ids = custs.map((c) => c._id);
+
+        if (ids.length > 0) {
+          orConditions.push({ customer: { $in: ids } });
+        }
+      }
+
+      // If we have any OR conditions, use them; otherwise return empty
+      if (orConditions.length > 0) {
+        q.$or = orConditions;
+      } else {
+        // No matches for saleId or customerName
+        return res.json({
+          success: true,
+          sales: [],
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        });
+      }
+    } else {
+      // Normal individual filters (not unified search)
     // saleId partial (ignore empty/whitespace)
-    if (saleId && saleId.trim()) {
-      q.saleId = { $regex: saleId.trim(), $options: "i" };
+    if (effectiveSaleId && effectiveSaleId.trim()) {
+      q.saleId = { $regex: effectiveSaleId.trim(), $options: "i" };
     }
 
     // customer exact id
@@ -117,18 +169,33 @@ const getSales = async (req, res) => {
       q.customer = customer;
     }
 
-    // customerName -> ids (AND if 'customer' also present)
-    if (customerName && customerName.trim()) {
-      const rx = new RegExp(customerName.trim(), "i");
+    // customerName -> ids (AND with 'customer' if present)
+    if (effectiveCustomerName && effectiveCustomerName.trim()) {
+      const rx = new RegExp(effectiveCustomerName.trim(), "i");
       const custs = await Customer.find({ name: rx }).select("_id").lean();
       const ids = custs.map((c) => c._id);
+
       if (!ids.length) {
-        return res.json({ success: true, sales: [] });
+        // no customers matched → empty results with paging meta
+        return res.json({
+          success: true,
+          sales: [],
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        });
       }
+
       if (!q.customer) {
         q.customer = { $in: ids };
       }
-      // If q.customer already set (exact id), we keep it; that naturally ANDs with the name intent.
+      // If q.customer already set (exact id), we leave it so the AND still applies naturally.
+      }
+    }
+
+    // product filter: match sales that contain this product
+    if (product && String(product).trim()) {
+      q["products.product"] = product;
     }
 
     // saleDate range
@@ -162,6 +229,13 @@ const getSales = async (req, res) => {
     }
     const dir = String(sortDir).toLowerCase() === "asc" ? 1 : -1;
 
+    // --- Pagination: page & limit ---
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25)); // cap at 200
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalCount = await Sale.countDocuments(q);
+
     const sales = await Sale.find(q)
       .populate({
         path: "products.product",
@@ -171,12 +245,22 @@ const getSales = async (req, res) => {
       .populate("customer", "name")
       .populate("createdBy", "name")
       .populate("updatedBy", "name")
-      .sort({ [sortField]: dir, _id: -1 }); // stable tiebreaker
+      .sort({ [sortField]: dir, _id: -1 }) // stable tiebreaker
+      .skip(skip)
+      .limit(limitNum);
 
-    res.json({ success: true, sales: Array.isArray(sales) ? sales : [] });
+    const totalPages = Math.max(1, Math.ceil(totalCount / limitNum) || 1);
+
+    return res.json({
+      success: true,
+      sales: Array.isArray(sales) ? sales : [],
+      total: totalCount,
+      page: pageNum,
+      totalPages,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -701,4 +785,206 @@ export {
   getSaleInvoicePdf,
   recordPayment,
   adjustPayment,
+};
+
+const sendCsv = (res, filename, headers, rows) => {
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const esc = (v) =>
+    `"${String(v ?? "")
+      .replaceAll('"', '""')
+      .replaceAll(/\r?\n/g, " ")}"`;
+  const head = headers.map(esc).join(",") + "\n";
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
+  res.send(head + body);
+};
+
+const pipeDoc = (res, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ size: "A4", margin: 36 });
+  doc.on("error", (err) => {
+    console.error("PDF error:", err);
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "PDF generation failed" });
+      }
+      doc.destroy();
+    } catch {}
+  });
+  doc.pipe(res);
+  return doc;
+};
+
+const money = (n) => Number(Number(n || 0).toFixed(2));
+
+export const exportSalesListCsv = async (req, res) => {
+  try {
+    const { search, status, from, to, min, max } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { saleId: { $regex: search, $options: "i" } },
+        { "customer.name": { $regex: search, $options: "i" } },
+      ];
+    }
+    if (status) {
+      query.paymentStatus = status;
+    }
+    if (from || to) {
+      query.saleDate = {};
+      if (from) query.saleDate.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        query.saleDate.$lte = end;
+      }
+    }
+
+    const sales = await Sale.find(query)
+      .populate("customer", "name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let filtered = sales;
+    if (min || max) {
+      filtered = sales.filter((s) => {
+        const total = money(
+          s.discountedAmount != null ? s.discountedAmount : s.totalAmount || 0
+        );
+        if (min && total < Number(min)) return false;
+        if (max && total > Number(max)) return false;
+        return true;
+      });
+    }
+
+    const rows = filtered.map((s) => ({
+      saleId: s.saleId || "-",
+      customer: s.customer?.name || "-",
+      saleDate: s.saleDate
+        ? new Date(s.saleDate).toLocaleDateString("en-LK")
+        : "-",
+      paymentStatus: s.paymentStatus || "-",
+      totalAmount: money(
+        s.discountedAmount != null ? s.discountedAmount : s.totalAmount || 0
+      ),
+      amountPaid: money(s.amountPaid || 0),
+      amountDue: money(s.amountDue || 0),
+    }));
+
+    sendCsv(
+      res,
+      `sales_${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        "saleId",
+        "customer",
+        "saleDate",
+        "paymentStatus",
+        "totalAmount",
+        "amountPaid",
+        "amountDue",
+      ],
+      rows
+    );
+  } catch (error) {
+    console.error("Export sales CSV error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+export const exportSalesListPdf = async (req, res) => {
+  try {
+    const { search, status, from, to, min, max } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { saleId: { $regex: search, $options: "i" } },
+        { "customer.name": { $regex: search, $options: "i" } },
+      ];
+    }
+    if (status) {
+      query.paymentStatus = status;
+    }
+    if (from || to) {
+      query.saleDate = {};
+      if (from) query.saleDate.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        query.saleDate.$lte = end;
+      }
+    }
+
+    const sales = await Sale.find(query)
+      .populate("customer", "name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let filtered = sales;
+    if (min || max) {
+      filtered = sales.filter((s) => {
+        const total = money(
+          s.discountedAmount != null ? s.discountedAmount : s.totalAmount || 0
+        );
+        if (min && total < Number(min)) return false;
+        if (max && total > Number(max)) return false;
+        return true;
+      });
+    }
+
+    const doc = pipeDoc(res, `sales_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.fontSize(16).text("Sales Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text("Sales", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+
+    let totalRevenue = 0;
+    let totalPaid = 0;
+    let totalDue = 0;
+    filtered.forEach((s) => {
+      const total = money(
+        s.discountedAmount != null ? s.discountedAmount : s.totalAmount || 0
+      );
+      const paid = money(s.amountPaid || 0);
+      const due = money(s.amountDue || 0);
+      totalRevenue += total;
+      totalPaid += paid;
+      totalDue += due;
+      doc.text(
+        `Sale ID: ${s.saleId || "-"} | Customer: ${
+          s.customer?.name || "-"
+        } | Date: ${
+          s.saleDate ? new Date(s.saleDate).toLocaleDateString("en-LK") : "-"
+        } | Status: ${s.paymentStatus || "-"} | Total: Rs. ${money(
+          total
+        )} | Paid: Rs. ${money(paid)} | Due: Rs. ${money(due)}`
+      );
+    });
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(11).text(`Total Sales: ${filtered.length}`);
+    doc.fontSize(11).text(`Total Revenue: Rs. ${money(totalRevenue)}`);
+    doc.fontSize(11).text(`Total Paid: Rs. ${money(totalPaid)}`);
+    doc.fontSize(11).text(`Total Outstanding: Rs. ${money(totalDue)}`);
+
+    doc.end();
+  } catch (error) {
+    console.error("Export sales PDF error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
 };

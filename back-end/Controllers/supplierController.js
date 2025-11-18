@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Supplier from "../models/Supplier.js";
 import Product from "../models/Product.js";
 import Purchase from "../models/Purchase.js";
+import PDFDocument from "pdfkit";
 
 // POST /api/supplier/add
 const addSupplier = async (req, res) => {
@@ -185,6 +186,100 @@ const getSupplierPurchases = async (req, res) => {
       success: false,
       error: error.message || "Server error",
     });
+  }
+};
+
+const sendCsv = (res, filename, headers, rows) => {
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const esc = (v) =>
+    `"${String(v ?? "")
+      .replaceAll('"', '""')
+      .replaceAll(/\r?\n/g, " ")}"`;
+  const head = headers.map(esc).join(",") + "\n";
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
+  res.send(head + body);
+};
+
+const pipeDoc = (res, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ size: "A4", margin: 36 });
+  doc.on("error", (err) => {
+    console.error("PDF error:", err);
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "PDF generation failed" });
+      }
+      doc.destroy();
+    } catch {}
+  });
+  doc.pipe(res);
+  return doc;
+};
+
+export const exportSuppliersCsv = async (req, res) => {
+  try {
+    const suppliers = await Supplier.find().sort({ createdAt: -1 }).lean();
+
+    const rows = suppliers.map((s) => ({
+      name: s.name || "-",
+      email: s.email || "-",
+      phone: s.phone || "-",
+      address: s.address || "-",
+      country: s.country || "-",
+    }));
+
+    sendCsv(
+      res,
+      `suppliers_${new Date().toISOString().slice(0, 10)}.csv`,
+      ["name", "email", "phone", "address", "country"],
+      rows
+    );
+  } catch (error) {
+    console.error("Export suppliers CSV error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+export const exportSuppliersPdf = async (req, res) => {
+  try {
+    const suppliers = await Supplier.find().sort({ createdAt: -1 }).lean();
+
+    const doc = pipeDoc(res, `suppliers_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.fontSize(16).text("Suppliers Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text("Suppliers", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+
+    suppliers.forEach((s) => {
+      doc.text(
+        `${s.name || "-"} | Email: ${s.email || "-"} | Phone: ${
+          s.phone || "-"
+        } | Address: ${s.address || "-"} | Country: ${s.country || "-"}`
+      );
+    });
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(11).text(`Total Suppliers: ${suppliers.length}`);
+
+    doc.end();
+  } catch (error) {
+    console.error("Export suppliers PDF error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
   }
 };
 

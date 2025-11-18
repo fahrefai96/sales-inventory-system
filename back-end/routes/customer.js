@@ -8,6 +8,8 @@ import {
   getCustomerPurchases,
   getCustomerReceivables,
   getCustomerSalesByPaymentStatus,
+  exportCustomersCsv,
+  exportCustomersPdf,
 } from "../controllers/customerController.js";
 
 const router = express.Router();
@@ -20,5 +22,7 @@ router.get("/:id/receivables", authMiddleware, getCustomerReceivables); // GET /
 router.get("/:id/sales", authMiddleware, getCustomerSalesByPaymentStatus); // GET /api/customer/:id/sales
 router.put("/:id", authMiddleware, updateCustomer); // PUT /api/customer/:id
 router.delete("/:id", authMiddleware, deleteCustomer); // DELETE /api/customer/:id
+router.get("/export/csv", authMiddleware, exportCustomersCsv); // GET /api/customers/export/csv
+router.get("/export/pdf", authMiddleware, exportCustomersPdf); // GET /api/customers/export/pdf
 
 export default router;

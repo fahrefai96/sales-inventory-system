@@ -1,5 +1,5 @@
 import React from "react";
-import api from "../utils/api";
+import api from "../../utils/api";
 import {
   ResponsiveContainer,
   LineChart,
@@ -11,8 +11,15 @@ import {
   Legend,
 } from "recharts";
 
-const Forecasting = () => {
+const DENSITIES = {
+  comfortable: { card: "p-4", text: "text-sm", gap: "gap-4" },
+  compact: { card: "p-3", text: "text-xs", gap: "gap-3" },
+};
+
+const Forecasting = ({ density = "comfortable" }) => {
+  const dens = DENSITIES[density] || DENSITIES.comfortable;
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState("");
   const [forecastAvailable, setForecastAvailable] = React.useState(false);
   const [message, setMessage] = React.useState("");
@@ -21,72 +28,87 @@ const Forecasting = () => {
   const [seasonality, setSeasonality] = React.useState(null);
   const [forecast, setForecast] = React.useState(null);
 
-  // NEW: AI reorder suggestions state
+  // reorder suggestions state
   const [reorderLoading, setReorderLoading] = React.useState(true);
   const [reorderError, setReorderError] = React.useState("");
   const [reorderSuggestions, setReorderSuggestions] = React.useState([]);
   const [reorderMeta, setReorderMeta] = React.useState(null);
 
-  React.useEffect(() => {
-    const fetchForecast = async () => {
-      try {
+  const fetchForecast = React.useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        setError("");
+      }
+      setError("");
 
-        const res = await api.get("/forecast/overview");
-        const data = res.data || {};
+      // Forecast overview
+      const res = await api.get("/forecast/overview");
+      const data = res.data || {};
 
-        setForecastAvailable(Boolean(data.forecastAvailable));
-        setMessage(data.message || "");
-        setMonthlySeries(
-          Array.isArray(data.monthlySeries) ? data.monthlySeries : []
-        );
-        setTrend(data.trend || null);
-        setSeasonality(data.seasonality || null);
-        setForecast(data.forecast || null);
-      } catch (err) {
-        console.error("Error loading forecast:", err);
-        setError(
-          err?.response?.data?.error ||
-            err?.response?.data?.message ||
-            "Failed to load forecast data."
-        );
-      } finally {
+      setForecastAvailable(Boolean(data.forecastAvailable));
+      setMessage(data.message || "");
+      setMonthlySeries(
+        Array.isArray(data.monthlySeries) ? data.monthlySeries : []
+      );
+      setTrend(data.trend || null);
+      setSeasonality(data.seasonality || null);
+      setForecast(data.forecast || null);
+    } catch (err) {
+      console.error("Error loading forecast:", err);
+      setError(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to load forecast data."
+      );
+    } finally {
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
         setLoading(false);
       }
+    }
 
-      // fetch AI reorder suggestions (separate so errors here don't kill main forecast)
-      try {
-        setReorderLoading(true);
-        setReorderError("");
+    // reorder suggestions (separate so its error doesn't kill main forecast)
+    try {
+      setReorderLoading(true);
+      setReorderError("");
 
-        const res2 = await api.get("/forecast/ai/reorder-suggestions");
-        const d = res2.data || {};
+      const res2 = await api.get("/forecast/ai/reorder-suggestions");
+      const d = res2.data || {};
 
-        const list =
-          Array.isArray(d.data) && d.data.length
-            ? d.data
-            : Array.isArray(d.suggestions)
-            ? d.suggestions
-            : [];
+      const list =
+        Array.isArray(d.data) && d.data.length
+          ? d.data
+          : Array.isArray(d.suggestions)
+          ? d.suggestions
+          : [];
 
-        setReorderSuggestions(list);
-        setReorderMeta(d.meta || null);
-      } catch (err) {
-        console.error("Error loading AI reorder suggestions:", err);
-        setReorderError(
-          err?.response?.data?.error ||
-            err?.response?.data?.message ||
-            "Failed to load AI reorder suggestions."
-        );
-        setReorderSuggestions([]);
-      } finally {
-        setReorderLoading(false);
-      }
-    };
-
-    fetchForecast();
+      setReorderSuggestions(list);
+      setReorderMeta(d.meta || null);
+    } catch (err) {
+      console.error("Error loading reorder suggestions:", err);
+      setReorderError(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to load reorder suggestions."
+      );
+      setReorderSuggestions([]);
+    } finally {
+      setReorderLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => {
+    fetchForecast(false);
+  }, [fetchForecast]);
+
+  const handleRefresh = () => {
+    if (!refreshing && !loading) {
+      fetchForecast(true);
+    }
+  };
 
   // Build chart data: past months + predicted months
   const chartData = React.useMemo(() => {
@@ -143,81 +165,98 @@ const Forecasting = () => {
   const targetDays = reorderMeta?.targetDays;
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      {/* Header + refresh */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Forecasting</h1>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Sales Forecasting & Reorder Suggestions
+          </h2>
           <p className="text-sm text-gray-500">
             AI-based sales forecasting using historical data (linear regression)
             to predict future revenue, highlight seasonal patterns, and suggest
             reorder quantities.
           </p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="mb-4 space-y-2">
+          <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Refresh and try again
+          </button>
         </div>
       )}
 
       {/* Top KPIs */}
-      <div className="mb-4 grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <div className={`mb-4 grid ${dens.gap} md:grid-cols-3`}>
+        <div className={`rounded-xl border border-gray-200 bg-white ${dens.card}`}>
+          <div className={`${dens.text} font-semibold uppercase tracking-wide text-gray-500`}>
             Next month forecast
           </div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
+          <div className={`mt-2 ${density === "comfortable" ? "text-2xl" : "text-xl"} font-bold text-gray-900`}>
             {nextMonthForecast != null
               ? `Rs ${Number(nextMonthForecast).toLocaleString()}`
               : "Not available"}
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className={`mt-1 ${dens.text} text-gray-500`}>
             Predicted total revenue for the next month, based on the trend
             learned from past sales.
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className={`rounded-xl border border-gray-200 bg-white ${dens.card}`}>
+          <div className={`${dens.text} font-semibold uppercase tracking-wide text-gray-500`}>
             Trend direction
           </div>
           <div
-            className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${trendColorClass}`}
+            className={`mt-2 inline-flex items-center rounded-full px-3 py-1 ${dens.text} font-semibold ${trendColorClass}`}
           >
             {trendLabel}
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className={`mt-1 ${dens.text} text-gray-500`}>
             Overall direction of monthly revenue over the lookback period.
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className={`rounded-xl border border-gray-200 bg-white ${dens.card}`}>
+          <div className={`${dens.text} font-semibold uppercase tracking-wide text-gray-500`}>
             Avg monthly revenue
           </div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
+          <div className={`mt-2 ${density === "comfortable" ? "text-2xl" : "text-xl"} font-bold text-gray-900`}>
             {trend?.averageRevenue != null
               ? `Rs ${Number(trend.averageRevenue).toLocaleString()}`
               : "Not available"}
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className={`mt-1 ${dens.text} text-gray-500`}>
             Average revenue per month over the selected historical period.
           </p>
         </div>
       </div>
 
-      {/* Info when not enough data */}
+      {/* Info when loading / not enough data */}
       {loading && (
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-600">
+        <div className={`rounded-xl border border-gray-200 bg-white ${dens.card} text-center ${dens.text} text-gray-600`}>
           Loading forecast data…
         </div>
       )}
 
       {!loading && !forecastAvailable && (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+        <div className={`mb-4 rounded-xl border border-amber-200 bg-amber-50 ${dens.card} ${dens.text} text-amber-800`}>
           {message ||
             "Not enough historical sales data to generate a reliable forecast yet. Start recording more sales and this module will activate automatically."}
         </div>
@@ -226,14 +265,14 @@ const Forecasting = () => {
       {/* Chart + seasonality */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Chart card */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:col-span-2">
+        <div className={`rounded-xl border border-gray-200 bg-white ${dens.card} lg:col-span-2`}>
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
                 Monthly revenue & forecast
               </h2>
               <p className="text-xs text-gray-500">
-                Actual historical revenue (solid) and AI-predicted revenue
+                Actual historical revenue (solid) and predicted revenue
                 (dashed) for upcoming months.
               </p>
             </div>
@@ -346,12 +385,12 @@ const Forecasting = () => {
         </div>
       </div>
 
-      {/* AI Reorder Suggestions */}
+      {/*  Reorder Suggestions */}
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">
-              AI Reorder Suggestions
+              Reorder Suggestions
             </h2>
             <p className="text-xs text-gray-500">
               Products that are likely to run out soon based on{" "}
@@ -370,11 +409,11 @@ const Forecasting = () => {
 
         {reorderLoading ? (
           <div className="h-24 flex items-center justify-center text-sm text-gray-500">
-            Loading AI reorder suggestions…
+            Loading reorder suggestions…
           </div>
         ) : reorderSuggestions.length === 0 ? (
           <div className="text-sm text-gray-500">
-            No products currently need AI reorder suggestions based on the
+            No products currently need reorder suggestions based on the
             selected period.
           </div>
         ) : (

@@ -19,6 +19,11 @@ import purchaseRouter from "./routes/purchase.js";
 import reportRouter from "./routes/report.js";
 import forecastRouter from "./routes/forecast.js";
 import chatbotRouter from "./routes/chatbot.js";
+import aiCustomerInsightsRoutes from "./routes/aiCustomerInsights.js";
+import aiSmartAlertsRoutes from "./routes/aiSmartAlerts.js";
+import aiMonthlySummaryRoutes from "./routes/aiMonthlySummary.js";
+import aiAnomalyRoutes from "./routes/aiAnomaly.js";
+import aiDemandClassificationRoutes from "./routes/aiDemandClassification.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -71,6 +76,12 @@ app.use("/api/reports", reportRouter);
 app.use("/api/reports", reportRouter);
 app.use("/api/forecast", forecastRouter);
 app.use("/api/chatbot", chatbotRouter);
+app.use("/api/customer-insights", aiCustomerInsightsRoutes);
+app.use("/api/smart-alerts", aiSmartAlertsRoutes);
+app.use("/api/ai-monthly-summary", aiMonthlySummaryRoutes);
+app.use("/api/ai-anomaly", aiAnomalyRoutes);
+app.use("/api/ai-demand", aiDemandClassificationRoutes);
+
 app.listen(process.env.PORT, () => {
   connectdb();
   console.log(`Server is running on http://localhost:${process.env.PORT}`);

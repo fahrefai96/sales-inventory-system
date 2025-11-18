@@ -1,12 +1,11 @@
 // front-end/src/components/InventoryLogs.jsx
 import React, {
   useEffect,
-  useMemo,
   useState,
-  useRef,
   useCallback,
 } from "react";
 import api from "../utils/api.jsx";
+import { FaDownload, FaFileCsv } from "react-icons/fa";
 
 /** =========================
  * Small UI helpers (same vibe as Purchases)
@@ -14,20 +13,6 @@ import api from "../utils/api.jsx";
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
-};
-
-const SORTERS = {
-  createdAt: (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
-  action: (a, b) => (a.action || "").localeCompare(b.action || ""),
-  delta: (a, b) => Number(a.delta || 0) - Number(b.delta || 0),
-  product: (a, b) =>
-    `${a.product?.code || ""} ${a.product?.name || ""}`.localeCompare(
-      `${b.product?.code || ""} ${b.product?.name || ""}`
-    ),
-  actor: (a, b) =>
-    (a.actor?.name || a.actor?.email || "").localeCompare(
-      b.actor?.name || b.actor?.email || ""
-    ),
 };
 
 const ACTIONS = [
@@ -48,6 +33,140 @@ const ACTIONS = [
 ];
 
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
+
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = React.useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = React.useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && value !== "all" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /** ---------- Reusable bits ---------- */
 const Th = ({ label, sortKey, sortBy, setSort }) => {
@@ -219,20 +338,20 @@ const InventoryLogs = () => {
   // data
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // filter dropdown data
   const [productOptions, setProductOptions] = useState([]); // [{value,label}]
-  const [userOptions, setUserOptions] = useState([]); // [{value,label}]
 
   // ui state (header / list)
   const [density, setDensity] = useState("comfortable");
-  const [query, setQuery] = useState("");
+  const [actorSearch, setActorSearch] = useState(""); // Search for actors only
   const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
 
   // filters
   const [selectedProductId, setSelectedProductId] = useState("");
   const [action, setAction] = useState("");
-  const [selectedActorId, setSelectedActorId] = useState("");
   const [dateFrom, setDateFrom] = useState(""); // yyyy-mm-dd
   const [dateTo, setDateTo] = useState(""); // yyyy-mm-dd
 
@@ -253,23 +372,6 @@ const InventoryLogs = () => {
     }
   }, []);
 
-  const preloadUsers = useCallback(async () => {
-    try {
-      const res = await api.get("/users", { params: { limit: 200 } });
-      const users = Array.isArray(res.data?.users) ? res.data.users : [];
-      setUserOptions(
-        users.map((u) => ({
-          value: u._id,
-          label: u.name
-            ? `${u.name}${u.role ? ` (${u.role})` : ""}`
-            : u.email || u._id,
-        }))
-      );
-    } catch (e) {
-      console.error("Preload users failed:", e);
-      setUserOptions([]);
-    }
-  }, []);
 
   /** ---------- fetch logs from API with filters ---------- */
   const toISOStartOfDay = (dateStr) => {
@@ -289,37 +391,55 @@ const InventoryLogs = () => {
     try {
       setLoading(true);
       const params = {};
+      if (actorSearch.trim()) params.actor = actorSearch.trim(); // Use actor param instead of search
       if (selectedProductId) params.product = selectedProductId;
       if (action) params.action = action;
-      if (selectedActorId) params.actor = selectedActorId;
       if (dateFrom) params.from = toISOStartOfDay(dateFrom);
       if (dateTo) params.to = toISOEndOfDay(dateTo);
+      
+      // Sorting
+      if (sortBy.key) params.sortBy = sortBy.key;
+      if (sortBy.dir) params.sortDir = sortBy.dir;
+      
+      // Pagination
+      params.page = page;
+      params.limit = pageSize;
 
       const res = await api.get("/inventory-logs", { params });
-      const arr = res.data?.logs || res.data?.data || [];
-      setLogs(Array.isArray(arr) ? arr : []);
-      setPage(1);
+      if (res.data?.success) {
+        const arr = res.data?.logs || [];
+        setLogs(Array.isArray(arr) ? arr : []);
+        setTotal(res.data.total ?? 0);
+        setTotalPages(res.data.totalPages ?? 1);
+        setPage(res.data.page ?? page);
+      } else {
+        setLogs([]);
+        setTotal(0);
+        setTotalPages(1);
+      }
     } catch (e) {
       console.error("Error loading inventory logs:", e);
       setLogs([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [selectedProductId, action, selectedActorId, dateFrom, dateTo]);
+  }, [actorSearch, selectedProductId, action, dateFrom, dateTo, sortBy.key, sortBy.dir, page, pageSize]);
 
   useEffect(() => {
     preloadProducts();
-    preloadUsers();
-    fetchLogs();
-  }, [preloadProducts, preloadUsers, fetchLogs]);
+  }, [preloadProducts]);
 
-  /** ---------- search & sort (client) ---------- */
-  const debounceRef = useRef(null);
-  const onSearchChange = (e) => {
-    const val = e.target.value;
-    setQuery(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setQuery((p) => p), 250);
+  // Auto-fetch when filters change
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  /** ---------- search & sort handlers ---------- */
+  const onActorSearchChange = (e) => {
+    setActorSearch(e.target.value);
+    setPage(1);
   };
 
   const dens = DENSITIES[density];
@@ -329,55 +449,18 @@ const InventoryLogs = () => {
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
+    setPage(1); // Reset to first page when sorting changes
   };
 
-  const filtered = useMemo(() => {
-    const q = (query || "").toLowerCase().trim();
-    let list = [...logs];
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [actorSearch, selectedProductId, action, dateFrom, dateTo]);
 
-    if (q) {
-      list = list.filter((log) => {
-        const prod = `${log.product?.code || ""} ${log.product?.name || ""}`;
-        const actor =
-          log.actor?.name ||
-          log.actor?.email ||
-          (log.actor ? String(log.actor) : "");
-        const note = log.note || "";
-        const act = log.action || "";
-        return (
-          prod.toLowerCase().includes(q) ||
-          actor.toLowerCase().includes(q) ||
-          note.toLowerCase().includes(q) ||
-          act.toLowerCase().includes(q)
-        );
-      });
-    }
+  // Calculate display indices
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIdx = Math.min(page * pageSize, total);
 
-    const sorter = SORTERS[sortBy.key] || SORTERS.createdAt;
-    list.sort((a, b) => {
-      const res = sorter(a, b);
-      return sortBy.dir === "asc" ? res : -res;
-    });
-
-    return list;
-  }, [logs, query, sortBy]);
-
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, total);
-  const paged = filtered.slice(startIdx, endIdx);
-
-  useEffect(() => setPage(1), [query, sortBy, pageSize]);
-
-  /** ---------- actions ---------- */
-  const resetFilters = () => {
-    setSelectedProductId("");
-    setAction("");
-    setSelectedActorId("");
-    setDateFrom("");
-    setDateTo("");
-  };
 
   const setPreset = (preset) => {
     const today = new Date();
@@ -424,7 +507,7 @@ const InventoryLogs = () => {
         "Sale",
         "Note",
       ],
-      ...filtered.map((log) => [
+      ...logs.map((log) => [
         fmtDateTime(log.createdAt),
         `${log.product?.code || ""}${
           log.product?.name ? ` - ${log.product.name}` : ""
@@ -467,16 +550,39 @@ const InventoryLogs = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPdf = () => {
+    const token = localStorage.getItem("pos-token");
+    const params = new URLSearchParams();
+    if (actorSearch.trim()) params.set("actor", actorSearch.trim());
+    if (selectedProductId) params.set("product", selectedProductId);
+    if (action) params.set("action", action);
+    if (dateFrom) params.set("from", toISOStartOfDay(dateFrom));
+    if (dateTo) params.set("to", toISOEndOfDay(dateTo));
+    if (sortBy.key) params.set("sortBy", sortBy.key);
+    if (sortBy.dir) params.set("sortDir", sortBy.dir);
+    params.set("token", token);
+
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    window.open(`${apiBase}/inventory-logs/export/pdf?${params.toString()}`);
+  };
+
+  const clearFilters = () => {
+    setActorSearch("");
+    setSelectedProductId("");
+    setAction("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
+
   /** ---------- UI ---------- */
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Inventory Logs
-          </h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Inventory Logs</h1>
+          <p className="text-gray-600 text-base">
             Review all stock movements from sales, purchases, and product
             changes.
           </p>
@@ -488,6 +594,7 @@ const InventoryLogs = () => {
                 density === "comfortable" ? "bg-gray-100" : "bg-white"
               }`}
               onClick={() => setDensity("comfortable")}
+              title="Comfortable density"
             >
               Comfortable
             </button>
@@ -496,137 +603,188 @@ const InventoryLogs = () => {
                 density === "compact" ? "bg-gray-100" : "bg-white"
               }`}
               onClick={() => setDensity("compact")}
+              title="Compact density"
             >
               Compact
             </button>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={exportCSV}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              title="Export current view to CSV"
-            >
-              Export CSV
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              title="Print"
-            >
-              Print
-            </button>
+        </div>
+      </div>
+
+      {/* Toolbar / Filters */}
+      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        {/* Actor Search */}
+        <div className="sm:col-span-2 lg:col-span-1">
+          <input
+            type="text"
+            placeholder="Search by actor name or email..."
+            value={actorSearch}
+            onChange={onActorSearchChange}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Product */}
+        <div>
+          <Combo
+            value={selectedProductId}
+            onChange={(val) => {
+              setSelectedProductId(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Products" },
+              ...productOptions,
+            ]}
+            placeholder="All Products"
+          />
+        </div>
+
+        {/* Action */}
+        <div>
+          <Combo
+            value={action}
+            onChange={(val) => {
+              setAction(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Actions" },
+              ...ACTIONS.map((a) => ({ value: a, label: a })),
+            ]}
+            placeholder="All Actions"
+          />
+        </div>
+
+        {/* Date From */}
+        <div>
+          <div className="relative">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-12 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+              From
+            </span>
+          </div>
+        </div>
+
+        {/* Date To */}
+        <div>
+          <div className="relative">
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-12 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+              To
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <input
-          type="text"
-          placeholder="Search by product, action, note, or actor…"
-          defaultValue={query}
-          onChange={onSearchChange}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={selectedProductId}
-          onChange={(e) => setSelectedProductId(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All products</option>
-          {productOptions.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All actions</option>
-          {ACTIONS.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
-        <select
-          value={selectedActorId}
-          onChange={(e) => setSelectedActorId(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All users</option>
-          {userOptions.map((u) => (
-            <option key={u.value} value={u.value}>
-              {u.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Dates & presets (full width on small) */}
-        <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="col-span-2 flex flex-wrap gap-2">
+      {/* Date Presets */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setPreset("today");
+              setPage(1);
+            }}
+            className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => {
+              setPreset("7");
+              setPage(1);
+            }}
+            className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            Last 7 days
+          </button>
+          <button
+            onClick={() => {
+              setPreset("30");
+              setPage(1);
+            }}
+            className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            Last 30 days
+          </button>
+          <button
+            onClick={() => {
+              setPreset("all");
+              setPage(1);
+            }}
+            className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            Clear dates
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
-              onClick={() => setPreset("today")}
-              className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+              onClick={exportCSV}
+              className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export CSV"
             >
-              Today
+              <FaFileCsv className="text-xs" />
+              Export CSV
             </button>
             <button
-              onClick={() => setPreset("7")}
-              className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+              onClick={handleExportPdf}
+              className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export PDF"
             >
-              Last 7 days
+              <FaDownload className="text-xs" />
+              Export PDF
             </button>
-            <button
-              onClick={() => setPreset("30")}
-              className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              Last 30 days
-            </button>
-            <button
-              onClick={() => setPreset("all")}
-              className="rounded border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              Clear dates
-            </button>
-            <div className="ml-auto flex gap-2">
-              <button
-                onClick={fetchLogs}
-                disabled={loading}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                {loading ? "Loading…" : "Apply Filters"}
-              </button>
-              <button
-                onClick={() => {
-                  resetFilters();
-                  setTimeout(fetchLogs, 0);
-                }}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Reset
-              </button>
-            </div>
           </div>
+          <button
+            onClick={clearFilters}
+            className="rounded-lg border border-gray-300 px-4 py-2 h-[38px] text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+          >
+            <span>Clear</span>
+          </button>
         </div>
       </div>
 
       {/* Table */}
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+              title={`Show ${n} rows`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="max-h-[70vh] overflow-auto">
           <table className="min-w-full table-auto">
@@ -665,30 +823,29 @@ const InventoryLogs = () => {
                   setSort={setSort}
                 />
                 <th className="px-4 py-3 text-left">Sale</th>
-                <th className="px-4 py-3 text-left">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
-                <SkeletonRows rows={pageSize} dens={dens} cols={9} />
-              ) : paged.length ? (
-                paged.map((log) => (
+                <SkeletonRows rows={pageSize} dens={dens} cols={8} />
+              ) : logs.length ? (
+                logs.map((log) => (
                   <tr key={log._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {fmtDateTime(log.createdAt)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.product?.code || ""}{" "}
                       {log.product?.name ? `- ${log.product.name}` : ""}
                       {!log.product?.name && !log.product?.code && log.product
                         ? String(log.product)
                         : ""}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.action}
                     </td>
                     <td
-                      className={`${dens.cell} ${dens.text} ${
+                      className={`${dens.cell} text-sm ${
                         Number(log.delta) < 0
                           ? "text-red-600"
                           : "text-green-700"
@@ -696,13 +853,13 @@ const InventoryLogs = () => {
                     >
                       {Number(log.delta) > 0 ? `+${log.delta}` : log.delta}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.beforeQty}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.afterQty}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.actor?.name
                         ? `${log.actor.name}${
                             log.actor.role ? ` (${log.actor.role})` : ""
@@ -710,26 +867,14 @@ const InventoryLogs = () => {
                         : log.actor?.email ||
                           (log.actor ? String(log.actor) : "—")}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {log.sale?.saleId || (log.sale ? String(log.sale) : "—")}
-                    </td>
-                    <td
-                      className={`${dens.cell} ${dens.text}`}
-                      title={log.note || "—"}
-                      style={{
-                        maxWidth: 260,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {log.note || "—"}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="px-6 py-12 text-center">
+                  <td colSpan="8" className="px-6 py-12 text-center">
                     <div className="mx-auto max-w-sm">
                       <div className="mb-2 text-lg font-semibold text-gray-800">
                         No logs found
@@ -738,13 +883,10 @@ const InventoryLogs = () => {
                         Try changing filters or date range.
                       </p>
                       <button
-                        onClick={() => {
-                          resetFilters();
-                          fetchLogs();
-                        }}
+                        onClick={clearFilters}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                       >
-                        Clear Filters
+                        Clear
                       </button>
                     </div>
                   </td>

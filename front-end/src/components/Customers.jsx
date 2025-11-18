@@ -1,24 +1,21 @@
 // /src/components/Customers.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import api from "../utils/api";
+import { fuzzySearchCustomers } from "../utils/fuzzySearch";
+import axios from "axios";
+import { FaDownload, FaFileCsv } from "react-icons/fa";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
 };
 
-const SORTERS = {
-  name: (a, b) => (a.name || "").localeCompare(b.name || ""),
-  email: (a, b) => (a.email || "").localeCompare(b.email || ""),
-  phone: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
-  createdAt: (a, b) =>
-    new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
-};
-
 const Customers = () => {
   // data
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // ui state
   const [query, setQuery] = useState("");
@@ -70,24 +67,50 @@ const Customers = () => {
   const token = localStorage.getItem("pos-token");
 
   // -------- Fetch customers --------
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
+      const params = {};
+      
+      // Search
+      if (query.trim()) params.search = query.trim();
+      
+      // Sorting
+      if (sortBy.key) params.sortBy = sortBy.key;
+      if (sortBy.dir) params.sortDir = sortBy.dir;
+      
+      // Pagination
+      params.page = page;
+      params.limit = pageSize;
+
       const res = await api.get("/customers", {
+        params,
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.success) setCustomers(res.data.customers || []);
+      if (res.data?.success) {
+        setCustomers(res.data.customers || []);
+        setTotal(res.data.total ?? 0);
+        setTotalPages(res.data.totalPages ?? 1);
+        setPage(res.data.page ?? page);
+      } else {
+        setCustomers([]);
+        setTotal(0);
+        setTotalPages(1);
+      }
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
+      setCustomers([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [query, sortBy.key, sortBy.dir, page, pageSize, token]);
 
+  // Auto-fetch when filters, sorting, or pagination changes
   useEffect(() => {
     fetchCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchCustomers]);
 
   // -------- Global ESC to close (only when a panel is open) --------
   useEffect(() => {
@@ -110,63 +133,37 @@ const Customers = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [drawerOpen, profileOpen]);
 
-  // -------- Search (debounced) --------
-  const debounceRef = useRef(null);
+  // -------- Search handler --------
   const onSearchChange = (e) => {
-    const val = e.target.value;
-    setQuery(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setQuery((prev) => prev), 250);
+    setQuery(e.target.value);
+    setPage(1);
   };
 
-  // -------- Derived list (search + sort) --------
-  const filtered = useMemo(() => {
-    const q = (query || "").toLowerCase().trim();
-    let list = [...customers];
-
-    if (q) {
-      list = list.filter(
-        (c) =>
-          (c.name || "").toLowerCase().includes(q) ||
-          (c.email || "").toLowerCase().includes(q) ||
-          (c.phone || "").toLowerCase().includes(q) ||
-          (c.address || "").toLowerCase().includes(q)
-      );
-    }
-
-    const sorter = SORTERS[sortBy.key] || SORTERS.createdAt;
-    list.sort((a, b) => {
-      const res = sorter(a, b);
-      return sortBy.dir === "asc" ? res : -res;
-    });
-
-    return list;
-  }, [customers, query, sortBy]);
-
-  // pagination calc
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, total);
-  const paged = filtered.slice(startIdx, endIdx);
-
-  // clamp page on deps change
+  // Reset to page 1 when filters or sorting changes
   useEffect(() => {
     setPage(1);
-  }, [query, sortBy, pageSize]);
+  }, [query, sortBy.key, sortBy.dir]);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  // Calculate display indices
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIdx = Math.min(page * pageSize, total);
 
   // -------- Helpers --------
   const dens = DENSITIES[density];
+  
+  // Apply fuzzy search to customers (frontend only, on top of server results)
+  const displayCustomers = useMemo(() => {
+    if (!query || !query.trim()) return customers;
+    return fuzzySearchCustomers(customers, query);
+  }, [customers, query]);
+  
   const setSort = (key) => {
     setSortBy((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
+    setPage(1); // Reset to first page when sorting changes
   };
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
   const fmt = (n) =>
@@ -191,9 +188,6 @@ const Customers = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       await fetchCustomers();
-      const newTotal = total - 1;
-      const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
-      if (page > newTotalPages) setPage(newTotalPages);
     } catch (err) {
       alert(err?.response?.data?.error || "Failed to delete customer.");
     }
@@ -328,7 +322,7 @@ const Customers = () => {
 
     const input = prompt(
       `Record payment for ${sale.saleId || sale._id}\n` +
-        `Total: Rs ${fmt(base)} | Paid: Rs ${fmt(paid)} | Due: Rs ${fmt(
+        `Total: Rs. ${fmt(base)} | Paid: Rs. ${fmt(paid)} | Due: Rs. ${fmt(
           due
         )}\n\n` +
         `Enter amount to pay now:`
@@ -343,7 +337,7 @@ const Customers = () => {
     if (amount > due) {
       if (
         !confirm(
-          `Amount exceeds due (Rs ${fmt(due)}). Apply Rs ${fmt(due)} instead?`
+          `Amount exceeds due (Rs. ${fmt(due)}). Apply Rs. ${fmt(due)} instead?`
         )
       )
         return;
@@ -389,8 +383,8 @@ const Customers = () => {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
+          <p className="text-gray-600 text-base">
             Manage customer records and view purchase history & payments.
           </p>
         </div>
@@ -416,28 +410,6 @@ const Customers = () => {
               Compact
             </button>
           </div>
-          {/* Rows per page */}
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows:</span>
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-              {[25, 50, 100].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(n);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-2 text-xs ${
-                    pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
-                  }`}
-                  title={`Show ${n} rows`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
           {/* Add */}
           <button
             onClick={() => {
@@ -447,21 +419,42 @@ const Customers = () => {
             }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Add Customer
+            New Customer
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="sm:col-span-2">
-          <input
-            type="text"
-            placeholder="Search by name, email, phone, or address…"
-            defaultValue={query}
-            onChange={onSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <input
+          type="text"
+          placeholder="Search by name, email, phone, or address…"
+          value={query}
+          onChange={onSearchChange}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+              title={`Show ${n} rows`}
+            >
+              {n}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -503,28 +496,28 @@ const Customers = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
                 <SkeletonRows rows={pageSize} dens={dens} cols={6} />
-              ) : paged.length > 0 ? (
-                paged.map((c) => (
+              ) : displayCustomers.length > 0 ? (
+                displayCustomers.map((c) => (
                   <tr key={c._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text} text-gray-800`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {c.name}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {c.email || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {c.phone || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {c.address || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-500`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {formatDateTime(c.createdAt)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       <div className="flex flex-wrap gap-3">
                         {/* Order: Purchases → Payments → Edit → Delete */}
                         <button
@@ -593,7 +586,6 @@ const Customers = () => {
 
         {/* Pagination footer */}
         <div className="flex flex-col gap-3 border-top border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Rows per page */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Rows per page:</span>
             <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
@@ -830,7 +822,11 @@ const Customers = () => {
                   className={`px-4 py-2 text-sm font-medium ${
                     profileTab === "purchases" ? "bg-gray-100" : "bg-white"
                   }`}
-                  onClick={() => setProfileTab("purchases")}
+                  onClick={() => {
+                    if (profileCustomer?._id) {
+                      fetchCustomerPurchases(profileCustomer._id);
+                    }
+                  }}
                 >
                   Purchases
                 </button>
@@ -891,14 +887,14 @@ const Customers = () => {
                                   : 0;
                               return (
                                 <tr key={s._id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {formatDateTime(s.createdAt)}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {s.saleId || s.invoiceNo || s._id}
                                   </td>
-                                  <td className="px-4 py-3">{itemCount}</td>
-                                  <td className="px-4 py-3">Rs {fmt(total)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">{itemCount}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(total)}</td>
                                 </tr>
                               );
                             })}
@@ -919,7 +915,7 @@ const Customers = () => {
                       <div className="text-xl font-semibold">
                         {recvLoading
                           ? "…"
-                          : `Rs ${fmt(receivables.outstandingTotal)}`}
+                          : `Rs. ${fmt(receivables.outstandingTotal)}`}
                       </div>
                     </div>
                     <div className="rounded bg-white border border-gray-200 p-3">
@@ -982,19 +978,19 @@ const Customers = () => {
                               );
                               return (
                                 <tr key={s._id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {s.saleId || s._id}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {formatDateTime(s.saleDate || s.createdAt)}
                                   </td>
-                                  <td className="px-4 py-3">Rs {fmt(base)}</td>
-                                  <td className="px-4 py-3">Rs {fmt(paid)}</td>
-                                  <td className="px-4 py-3">Rs {fmt(due)}</td>
-                                  <td className="px-4 py-3 capitalize">
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(base)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(paid)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(due)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700 capitalize">
                                     {s.paymentStatus || "unpaid"}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     <button
                                       onClick={() => recordPayment(s)}
                                       className="text-blue-600 hover:text-blue-800 font-medium"
@@ -1096,15 +1092,15 @@ const Customers = () => {
                               const paid = Number(s.amountPaid || base);
                               return (
                                 <tr key={s._id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {s.saleId || s._id}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {formatDateTime(s.saleDate || s.createdAt)}
                                   </td>
-                                  <td className="px-4 py-3">Rs {fmt(base)}</td>
-                                  <td className="px-4 py-3">Rs {fmt(paid)}</td>
-                                  <td className="px-4 py-3 capitalize">
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(base)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(paid)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700 capitalize">
                                     {s.paymentStatus || "paid"}
                                   </td>
                                 </tr>

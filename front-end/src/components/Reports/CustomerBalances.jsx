@@ -2,9 +2,13 @@
 import React from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { FaDownload } from "react-icons/fa";
 import ReportPageHeader from "./ReportPageHeader.jsx";
+import FilterBar from "./FilterBar.jsx";
+import ExportButtons from "./ExportButtons.jsx";
 import KpiCards from "./KpiCards.jsx";
 import ChartCard from "./ChartCard.jsx";
+import { fuzzySearch } from "../../utils/fuzzySearch";
 import {
   ResponsiveContainer,
   BarChart,
@@ -17,19 +21,179 @@ import {
 
 const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-// fixed comfortable spacing
-const CELL = "px-4 py-3 text-[15px]";
-const ROW = "py-3";
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const containerRef = React.useRef(null);
 
-export default function CustomerBalances() {
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  React.useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = React.useState(-1);
+  const listRef = React.useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  React.useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && value !== "all" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DENSITIES = {
+  comfortable: {
+    row: "py-3",
+    cell: "px-4 py-3",
+    text: "text-sm",
+    label: "text-sm",
+    input: "text-sm",
+    button: "text-sm",
+    heading: "text-sm",
+    tableHeader: "text-xs",
+    gap: "gap-3",
+    card: "p-4",
+  },
+  compact: {
+    row: "py-2",
+    cell: "px-3 py-2",
+    text: "text-xs",
+    label: "text-xs",
+    input: "text-xs",
+    button: "text-xs",
+    heading: "text-xs",
+    tableHeader: "text-[11px]",
+    gap: "gap-2",
+    card: "p-3",
+  },
+};
+
+export default function CustomerBalances({ density = "comfortable" }) {
   const token = localStorage.getItem("pos-token");
+  const dens = DENSITIES[density] || DENSITIES.comfortable;
 
   // filters/sort
   const [search, setSearch] = React.useState("");
   const [min, setMin] = React.useState("");
   const [max, setMax] = React.useState("");
-  const [from, setFrom] = React.useState("");
-  const [to, setTo] = React.useState("");
+  const [range, setRange] = React.useState(() => {
+    // Default to empty dates to show all outstanding balances
+    return { from: "", to: "", type: "" };
+  });
   const [sortBy, setSortBy] = React.useState("outstandingTotal");
   const [sortDir, setSortDir] = React.useState("desc");
 
@@ -73,9 +237,11 @@ export default function CustomerBalances() {
     });
     if (min !== "") p.set("min", min);
     if (max !== "") p.set("max", max);
-    if (from) p.set("from", new Date(from).toISOString());
-    if (to) {
-      const end = new Date(to);
+    if (range.from && range.from.trim()) {
+      p.set("from", new Date(range.from).toISOString());
+    }
+    if (range.to && range.to.trim()) {
+      const end = new Date(range.to);
       end.setHours(23, 59, 59, 999);
       p.set("to", end.toISOString());
     }
@@ -206,17 +372,31 @@ export default function CustomerBalances() {
     }
   };
 
-  // init + sort change -> refresh table
+  // Initial mount: fetch both table and summary
+  React.useEffect(() => {
+    fetchData({ page: 1 });
+    fetchSummaryByAggregating();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // sort change -> refresh table only
   React.useEffect(() => {
     fetchData({ page: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, sortDir]);
 
-  // whenever filters change -> recompute summary
+  // whenever filters change -> refresh table and recompute summary
   React.useEffect(() => {
+    fetchData({ page: 1 });
     fetchSummaryByAggregating();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, min, max, from, to]);
+  }, [search, min, max, range.from, range.to]);
+
+  // Apply fuzzy search to rows (frontend only, on top of server results)
+  const displayRows = React.useMemo(() => {
+    if (!search || !search.trim()) return rows;
+    return fuzzySearch(rows, search, ["name", "email", "phone"], 0.4);
+  }, [rows, search]);
 
   const applyFilters = () => {
     fetchData({ page: 1 });
@@ -227,8 +407,7 @@ export default function CustomerBalances() {
     setSearch("");
     setMin("");
     setMax("");
-    setFrom("");
-    setTo("");
+    setRange({ from: "", to: "", type: "" });
     setSortBy("outstandingTotal");
     setSortDir("desc");
     fetchData({ page: 1 });
@@ -261,6 +440,15 @@ export default function CustomerBalances() {
     }
   };
 
+  const handleExportPdf = async () => {
+    const params = buildParams();
+    params.set("token", token);
+    const url = `${apiBase}/reports/customer-balances/export/pdf?${params.toString()}`;
+
+    // Use window.open for PDF exports to avoid streaming issues
+    window.open(url, "_blank");
+  };
+
   // pagination
   const totalPages = Math.max(1, Math.ceil((total || 0) / (limit || 25)));
   const clamp = (p) => Math.max(1, Math.min(totalPages, p || 1));
@@ -280,235 +468,223 @@ export default function CustomerBalances() {
   return (
     <div className="space-y-4">
       <ReportPageHeader
-        title="Customer Balance"
+        title="Customer Balance Report"
         subtitle="Receivables snapshot, aging analysis, and top debtors."
       />
 
+      <FilterBar
+        mode="balances"
+        range={range}
+        setRange={setRange}
+        extras={
+          <div className="shrink-0">
+            <ExportButtons
+              urls={{
+                csv: `/reports/customer-balances/export/csv?${(() => {
+                  const p = new URLSearchParams();
+                  if (search) p.set("search", search);
+                  if (min !== "") p.set("min", min);
+                  if (max !== "") p.set("max", max);
+                  if (sortBy) p.set("sortBy", sortBy);
+                  if (sortDir) p.set("sortDir", sortDir);
+                  if (range.from && range.from.trim()) {
+                    p.set("from", new Date(range.from).toISOString());
+                  }
+                  if (range.to && range.to.trim()) {
+                    const end = new Date(range.to);
+                    end.setHours(23, 59, 59, 999);
+                    p.set("to", end.toISOString());
+                  }
+                  return p.toString();
+                })()}`,
+                pdf: `/reports/customer-balances/export/pdf?${(() => {
+                  const p = new URLSearchParams();
+                  if (search) p.set("search", search);
+                  if (min !== "") p.set("min", min);
+                  if (max !== "") p.set("max", max);
+                  if (sortBy) p.set("sortBy", sortBy);
+                  if (sortDir) p.set("sortDir", sortDir);
+                  if (range.from && range.from.trim()) {
+                    p.set("from", new Date(range.from).toISOString());
+                  }
+                  if (range.to && range.to.trim()) {
+                    const end = new Date(range.to);
+                    end.setHours(23, 59, 59, 999);
+                    p.set("to", end.toISOString());
+                  }
+                  return p.toString();
+                })()}`,
+              }}
+            />
+          </div>
+        }
+      />
+
       {/* Filters & Actions (sizes matched to Sales/FilterBar feel) */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="grid gap-3 lg:grid-cols-8">
+      <div
+        className={`rounded-xl border border-gray-200 bg-white ${dens.card}`}
+      >
+        <div className={`grid ${dens.gap} lg:grid-cols-6`}>
           <div className="lg:col-span-2">
-            <label className="block text-sm mb-1 text-gray-700">
+            <label className={`block ${dens.label} mb-1 text-gray-700`}>
               Search (name/email/phone)
             </label>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:max-w-[220px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g. John, 077..., john@mail.com"
+              className={`w-full sm:max-w-[220px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              placeholder="Type to search..."
             />
           </div>
 
           <div>
-            <label className="block text-sm mb-1 text-gray-700">
+            <label className={`block ${dens.label} mb-1 text-gray-700`}>
               Min Outstanding
             </label>
             <input
               type="number"
               value={min}
               onChange={(e) => setMin(e.target.value)}
-              className="w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="0"
             />
           </div>
           <div>
-            <label className="block text-sm mb-1 text-gray-700">
+            <label className={`block ${dens.label} mb-1 text-gray-700`}>
               Max Outstanding
             </label>
             <input
               type="number"
               value={max}
               onChange={(e) => setMax(e.target.value)}
-              className="w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="100000"
             />
           </div>
 
           <div>
-            <label className="block text-sm mb-1 text-gray-700">From</label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-gray-700">To</label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-gray-700">Sort By</label>
-            <select
+            <label className={`block ${dens.label} mb-1 text-gray-700`}>
+              Sort By
+            </label>
+            <Combo
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full sm:max-w-[200px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="outstandingTotal">Outstanding</option>
-              <option value="pendingCount">Pending Count</option>
-              <option value="name">Name</option>
-              <option value="lastSale">Last Sale</option>
-            </select>
+              onChange={(val) => setSortBy(val)}
+              options={[
+                { value: "outstandingTotal", label: "Outstanding" },
+                { value: "pendingCount", label: "Pending Count" },
+                { value: "name", label: "Name" },
+                { value: "lastSale", label: "Last Sale" },
+              ]}
+              placeholder="Outstanding"
+            />
           </div>
           <div>
-            <label className="block text-sm mb-1 text-gray-700">
+            <label className={`block ${dens.label} mb-1 text-gray-700`}>
               Direction
             </label>
-            <select
+            <Combo
               value={sortDir}
-              onChange={(e) => setSortDir(e.target.value)}
-              className="w-full sm:max-w-[160px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="desc">Desc</option>
-              <option value="asc">Asc</option>
-            </select>
+              onChange={(val) => setSortDir(val)}
+              options={[
+                { value: "desc", label: "Desc" },
+                { value: "asc", label: "Asc" },
+              ]}
+              placeholder="Desc"
+            />
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className={`mt-3 flex flex-wrap items-center ${dens.gap}`}>
           <div className="ml-auto flex gap-2">
             <button
               onClick={applyFilters}
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className={`rounded-lg bg-blue-600 px-4 py-2 ${dens.button} font-semibold text-white hover:bg-blue-700 disabled:opacity-50`}
             >
               {loading ? "Loading..." : "Apply"}
             </button>
             <button
               onClick={resetFilters}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className={`rounded-lg border border-gray-300 px-4 py-2 ${dens.button} font-medium text-gray-700 hover:bg-gray-50`}
             >
               Reset
-            </button>
-            <button
-              onClick={onExportCsv}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              title="Export CSV"
-            >
-              Export CSV
             </button>
           </div>
         </div>
       </div>
 
       {/* KPIs */}
-      <KpiCards items={kpis} loading={sumLoading} />
-
-      {/* Aging Chart */}
-      <ChartCard title="Aging (Rs)" className="mb-6">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={agingChart}
-            margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
-            barCategoryGap="28%"
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="bucket" />
-            <YAxis tickFormatter={(v) => v.toLocaleString()} />
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-            <Bar dataKey="amount" maxBarSize={28} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      {/* Top Debtors */}
-      <div className="mb-2">
-        <div className="text-sm font-medium mb-2">Top Debtors (Top 10)</div>
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <div className="max-h-[40vh] overflow-auto">
-            <table className="min-w-full table-auto">
-              <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Invoices</th>
-                  <th className="px-4 py-3">Outstanding</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                {sumLoading ? (
-                  <SkeletonRows rows={5} cols={3} />
-                ) : topDebtors.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="3"
-                      className="px-6 py-8 text-center text-gray-500"
-                    >
-                      No outstanding balances.
-                    </td>
-                  </tr>
-                ) : (
-                  topDebtors.map((d, i) => (
-                    <tr
-                      key={`${d.customer}-${i}`}
-                      className={`hover:bg-gray-50 ${ROW}`}
-                    >
-                      <td className={`${CELL}`}>{d.customer}</td>
-                      <td className={`${CELL}`}>{d.invoices}</td>
-                      <td className={`${CELL}`}>Rs {fmt(d.outstanding)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <KpiCards items={kpis} loading={sumLoading} density={density} />
 
       {/* All Customers (Balances) – added heading here */}
-      <div className="text-sm font-medium mb-2">All Customers (Balances)</div>
+      <div className={`${dens.heading} font-medium mb-2`}>
+        All Customers (Balances)
+      </div>
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {error ? (
-          <div className="p-4 text-red-600">{error}</div>
+          <div className={`${dens.card} ${dens.text} text-red-600`}>
+            {error}
+          </div>
         ) : (
           <div className="max-h-[70vh] overflow-auto">
             <table className="min-w-full table-auto">
               <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Pending</th>
-                  <th className="px-4 py-3">Outstanding</th>
-                  <th className="px-4 py-3">Paid Total</th>
-                  <th className="px-4 py-3">Last Sale</th>
-                  <th className="px-4 py-3">Action</th>
+                <tr
+                  className={`text-left ${dens.tableHeader} font-semibold uppercase tracking-wide text-gray-800`}
+                >
+                  <th className={dens.cell}>Customer</th>
+                  <th className={dens.cell}>Email</th>
+                  <th className={dens.cell}>Phone</th>
+                  <th className={dens.cell}>Pending</th>
+                  <th className={dens.cell}>Outstanding</th>
+                  <th className={dens.cell}>Paid Total</th>
+                  <th className={dens.cell}>Last Sale</th>
+                  <th className={dens.cell}>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+              <tbody
+                className={`divide-y divide-gray-100 ${dens.text} text-gray-700`}
+              >
                 {loading ? (
-                  <SkeletonRows rows={limit} cols={8} />
-                ) : rows.length === 0 ? (
+                  <SkeletonRows rows={limit} cols={8} dens={dens} />
+                ) : displayRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan="8"
-                      className="px-6 py-10 text-center text-gray-500"
+                      className={`px-6 py-10 text-center ${dens.text} text-gray-500`}
                     >
                       No results.
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => (
+                  displayRows.map((r) => (
                     <tr
                       key={r.customerId}
-                      className={`hover:bg-gray-50 ${ROW}`}
+                      className={`hover:bg-gray-50 ${dens.row}`}
                     >
-                      <td className={`${CELL}`}>{r.name || "—"}</td>
-                      <td className={`${CELL}`}>{r.email || "—"}</td>
-                      <td className={`${CELL}`}>{r.phone || "—"}</td>
-                      <td className={`${CELL}`}>{r.pendingCount || 0}</td>
-                      <td className={`${CELL}`}>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {r.name || "—"}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {r.email || "—"}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {r.phone || "—"}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {r.pendingCount || 0}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
                         Rs {fmt(r.outstandingTotal)}
                       </td>
-                      <td className={`${CELL}`}>Rs {fmt(r.paidTotal)}</td>
-                      <td className={`${CELL}`}>{formatDate(r.lastSale)}</td>
-                      <td className={`${CELL}`}>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        Rs {fmt(r.paidTotal)}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {formatDate(r.lastSale)}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
                         <Link
                           to="/admin-dashboard/customers"
                           className="text-indigo-600 hover:text-indigo-800 font-medium"
@@ -531,15 +707,17 @@ export default function CustomerBalances() {
         )}
 
         {/* Footer */}
-        <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={`flex flex-col ${dens.gap} border-t border-gray-200 ${dens.card} sm:flex-row sm:items-center sm:justify-between`}
+        >
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows per page:</span>
+            <span className={`${dens.text} text-gray-600`}>Rows per page:</span>
             <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
               {[25, 50, 100].map((n) => (
                 <button
                   key={n}
                   onClick={() => fetchData({ page: 1, limit: n })}
-                  className={`px-3 py-1.5 text-sm ${
+                  className={`px-3 py-1.5 ${dens.text} ${
                     limit === n ? "bg-gray-100 font-medium" : "bg-white"
                   }`}
                 >
@@ -547,7 +725,7 @@ export default function CustomerBalances() {
                 </button>
               ))}
             </div>
-            <span className="ml-3 text-sm text-gray-500">
+            <span className={`ml-3 ${dens.text} text-gray-500`}>
               Page {page} of {Math.max(1, Math.ceil(total / limit))} • {total}{" "}
               total
             </span>
@@ -557,30 +735,102 @@ export default function CustomerBalances() {
             <button
               onClick={() => go(page - 1)}
               disabled={page <= 1 || loading}
-              className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+              className={`rounded-md border border-gray-200 px-2 py-1 ${dens.text} text-gray-700 disabled:opacity-50`}
             >
               Prev
             </button>
             <button
               onClick={() => go(page + 1)}
               disabled={page >= totalPages || loading}
-              className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+              className={`rounded-md border border-gray-200 px-2 py-1 ${dens.text} text-gray-700 disabled:opacity-50`}
             >
               Next
             </button>
           </div>
         </div>
       </div>
+
+      {/* Top Debtors */}
+      <div className="mb-6">
+        <div className={`${dens.heading} font-medium mb-2`}>
+          Top Debtors (Top 10)
+        </div>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="max-h-[40vh] overflow-auto">
+            <table className="min-w-full table-auto">
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr
+                  className={`text-left ${dens.tableHeader} font-semibold uppercase tracking-wide text-gray-800`}
+                >
+                  <th className={dens.cell}>Customer</th>
+                  <th className={dens.cell}>Invoices</th>
+                  <th className={dens.cell}>Outstanding</th>
+                </tr>
+              </thead>
+              <tbody
+                className={`divide-y divide-gray-100 ${dens.text} text-gray-700`}
+              >
+                {sumLoading ? (
+                  <SkeletonRows rows={5} cols={3} dens={dens} />
+                ) : topDebtors.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="3"
+                      className={`px-6 py-8 text-center ${dens.text} text-gray-500`}
+                    >
+                      No outstanding balances.
+                    </td>
+                  </tr>
+                ) : (
+                  topDebtors.map((d, i) => (
+                    <tr
+                      key={`${d.customer}-${i}`}
+                      className={`hover:bg-gray-50 ${dens.row}`}
+                    >
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {d.customer}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        {d.invoices}
+                      </td>
+                      <td className={`${dens.cell} ${dens.text}`}>
+                        Rs {fmt(d.outstanding)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Aging Chart */}
+      <ChartCard title="Aging (Rs)" density={density}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={agingChart}
+            margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
+            barCategoryGap="28%"
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="bucket" />
+            <YAxis tickFormatter={(v) => v.toLocaleString()} />
+            <Tooltip formatter={(v) => v.toLocaleString()} />
+            <Bar dataKey="amount" maxBarSize={28} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
     </div>
   );
 }
 
-const SkeletonRows = ({ rows = 6, cols = 6 }) => (
+const SkeletonRows = ({ rows = 6, cols = 6, dens }) => (
   <>
     {Array.from({ length: rows }).map((_, i) => (
-      <tr key={i} className={ROW}>
+      <tr key={i} className={dens.row}>
         {Array.from({ length: cols }).map((__, j) => (
-          <td key={j} className={CELL}>
+          <td key={j} className={`${dens.cell} ${dens.text}`}>
             <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
           </td>
         ))}

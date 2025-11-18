@@ -1,6 +1,140 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../utils/api";
 
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Density options (same as other screens)
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
@@ -8,7 +142,6 @@ const DENSITIES = {
 };
 
 export default function Users() {
-  // ----- Create form (logic unchanged) -----
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -18,7 +151,6 @@ export default function Users() {
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // NEW: drawer state for create
   const [createOpen, setCreateOpen] = useState(false);
 
   // ----- Table, filters, pagination, density -----
@@ -35,8 +167,7 @@ export default function Users() {
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  // ----- Edit + password modal (logic unchanged) -----
-  const [editing, setEditing] = useState(null); // user object
+  const [editing, setEditing] = useState(null);
   const [pwdUserId, setPwdUserId] = useState(null);
   const [newPwd, setNewPwd] = useState("");
   const [busyRow, setBusyRow] = useState("");
@@ -113,7 +244,6 @@ export default function Users() {
     searchRef.current = setTimeout(() => setSearch(v), 200);
   };
 
-  // Edit / toggle / pwd (unchanged)
   const startEdit = (u) => setEditing({ ...u });
   const cancelEdit = () => setEditing(null);
 
@@ -187,8 +317,8 @@ export default function Users() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
+          <p className="text-gray-600 text-base">
             Manage admin/staff accounts, roles, status, and credentials.
           </p>
         </div>
@@ -233,17 +363,18 @@ export default function Users() {
             defaultValue={search}
             onChange={onSearchInput}
             placeholder="Search by name or email"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <select
+          <Combo
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All roles</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
+            onChange={(val) => setRoleFilter(val)}
+            options={[
+              { value: "", label: "All roles" },
+              { value: "admin", label: "Admin" },
+              { value: "staff", label: "Staff" },
+            ]}
+            placeholder="All roles"
+          />
           <label className="inline-flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -276,6 +407,29 @@ export default function Users() {
         </div>
       </div>
 
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+              title={`Show ${n} rows`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Table card */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <div className="max-h-[70vh] overflow-auto">
@@ -305,7 +459,7 @@ export default function Users() {
               ) : (
                 pageRows.map((u) => (
                   <tr key={u._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {editing?._id === u._id ? (
                         <input
                           className="w-full rounded border border-gray-300 px-2 py-1"
@@ -315,10 +469,10 @@ export default function Users() {
                           }
                         />
                       ) : (
-                        <span className="text-gray-900">{u.name}</span>
+                        u.name
                       )}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {editing?._id === u._id ? (
                         <input
                           className="w-full rounded border border-gray-300 px-2 py-1"
@@ -331,7 +485,7 @@ export default function Users() {
                         u.email
                       )}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {editing?._id === u._id ? (
                         <select
                           className="rounded border border-gray-300 px-2 py-1"
@@ -349,7 +503,7 @@ export default function Users() {
                         </span>
                       )}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {u.isActive ? (
                         <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
                           Active
@@ -360,7 +514,7 @@ export default function Users() {
                         </span>
                       )}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {editing?._id === u._id ? (
                         <input
                           className="w-full rounded border border-gray-300 px-2 py-1"
@@ -376,7 +530,7 @@ export default function Users() {
                         u.address || "—"
                       )}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {editing?._id === u._id ? (
                         <div className="flex flex-wrap gap-2">
                           <button

@@ -48,7 +48,147 @@ const pct = (curr, prev) => {
   return `${sign}${d.toFixed(1)}%`;
 };
 
-export default function Sales() {
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const containerRef = React.useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  React.useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = React.useState(-1);
+  const listRef = React.useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  React.useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && value !== "all" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DENSITIES = {
+  comfortable: { text: "text-sm", gap: "gap-4" },
+  compact: { text: "text-xs", gap: "gap-3" },
+};
+
+export default function Sales({ density = "comfortable" }) {
+  const dens = DENSITIES[density] || DENSITIES.comfortable;
   const [range, setRange] = useState(() => {
     const today = new Date();
     const pad = (n) => String(n).padStart(2, "0");
@@ -181,48 +321,52 @@ export default function Sales() {
   ];
 
   const extras = (
-    <div className="flex items-center gap-2">
-      <select
-        value={range.groupBy}
-        onChange={(e) => setRange({ ...range, groupBy: e.target.value })}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="day">Daily</option>
-        <option value="week">Weekly</option>
-        <option value="month">Monthly</option>
-      </select>
+    <>
+      <div className="w-32 shrink-0">
+        <Combo
+          value={range.groupBy}
+          onChange={(val) => setRange({ ...range, groupBy: val })}
+          options={[
+            { value: "day", label: "Daily" },
+            { value: "week", label: "Weekly" },
+            { value: "month", label: "Monthly" },
+          ]}
+          placeholder="Daily"
+        />
+      </div>
 
-      <select
-        value={range.user}
-        onChange={(e) => setRange({ ...range, user: e.target.value })}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">All Users</option>
-        {users.map((u) => (
-          <option key={u._id} value={u._id}>
-            {u.name}
-          </option>
-        ))}
-      </select>
+      <div className="w-32 shrink-0">
+        <Combo
+          value={range.user}
+          onChange={(val) => setRange({ ...range, user: val })}
+          options={[
+            { value: "", label: "All Users" },
+            ...users.map((u) => ({ value: u._id, label: u.name })),
+          ]}
+          placeholder="All Users"
+        />
+      </div>
 
-      <ExportButtons
-        urls={{
-          csv: `/reports/sales/export/csv?from=${range.from}&to=${
-            range.to
-          }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
-          pdf: `/reports/sales/export/pdf?from=${range.from}&to=${
-            range.to
-          }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
-        }}
-      />
-    </div>
+      <div className="shrink-0">
+        <ExportButtons
+          urls={{
+            csv: `/reports/sales/export/csv?from=${range.from}&to=${
+              range.to
+            }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
+            pdf: `/reports/sales/export/pdf?from=${range.from}&to=${
+              range.to
+            }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
+          }}
+        />
+      </div>
+    </>
   );
 
   return (
     <>
       <ReportPageHeader
         title="Sales Reports"
-        subtitle="Analyze revenue, orders, and top performers."
+        subtitle="View revenue, orders, and top performers"
       />
       <FilterBar
         mode="sales"
@@ -230,11 +374,32 @@ export default function Sales() {
         setRange={setRange}
         extras={extras}
       />
-      <KpiCards items={kpis} />
+      <KpiCards items={kpis} density={density} />
+
+      {loading && <div className={`${dens.text} text-gray-500`}>Loading…</div>}
+
+      <div className={`grid lg:grid-cols-2 ${dens.gap} mb-6`}>
+        <div>
+          <div className={`${dens.text} font-medium mb-2`}>Top Products</div>
+          <ReportTable density={density}
+            columns={topProdCols}
+            rows={data.topProducts}
+            empty="No top products"
+          />
+        </div>
+        <div>
+          <div className={`${dens.text} font-medium mb-2`}>Top Customers</div>
+          <ReportTable density={density}
+            columns={topCustCols}
+            rows={data.topCustomers}
+            empty="No top customers"
+          />
+        </div>
+      </div>
 
       {/* Charts row */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
-        <ChartCard title="Revenue over Time">
+      <div className={`grid lg:grid-cols-2 ${dens.gap}`}>
+        <ChartCard title="Revenue over Time" density={density}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data.series}
@@ -261,7 +426,7 @@ export default function Sales() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Orders over Time">
+        <ChartCard title="Orders over Time" density={density}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data.series}
@@ -276,27 +441,6 @@ export default function Sales() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-      </div>
-
-      {loading && <div className="text-sm text-gray-500">Loading…</div>}
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div>
-          <div className="text-sm font-medium mb-2">Top Products</div>
-          <ReportTable
-            columns={topProdCols}
-            rows={data.topProducts}
-            empty="No top products"
-          />
-        </div>
-        <div>
-          <div className="text-sm font-medium mb-2">Top Customers</div>
-          <ReportTable
-            columns={topCustCols}
-            rows={data.topCustomers}
-            empty="No top customers"
-          />
-        </div>
       </div>
     </>
   );

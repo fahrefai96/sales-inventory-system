@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import Purchase from "../models/Purchase.js";
 import Product from "../models/Product.js";
 import InventoryLog from "../models/InventoryLog.js";
+import Supplier from "../models/Supplier.js";
+import PDFDocument from "pdfkit";
 
 // ---------- helpers ----------
 function computeTotals(payload) {
@@ -260,9 +262,9 @@ export const listPurchases = async (req, res, next) => {
     if (status) filter.status = status;
 
     if (from || to) {
-      filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) filter.createdAt.$lte = new Date(to);
+      filter.invoiceDate = {};
+      if (from) filter.invoiceDate.$gte = new Date(from);
+      if (to) filter.invoiceDate.$lte = new Date(to);
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -387,5 +389,272 @@ export const updateDraft = async (req, res, next) => {
     return res.status(200).json({ data: purchase, message: "Draft updated" });
   } catch (err) {
     return next(err);
+  }
+};
+
+export const getPurchases = async (req, res) => {
+  try {
+    let {
+      page = 1,
+      limit = 25,
+      search = "",
+      supplier = "all",
+      status = "all",
+      from = "",
+      to = "",
+      min = "",
+      max = "",
+      sortBy = "invoiceDate",
+      sortDir = "desc",
+    } = req.query;
+
+    page = Number(page);
+    limit = Number(limit);
+    const skip = (page - 1) * limit;
+
+    // ---------- FILTERS ----------
+    const filter = {};
+
+    // status filter
+    if (status !== "all") filter.status = status;
+
+    // supplier filter
+    if (supplier !== "all") filter.supplier = supplier;
+
+    // date range
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) filter.createdAt.$lte = new Date(to);
+    }
+
+    // total amount range
+    if (min || max) {
+      filter.grandTotal = {};
+      if (min) filter.grandTotal.$gte = Number(min);
+      if (max) filter.grandTotal.$lte = Number(max);
+    }
+
+    // keyword search – invoiceNo, supplier name, note
+    if (search.trim() !== "") {
+      const s = search.trim();
+
+      // Find suppliers whose NAME matches the search text
+      const matchingSuppliers = await Supplier.find({
+        name: { $regex: s, $options: "i" },
+      }).select("_id");
+
+      const supplierIds = matchingSuppliers.map((sup) => sup._id);
+
+      // Build OR conditions
+      const orConditions = [
+        { invoiceNo: { $regex: s, $options: "i" } },
+        { note: { $regex: s, $options: "i" } },
+      ];
+
+      if (supplierIds.length > 0) {
+        orConditions.push({ supplier: { $in: supplierIds } });
+      }
+
+      filter.$or = orConditions;
+    }
+
+    // ---------- SORTING ----------
+    const sort = {};
+
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    if (sortBy === "invoiceNo") sort.invoiceNo = dir;
+    else if (sortBy === "supplier") sort["supplier.name"] = dir;
+    else if (sortBy === "grandTotal") sort.grandTotal = dir;
+    else if (sortBy === "status") sort.status = dir;
+    else sort.invoiceDate = dir; // invoiceDate / createdAt default
+
+    // ---------- QUERY ----------
+    const purchases = await Purchase.find(filter)
+      .populate("supplier", "name")
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalCount = await Purchase.countDocuments(filter);
+
+    return res.json({
+      success: true,
+      purchases,
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+    });
+  } catch (err) {
+    console.error("Error fetching purchases:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to load purchases",
+    });
+  }
+};
+
+const sendCsv = (res, filename, headers, rows) => {
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const esc = (v) =>
+    `"${String(v ?? "")
+      .replaceAll('"', '""')
+      .replaceAll(/\r?\n/g, " ")}"`;
+  const head = headers.map(esc).join(",") + "\n";
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
+  res.send(head + body);
+};
+
+const pipeDoc = (res, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ size: "A4", margin: 36 });
+  doc.on("error", (err) => {
+    console.error("PDF error:", err);
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "PDF generation failed" });
+      }
+      doc.destroy();
+    } catch {}
+  });
+  doc.pipe(res);
+  return doc;
+};
+
+const money = (n) => Number(Number(n || 0).toFixed(2));
+
+export const exportPurchasesCsv = async (req, res) => {
+  try {
+    const { search, status, from, to, supplier } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { invoiceNo: { $regex: search, $options: "i" } },
+        { "supplier.name": { $regex: search, $options: "i" } },
+      ];
+    }
+    if (status) {
+      query.status = status;
+    }
+    if (supplier) {
+      query.supplier = supplier;
+    }
+    if (from || to) {
+      query.invoiceDate = {};
+      if (from) query.invoiceDate.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        query.invoiceDate.$lte = end;
+      }
+    }
+
+    const purchases = await Purchase.find(query)
+      .populate("supplier", "name")
+      .sort({ invoiceDate: -1, createdAt: -1 })
+      .lean();
+
+    const rows = purchases.map((p) => ({
+      invoiceNo: p.invoiceNo || "-",
+      supplier: p.supplier?.name || "-",
+      invoiceDate: p.invoiceDate
+        ? new Date(p.invoiceDate).toLocaleDateString("en-LK")
+        : "-",
+      status: p.status || "-",
+      grandTotal: money(p.grandTotal || 0),
+      itemsCount: p.items?.length || 0,
+    }));
+
+    sendCsv(
+      res,
+      `purchases_${new Date().toISOString().slice(0, 10)}.csv`,
+      ["invoiceNo", "supplier", "invoiceDate", "status", "grandTotal", "itemsCount"],
+      rows
+    );
+  } catch (error) {
+    console.error("Export purchases CSV error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+export const exportPurchasesPdf = async (req, res) => {
+  try {
+    const { search, status, from, to, supplier } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { invoiceNo: { $regex: search, $options: "i" } },
+        { "supplier.name": { $regex: search, $options: "i" } },
+      ];
+    }
+    if (status) {
+      query.status = status;
+    }
+    if (supplier) {
+      query.supplier = supplier;
+    }
+    if (from || to) {
+      query.invoiceDate = {};
+      if (from) query.invoiceDate.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        query.invoiceDate.$lte = end;
+      }
+    }
+
+    const purchases = await Purchase.find(query)
+      .populate("supplier", "name")
+      .sort({ invoiceDate: -1, createdAt: -1 })
+      .lean();
+
+    const doc = pipeDoc(res, `purchases_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.fontSize(16).text("Purchases Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text("Purchases", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+
+    let totalAmount = 0;
+    purchases.forEach((p) => {
+      totalAmount += money(p.grandTotal || 0);
+      doc.text(
+        `Invoice: ${p.invoiceNo || "-"} | Supplier: ${
+          p.supplier?.name || "-"
+        } | Date: ${
+          p.invoiceDate
+            ? new Date(p.invoiceDate).toLocaleDateString("en-LK")
+            : "-"
+        } | Status: ${p.status || "-"} | Total: Rs. ${money(p.grandTotal || 0)}`
+      );
+    });
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(11).text(`Total Purchases: ${purchases.length}`);
+    doc.fontSize(11).text(`Total Amount: Rs. ${money(totalAmount)}`);
+
+    doc.end();
+  } catch (error) {
+    console.error("Export purchases PDF error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
   }
 };

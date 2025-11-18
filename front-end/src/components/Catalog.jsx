@@ -1,14 +1,154 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../utils/api";
+import { FiGrid, FiTag } from "react-icons/fi";
 
-// Keep your original fixed size list
 const FIXED_SIZES = ["Small", "Medium", "Large"];
 
 // Match table density options from Products/Customers
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && value !== "all" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
 };
+
+// Tab styles like Analytics & Insights
+const baseTab =
+  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors";
+const activeTab = "bg-gray-900 text-white";
+const inactiveTab = "bg-white text-gray-700 hover:bg-gray-100";
 
 export default function Catalog() {
   // ===== Tabs & density =====
@@ -187,7 +327,6 @@ export default function Catalog() {
     setBrandDrawerOpen(false);
   };
 
-  // ===== category submit (UNCHANGED logic) =====
   const submitCategory = async (e) => {
     e.preventDefault();
     if (!formCategory.trim()) return;
@@ -247,7 +386,6 @@ export default function Catalog() {
     }
   };
 
-  // ===== brand submit (UNCHANGED logic) =====
   const submitBrand = async (e) => {
     e.preventDefault();
     if (!brandName.trim()) return;
@@ -304,23 +442,38 @@ export default function Catalog() {
     }
   };
 
+  // ===== ESC to close drawers =====
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        if (catDrawerOpen) closeCatDrawer();
+        if (brandDrawerOpen) closeBrandDrawer();
+      }
+    };
+
+    if (catDrawerOpen || brandDrawerOpen) {
+      window.addEventListener("keydown", onKeyDown);
+    }
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [catDrawerOpen, brandDrawerOpen]);
+
   // ===== UI =====
   const dens = DENSITIES[density];
 
   return (
     <div className="p-6">
-      {/* Page header to match Products/Customers */}
+      {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Categories & Brands
+          <h1 className="text-3xl font-bold text-gray-900">
+            Categories &amp; Brands
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-gray-600 text-base">
             Manage catalog taxonomy used across products.
           </p>
         </div>
 
-        {/* Density + Rows controls follow tab content, but keep density here for global consistency */}
+        {/* Density + New button */}
         <div className="flex items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
             <button
@@ -343,7 +496,6 @@ export default function Catalog() {
             </button>
           </div>
 
-          {/* Add entity depending on tab */}
           {tab === "categories" ? (
             <button
               onClick={openCatDrawerForCreate}
@@ -362,32 +514,29 @@ export default function Catalog() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4 border-b border-gray-200">
-        <nav className="-mb-px flex gap-6">
+      {/* Tabs – styled like Analytics & Insights, now with icons */}
+      <div className="mb-4">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
           <button
-            className={`border-b-2 px-1 pb-2 text-sm font-medium ${
-              tab === "categories"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-600 hover:text-gray-800"
+            className={`${baseTab} ${
+              tab === "categories" ? activeTab : inactiveTab
             }`}
             onClick={() => setTab("categories")}
-            title="Categories"
           >
-            Categories
+            <FiGrid className="text-[15px]" />
+            <span>Categories</span>
           </button>
+
           <button
-            className={`border-b-2 px-1 pb-2 text-sm font-medium ${
-              tab === "brands"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-600 hover:text-gray-800"
+            className={`${baseTab} ${
+              tab === "brands" ? activeTab : inactiveTab
             }`}
             onClick={() => setTab("brands")}
-            title="Brands"
           >
-            Brands
+            <FiTag className="text-[15px]" />
+            <span>Brands</span>
           </button>
-        </nav>
+        </div>
       </div>
 
       {/* Toolbar (search + rows per page) */}
@@ -398,7 +547,7 @@ export default function Catalog() {
             placeholder="Search categories…"
             defaultValue={catSearch}
             onChange={onCatSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <RowsPerPage
             value={catPageSize}
@@ -415,7 +564,7 @@ export default function Catalog() {
             placeholder="Search brands…"
             defaultValue={brandSearch}
             onChange={onBrandSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <RowsPerPage
             value={brandPageSize}
@@ -433,25 +582,31 @@ export default function Catalog() {
           {tab === "categories" ? (
             <table className="min-w-full table-auto">
               <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Sizes</th>
-                  <th className="px-4 py-3">Action</th>
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Sizes
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Action
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {catLoading ? (
                   <SkeletonRows rows={catPageSize} dens={dens} cols={3} />
                 ) : catPaged.length > 0 ? (
                   catPaged.map((c) => (
                     <tr key={c._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                      <td className={`${dens.cell} ${dens.text} text-gray-800`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         {c.name}
                       </td>
-                      <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         {(c.sizeOptions || []).join(", ") || "—"}
                       </td>
-                      <td className={`${dens.cell} ${dens.text}`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         <div className="flex gap-3">
                           <button
                             onClick={() => openCatDrawerForEdit(c)}
@@ -497,22 +652,28 @@ export default function Catalog() {
           ) : (
             <table className="min-w-full table-auto">
               <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Active</th>
-                  <th className="px-4 py-3">Action</th>
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Active
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Action
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {brandLoading ? (
                   <SkeletonRows rows={brandPageSize} dens={dens} cols={3} />
                 ) : brandPaged.length > 0 ? (
                   brandPaged.map((b) => (
                     <tr key={b._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                      <td className={`${dens.cell} ${dens.text} text-gray-800`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         {b.name}
                       </td>
-                      <td className={`${dens.cell} ${dens.text}`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
                             b.active !== false
@@ -523,7 +684,7 @@ export default function Catalog() {
                           {b.active !== false ? "Yes" : "No"}
                         </span>
                       </td>
-                      <td className={`${dens.cell} ${dens.text}`}>
+                      <td className={`${dens.cell} text-sm text-gray-700`}>
                         <div className="flex gap-3">
                           <button
                             onClick={() => openBrandDrawerForEdit(b)}
@@ -595,8 +756,6 @@ export default function Catalog() {
         )}
       </div>
 
-      {/* ===== Drawers (match Products/Customers) ===== */}
-
       {/* Category drawer */}
       {catDrawerOpen && (
         <div className="fixed inset-0 z-50">
@@ -606,7 +765,6 @@ export default function Catalog() {
             aria-hidden
           />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -624,7 +782,6 @@ export default function Catalog() {
               </button>
             </div>
 
-            {/* Body */}
             <form
               onSubmit={submitCategory}
               className="flex flex-1 flex-col overflow-y-auto min-h-0"
@@ -649,14 +806,16 @@ export default function Catalog() {
                 </Field>
 
                 <Field label="Size Mode" required>
-                  <select
+                  <Combo
                     value={sizeMode}
-                    onChange={(e) => setSizeMode(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="fixed">Fixed (Small, Medium, Large)</option>
-                    <option value="custom">Custom (enter your own)</option>
-                  </select>
+                    onChange={(val) => setSizeMode(val)}
+                    options={[
+                      { value: "fixed", label: "Fixed (Small, Medium, Large)" },
+                      { value: "custom", label: "Custom (enter your own)" },
+                    ]}
+                    placeholder="Fixed (Small, Medium, Large)"
+                    required
+                  />
                 </Field>
 
                 {sizeMode === "custom" && (
@@ -676,7 +835,6 @@ export default function Catalog() {
                 </p>
               </div>
 
-              {/* Footer */}
               <div className="border-t border-gray-200 bg-white px-5 py-4 sticky bottom-0">
                 <div className="flex items-center justify-end gap-3">
                   <button
@@ -711,7 +869,6 @@ export default function Catalog() {
             aria-hidden
           />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -729,7 +886,6 @@ export default function Catalog() {
               </button>
             </div>
 
-            {/* Body */}
             <form
               onSubmit={submitBrand}
               className="flex flex-1 flex-col overflow-y-auto min-h-0"
@@ -763,7 +919,6 @@ export default function Catalog() {
                 </label>
               </div>
 
-              {/* Footer */}
               <div className="border-t border-gray-200 bg-white px-5 py-4 sticky bottom-0">
                 <div className="flex items-center justify-end gap-3">
                   <button
@@ -792,7 +947,7 @@ export default function Catalog() {
   );
 }
 
-/* ---------- Reusable bits (mirroring your other screens) ---------- */
+/* ---------- Reusable bits ---------- */
 
 const Field = ({ label, required, children }) => (
   <label className="block">
@@ -877,7 +1032,6 @@ const FooterPager = ({
 
   return (
     <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
-      {/* Rows per page + showing range */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600">Rows per page:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
@@ -900,7 +1054,6 @@ const FooterPager = ({
         </span>
       </div>
 
-      {/* Page controls with jump */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex items-center gap-1">
           {totalPages <= 1 && (

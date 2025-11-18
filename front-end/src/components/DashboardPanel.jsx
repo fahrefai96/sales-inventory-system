@@ -8,10 +8,6 @@ import {
   FaExclamationTriangle,
   FaArrowDown,
   FaShoppingCart,
-  FaTruck,
-  FaUserPlus,
-  FaPlusCircle,
-  FaDownload,
   FaFileCsv,
   FaMoneyBillWave,
   FaChartLine,
@@ -47,7 +43,7 @@ const DENSITIES = {
 };
 
 const StickyHeader = ({ children }) => (
-  <div className="sticky top-0 z-10 bg-gray-100/90 backdrop-blur supports-[backdrop-filter]:bg-gray-100/60 py-3">
+  <div className="sticky top-0 z-10 bg-gray-100/90 backdrop-blur supports-[backdrop-filter]:bg-gray-100/60 -mx-6 px-6">
     {children}
   </div>
 );
@@ -89,6 +85,10 @@ export default function DashboardPanel() {
   const [receivables, setReceivables] = useState(null);
   const [topProducts, setTopProducts] = useState(null);
   const [combinedTrend, setCombinedTrend] = useState(null);
+
+  // --- AI summary strip (admin only) ---
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiSummaryError, setAiSummaryError] = useState("");
 
   // role-based visibility
   const role = (() => {
@@ -224,6 +224,99 @@ export default function DashboardPanel() {
     return () => (mounted = false);
   }, [range.from, range.to, role]);
 
+  // ---- AI summary fetch (admin only) ----
+  useEffect(() => {
+    if (role !== "admin") {
+      setAiSummary(null);
+      setAiSummaryError("");
+      return;
+    }
+
+    let mounted = true;
+
+    const loadAiSummary = async () => {
+      try {
+        setAiSummaryError("");
+        const [monthlyRes, smartRes, anomalyRes] = await Promise.all([
+          api.get("/ai-monthly-summary").catch(() => null),
+          api.get("/ai-smart-alerts").catch(() => null),
+          api.get("/ai-anomaly").catch(() => null),
+        ]);
+
+        if (!mounted) return;
+
+        const monthly = monthlyRes?.data;
+        const smart = smartRes?.data;
+        const anomaly = anomalyRes?.data;
+
+        const parts = [];
+
+        // Monthly revenue trend
+        if (monthly?.success && monthly.stats) {
+          const { revenueChangePct, revenueTrend } = monthly.stats;
+          const monthName = monthly.period?.month;
+          if (typeof revenueChangePct === "number" && monthName) {
+            const trendWord =
+              revenueTrend === "up"
+                ? "higher"
+                : revenueTrend === "down"
+                ? "lower"
+                : "different";
+            parts.push(
+              `Revenue for ${monthName} is ${Math.abs(revenueChangePct).toFixed(
+                1
+              )}% ${trendWord} than last month.`
+            );
+          } else if (monthly.summaryText) {
+            parts.push(monthly.summaryText);
+          }
+        }
+
+        // Smart alerts (stock / payments)
+        if (smart?.success && smart.counts) {
+          const { total, stock, payments } = smart.counts;
+          if (total > 0) {
+            parts.push(
+              `${total} smart alert${
+                total > 1 ? "s" : ""
+              } active (stock ${stock}, payments ${payments}).`
+            );
+          }
+        }
+
+        // Anomalies
+        if (anomaly?.success && anomaly.stats && anomaly.window) {
+          const totalAnomalies = anomaly.stats.totalAnomalies || 0;
+          if (totalAnomalies > 0) {
+            parts.push(
+              `${totalAnomalies} demand anomal${
+                totalAnomalies > 1 ? "ies" : "y"
+              } detected in the last ${anomaly.window.days || 30} days.`
+            );
+          }
+        }
+
+        const text =
+          parts.length > 0
+            ? parts.join(" ")
+            : "Insights will appear here after more sales and inventory data are recorded.";
+
+        setAiSummary({ text });
+      } catch (e) {
+        console.error("Failed to load AI dashboard summary:", e);
+        if (mounted) {
+          setAiSummary(null);
+          setAiSummaryError("AI insights are temporarily unavailable.");
+        }
+      }
+    };
+
+    loadAiSummary();
+    return () => {
+      mounted = false;
+    };
+  }, [role]);
+
   // ---- derived ----
   const densityCls = DENSITIES[density];
   const outOfStockCount = dashboard?.outOfStock?.length || 0;
@@ -272,30 +365,6 @@ export default function DashboardPanel() {
     }));
   }, [combinedTrend]);
 
-  // sales CSV
-  const handleExportCsv = async () => {
-    try {
-      const url = `/reports/sales/export/csv?from=${encodeURIComponent(
-        toISODate(range.from)
-      )}&to=${encodeURIComponent(toISODate(range.to))}&groupBy=day`;
-      const res = await api.get(url, { responseType: "blob" });
-      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = `sales_${toISODate(range.from).slice(0, 10)}_${toISODate(
-        range.to
-      ).slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(href);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to export CSV.");
-    }
-  };
-
   // low-stock CSV
   const handleExportLowStock = async () => {
     try {
@@ -330,49 +399,65 @@ export default function DashboardPanel() {
 
   // ---- rendering ----
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6">
       <StickyHeader>
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 text-base">
               Monitor sales, inventory health, and recent activity
             </p>
+
+            {/* AI summary strip (admin only) */}
+            {role === "admin" && (
+              <p className="mt-1 text-xs text-gray-500">
+                <span className="font-semibold">Insights: </span>
+                {aiSummary?.text ||
+                  aiSummaryError ||
+                  "Collecting data to generate Insights…"}{" "}
+                <Link
+                  to="/admin-dashboard/analytics"
+                  className="text-blue-600 hover:underline"
+                >
+                  View details in Analytics
+                </Link>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-white rounded shadow px-2 py-1">
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
               <button
-                className={`px-2 py-1 rounded ${
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
                   range.key === "today"
                     ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
                 onClick={() => setPreset("today")}
               >
-                Today
+                <span>Today</span>
               </button>
               <button
-                className={`px-2 py-1 rounded ${
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
                   range.key === "7d"
                     ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
                 onClick={() => setPreset("7d")}
               >
-                7d
+                <span>7d</span>
               </button>
               <button
-                className={`px-2 py-1 rounded ${
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
                   range.key === "30d"
                     ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
                 onClick={() => setPreset("30d")}
               >
-                30d
+                <span>30d</span>
               </button>
-              <div className="h-5 w-px bg-gray-200 mx-1" />
+              <div className="h-8 w-px bg-gray-200 self-center" />
               <input
                 type="date"
                 value={toISODate(range.from).slice(0, 10)}
@@ -383,9 +468,9 @@ export default function DashboardPanel() {
                     key: "custom",
                   }))
                 }
-                className="text-sm"
+                className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
               />
-              <span className="text-sm">–</span>
+              <span className="px-2 text-sm text-gray-500">–</span>
               <input
                 type="date"
                 value={toISODate(range.to).slice(0, 10)}
@@ -396,50 +481,37 @@ export default function DashboardPanel() {
                     key: "custom",
                   }))
                 }
-                className="text-sm"
+                className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
               />
             </div>
-
-            <div className="flex items-center bg-white rounded shadow px-2 py-1">
-              <span className="text-sm mr-1">Density</span>
+            {/* Density */}
+            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
               <button
-                className={`text-sm px-2 py-1 rounded ${
-                  density === "comfortable"
-                    ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
+                className={`px-3 py-2 text-xs font-medium ${
+                  density === "comfortable" ? "bg-gray-100" : "bg-white"
                 }`}
                 onClick={() => setDensity("comfortable")}
+                title="Comfortable density"
               >
-                Comfort
+                Comfortable
               </button>
               <button
-                className={`text-sm px-2 py-1 rounded ${
-                  density === "compact"
-                    ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
+                className={`px-3 py-2 text-xs font-medium ${
+                  density === "compact" ? "bg-gray-100" : "bg-white"
                 }`}
                 onClick={() => setDensity("compact")}
+                title="Compact density"
               >
                 Compact
               </button>
             </div>
-
-            {/* Sales CSV Export */}
-            <button
-              onClick={handleExportCsv}
-              className="flex items-center bg-white rounded shadow px-2 py-1 text-sm hover:bg-gray-50"
-              title="Export sales (CSV)"
-            >
-              <FaDownload className="mr-2" />
-              Export sales (CSV)
-            </button>
           </div>
         </div>
       </StickyHeader>
 
       {/* KPI row */}
       <div
-        className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${kpiGridCols} gap-4`}
+        className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${kpiGridCols} gap-4 mb-6`}
       >
         {loading ? (
           <>
@@ -454,7 +526,6 @@ export default function DashboardPanel() {
           <div className="text-red-600">{err}</div>
         ) : (
           <>
-            {/* === ROW 1 === */}
             {/* 1. Outstanding Receivables (admin only) */}
             {role === "admin" && (
               <div
@@ -465,7 +536,7 @@ export default function DashboardPanel() {
                   label="Outstanding Receivables"
                 />
                 <div className="text-2xl font-semibold mt-1">
-                  {fmt(receivables?.outstanding?.amount || 0)}
+                  Rs. {fmt(receivables?.outstanding?.amount || 0)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   Invoices: {fmt(receivables?.outstanding?.count || 0)}
@@ -479,7 +550,7 @@ export default function DashboardPanel() {
             >
               <KpiHeader icon={<FaChartLine />} label="Revenue" />
               <div className="text-2xl font-semibold mt-1">
-                {fmt(kpis.revenue)}
+                Rs. {fmt(kpis.revenue)}
               </div>
               {kpis.deltas && (
                 <div className="text-xs text-gray-500 mt-1">
@@ -494,7 +565,7 @@ export default function DashboardPanel() {
               )}
             </div>
 
-            {/* 3. Sales Turnover (admin only, next to revenue) */}
+            {/* 3. Sales Turnover (admin only) */}
             {role === "admin" && (
               <div
                 className={`rounded shadow bg-white ${densityCls.card} text-center`}
@@ -516,7 +587,7 @@ export default function DashboardPanel() {
               >
                 <KpiHeader icon={<FaBoxes />} label="Inventory Value" />
                 <div className="text-2xl font-semibold mt-1">
-                  {fmt(inventoryKpis.value)}
+                  Rs. {fmt(inventoryKpis.value)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   SKUs: {fmt(inventoryKpis.totalSkus)} • Units:{" "}
@@ -546,13 +617,14 @@ export default function DashboardPanel() {
               )}
             </div>
 
-            {/* === ROW 2 === */}
             {/* 6. AOV */}
             <div
               className={`rounded shadow bg-white ${densityCls.card} text-center`}
             >
               <KpiHeader icon={<FaBalanceScale />} label="AOV" />
-              <div className="text-2xl font-semibold mt-1">{fmt(kpis.aov)}</div>
+              <div className="text-2xl font-semibold mt-1">
+                Rs. {fmt(kpis.aov)}
+              </div>
               {kpis.deltas && (
                 <div className="text-xs text-gray-500 mt-1">
                   vs prev:{" "}
@@ -625,7 +697,7 @@ export default function DashboardPanel() {
       </div>
 
       {/* Charts + Top 5 */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
         {/* Sales revenue chart */}
         <ChartCard title="Revenue (by day)" className="xl:col-span-2">
           {loading ? (
@@ -701,7 +773,9 @@ export default function DashboardPanel() {
                         <span className="truncate">
                           {p.name || p.code || p.productId}
                         </span>
-                        <span className="text-gray-600">{fmt(p.revenue)}</span>
+                        <span className="text-gray-600">
+                          Rs. {fmt(p.revenue)}
+                        </span>
                       </li>
                     ))}
                     {(topProducts.byRevenue || []).length === 0 && (
@@ -719,7 +793,7 @@ export default function DashboardPanel() {
 
       {/* Purchases vs Sales Trend (admin-only) */}
       {role === "admin" && (
-        <ChartCard title="Purchases vs Sales (by day)" className="w-full">
+        <ChartCard title="Purchases vs Sales (by day)" className="w-full mb-6">
           {combinedSeries.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
@@ -752,12 +826,10 @@ export default function DashboardPanel() {
         </ChartCard>
       )}
 
-      {/* Tables & feeds */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      {/* Bottom: tables & feeds (reworked layout) */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-6">
         {/* Recent sales */}
-        <div
-          className={`rounded shadow bg-white ${densityCls.card} xl:col-span-1`}
-        >
+        <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">Recent Sales</div>
             <Link
@@ -789,7 +861,9 @@ export default function DashboardPanel() {
                       <div className="font-medium text-sm">
                         {s.saleId || s._id}
                       </div>
-                      <div className="text-sm">{fmt(s.discountedAmount)}</div>
+                      <div className="text-sm">
+                        Rs. {fmt(s.discountedAmount)}
+                      </div>
                     </div>
                     <div className="text-xs text-gray-500">
                       {s.customer?.name || "-"} •{" "}
@@ -803,6 +877,53 @@ export default function DashboardPanel() {
             )}
           </div>
         </div>
+
+        {/* Recent purchases */}
+        {(role === "admin" || role === "inventory" || role === "staff") && (
+          <div className={`rounded shadow bg-white ${densityCls.card}`}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold">Recent Purchases</div>
+              <Link
+                to="/admin-dashboard/purchases"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View all
+              </Link>
+            </div>
+            <div className="mt-2">
+              {loading ? (
+                <>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse mb-2" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse mb-2" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                </>
+              ) : recentPurchases.length === 0 ? (
+                <div className="text-sm text-gray-500">No purchases found.</div>
+              ) : (
+                <ul>
+                  {recentPurchases.map((p) => (
+                    <li
+                      key={p._id}
+                      className={`border-b last:border-b-0 ${densityCls.listItem}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">
+                          #{p.invoiceNo || p._id} • {p.supplier?.name || "-"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(p.createdAt).toLocaleString("en-LK")}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Total: Rs. {fmt(p.grandTotal)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Low stock list */}
         <div className={`rounded shadow bg-white ${densityCls.card}`}>
@@ -909,15 +1030,13 @@ export default function DashboardPanel() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Recent purchases */}
-      {(role === "admin" || role === "inventory" || role === "staff") && (
+        {/* Out-of-stock list */}
         <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">Recent Purchases</div>
+            <div className="text-sm font-semibold">Out of Stock</div>
             <Link
-              to="/admin-dashboard/purchases"
+              to="/admin-dashboard/products"
               className="text-xs text-blue-600 hover:underline"
             >
               View all
@@ -930,76 +1049,31 @@ export default function DashboardPanel() {
                 <div className="h-4 bg-gray-100 rounded animate-pulse mb-2" />
                 <div className="h-4 bg-gray-100 rounded animate-pulse" />
               </>
-            ) : recentPurchases.length === 0 ? (
-              <div className="text-sm text-gray-500">No purchases found.</div>
+            ) : (dashboard?.outOfStock || []).length === 0 ? (
+              <div className="text-sm text-gray-500">
+                No products are out of stock.
+              </div>
             ) : (
               <ul>
-                {recentPurchases.map((p) => (
+                {dashboard.outOfStock.slice(0, 10).map((p) => (
                   <li
                     key={p._id}
                     className={`border-b last:border-b-0 ${densityCls.listItem}`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="text-sm">
-                        #{p.invoiceNo || p._id} • {p.supplier?.name || "-"}
-                      </div>
+                      <div className="text-sm">{p.name}</div>
+                      <div className="text-xs text-gray-500">0</div>
+                    </div>
+                    {p.category?.name && (
                       <div className="text-xs text-gray-500">
-                        {new Date(p.createdAt).toLocaleString("en-LK")}
+                        {p.category.name}
                       </div>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Total: {fmt(p.grandTotal)}
-                    </div>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Out-of-stock list */}
-      <div className={`rounded shadow bg-white ${densityCls.card}`}>
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Out of Stock</div>
-          <Link
-            to="/admin-dashboard/products"
-            className="text-xs text-blue-600 hover:underline"
-          >
-            View all
-          </Link>
-        </div>
-        <div className="mt-2">
-          {loading ? (
-            <>
-              <div className="h-4 bg-gray-100 rounded animate-pulse mb-2" />
-              <div className="h-4 bg-gray-100 rounded animate-pulse mb-2" />
-              <div className="h-4 bg-gray-100 rounded animate-pulse" />
-            </>
-          ) : (dashboard?.outOfStock || []).length === 0 ? (
-            <div className="text-sm text-gray-500">
-              No products are out of stock.
-            </div>
-          ) : (
-            <ul>
-              {dashboard.outOfStock.slice(0, 10).map((p) => (
-                <li
-                  key={p._id}
-                  className={`border-b last:border-b-0 ${densityCls.listItem}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm">{p.name}</div>
-                    <div className="text-xs text-gray-500">0</div>
-                  </div>
-                  {p.category?.name && (
-                    <div className="text-xs text-gray-500">
-                      {p.category.name}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
     </div>

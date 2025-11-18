@@ -9,6 +9,9 @@ import {
   FiClipboard,
   FiLogOut,
   FiTruck,
+  FiMessageSquare,
+  FiLayers,
+  FiUser,
 } from "react-icons/fi";
 
 const StaffSidebar = () => {
@@ -49,10 +52,16 @@ const StaffSidebar = () => {
       path: "/staff/customers",
       icon: <FiUsers />,
     },
+
     {
       name: "Inventory Logs",
       path: "/staff/inventory-logs",
       icon: <FiClipboard />,
+    },
+    {
+      name: "Chatbot",
+      path: "/staff/chatbot",
+      icon: <FiMessageSquare />,
     },
   ];
 
@@ -94,32 +103,23 @@ const StaffSidebar = () => {
   return (
     <aside className="fixed left-0 top-0 h-screen w-16 md:w-64 bg-zinc-900 text-zinc-100 border-r border-zinc-800 flex flex-col">
       {/* Brand Header */}
-      <div className="h-16 px-3 border-b border-zinc-800 flex items-center">
-        <div className="w-full">
-          <div className="hidden md:block text-[20px] font-semibold leading-5 truncate">
-            Sales & Inventory MS
+      <div className="px-3 py-3 border-b border-zinc-800">
+        {/* Logo and Brand Name */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <FiLayers className="text-white text-lg" />
           </div>
-          <div className="md:hidden text-base font-semibold leading-5 truncate">
+          <div className="hidden md:block flex-1 min-w-0">
+            <div className="text-white text-xl font-bold leading-tight truncate">
+              Sales & Inventory
+            </div>
+            <div className="text-zinc-400 text-xs leading-tight mt-0.5">
+              Management System
+            </div>
+          </div>
+          <div className="md:hidden text-white text-sm font-bold">
             SIMS
           </div>
-
-          {/* User info */}
-          {(() => {
-            try {
-              const user = JSON.parse(localStorage.getItem("pos-user") || "{}");
-              if (!user?.name) return null;
-              return (
-                <div className="text-zinc-400 text-[16px] leading-5 truncate">
-                  {user.name}{" "}
-                  <span className="capitalize opacity-80">
-                    ({user.role || "staff"})
-                  </span>
-                </div>
-              );
-            } catch {
-              return null;
-            }
-          })()}
         </div>
       </div>
 
@@ -134,12 +134,38 @@ const StaffSidebar = () => {
         </ul>
       </div>
 
-      <div className="h-px bg-zinc-800 mx-3" />
+      {/* User info and Logout - Bottom section */}
+      <div className="border-t border-zinc-800 p-2">
+        <div className="flex items-center gap-2">
+          {/* User info */}
+          {(() => {
+            try {
+              const user = JSON.parse(localStorage.getItem("pos-user") || "{}");
+              if (!user?.name) return null;
+              return (
+                <div className="flex-1 min-w-0 flex items-center gap-2.5 px-1">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center border border-zinc-600 shadow-sm">
+                    <FiUser className="text-zinc-200 text-sm" />
+                  </div>
+                  <div className="hidden md:block flex-1 min-w-0">
+                    <div className="text-zinc-100 text-sm font-medium truncate leading-tight">
+                      {user.name}
+                    </div>
+                    <div className="text-zinc-400 text-xs capitalize truncate leading-tight mt-0.5">
+                      {user.role || "staff"}
+                    </div>
+                  </div>
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()}
 
-      {/* Logout */}
-      <div className="p-2">
-        <div className="[&_.active]:group">
-          <Item item={logoutItem} />
+          {/* Logout */}
+          <div className="flex-shrink-0 [&_.active]:group">
+            <Item item={logoutItem} />
+          </div>
         </div>
       </div>
     </aside>

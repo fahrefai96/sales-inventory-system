@@ -149,7 +149,7 @@ export default function StaffDashboardPanel() {
                 Today&apos;s Revenue
               </div>
               <div className="text-2xl font-semibold mt-1">
-                {fmt(todayRevenue)}
+                Rs. {fmt(todayRevenue)}
               </div>
             </div>
 
@@ -220,7 +220,9 @@ export default function StaffDashboardPanel() {
                     <div className="font-medium">
                       {s.saleId || s._id?.slice(-6) || "-"}
                     </div>
-                    <div>{fmt(s.discountedAmount ?? s.totalAmount ?? 0)}</div>
+                    <div>
+                      Rs. {fmt(s.discountedAmount ?? s.totalAmount ?? 0)}
+                    </div>
                   </div>
                   <div className="text-xs text-gray-500">
                     {s.customer?.name || "-"} •{" "}
@@ -271,7 +273,7 @@ export default function StaffDashboardPanel() {
                       {s.saleId || s._id?.slice(-6) || "-"}
                     </div>
                     <div className="text-red-600">
-                      Due: {fmt(s.amountDue ?? 0)}
+                      Due: Rs. {fmt(s.amountDue ?? 0)}
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">

@@ -167,23 +167,14 @@ const getSummary = async (req, res) => {
  *  - outstanding.amount = sum(amountDue) where amountDue > 0
  *  - outstanding.count  = count of unpaid invoices
  *  - pending.count      = count of unpaid invoices (same criterion) — replaces "overdue"
- * Range filter applies to saleDate.
+ * Note: Receivables show ALL outstanding invoices regardless of date range.
  */
 const getReceivablesSummary = async (req, res) => {
   try {
-    const from = parseISO(req.query.from);
-    const to = parseISO(req.query.to);
-    const rangeMatch = {};
-    if (from) rangeMatch.$gte = from;
-    if (to) rangeMatch.$lt = to;
-
-    const dateFilter = Object.keys(rangeMatch).length
-      ? { saleDate: rangeMatch }
-      : {};
-
-    // Unpaid invoices in range (amountDue > 0)
+    // Unpaid invoices (amountDue > 0) - no date filter for receivables
+    // Receivables should show ALL outstanding invoices regardless of date
     const unpaidAgg = await Sale.aggregate([
-      { $match: { ...dateFilter, amountDue: { $gt: 0 } } },
+      { $match: { amountDue: { $gt: 0 } } },
       {
         $group: {
           _id: null,
@@ -200,10 +191,6 @@ const getReceivablesSummary = async (req, res) => {
     const pendingCount = outstandingCount;
 
     return res.json({
-      range: {
-        from: from ? from.toISOString().slice(0, 10) : null,
-        to: to ? to.toISOString().slice(0, 10) : null,
-      },
       outstanding: { amount: outstandingAmount, count: outstandingCount },
       pending: { count: pendingCount },
     });

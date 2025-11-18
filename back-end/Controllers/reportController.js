@@ -221,15 +221,71 @@ export const getSalesReport = async (req, res) => {
  *  =========================== */
 export const getInventoryReport = async (req, res) => {
   try {
-    const { supplier } = req.query;
+    const { supplier, from, to } = req.query;
+
+    // If date range is provided, find products that were purchased in that range
+    let productIdsInRange = null;
+    if (from || to) {
+      // Build purchase match stage with date filtering
+      const purchaseMatch = { status: "posted" };
+      const invoiceDateMatch = {};
+      const createdAtMatch = {};
+      
+      if (from) {
+        const start = new Date(from);
+        start.setHours(0, 0, 0, 0);
+        invoiceDateMatch.$gte = start;
+        createdAtMatch.$gte = start;
+      }
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        invoiceDateMatch.$lte = end;
+        createdAtMatch.$lte = end;
+      }
+      
+      // Match if invoiceDate is within range, or if invoiceDate is null/undefined, use createdAt
+      purchaseMatch.$or = [
+        { invoiceDate: invoiceDateMatch },
+        {
+          $and: [
+            { $or: [{ invoiceDate: { $exists: false } }, { invoiceDate: null }] },
+            { createdAt: createdAtMatch },
+          ],
+        },
+      ];
+
+      // Get unique product IDs from purchases in the date range
+      const purchasedProducts = await Purchase.aggregate([
+        { $match: purchaseMatch },
+        { $unwind: "$items" },
+        { $group: { _id: "$items.product" } },
+      ]);
+      
+      productIdsInRange = purchasedProducts.map((p) => p._id);
+      
+      // If no products found in range, return empty results
+      if (productIdsInRange.length === 0) {
+        return res.json({
+          success: true,
+          KPIs: { totalSkus: 0, totalUnits: 0, stockValue: 0 },
+          rows: [],
+          supplierSummary: [],
+        });
+      }
+    }
 
     const q = { isDeleted: false };
     if (supplier && mongoose.Types.ObjectId.isValid(supplier)) {
       q.supplier = new mongoose.Types.ObjectId(supplier);
     }
+    // Filter by products purchased in date range if date range is provided
+    if (productIdsInRange && productIdsInRange.length > 0) {
+      q._id = { $in: productIdsInRange };
+    }
 
     const products = await Product.find(q)
-      .select("code name stock avgCost lastCost supplier")
+      .select("code name stock avgCost lastCost supplier minStock")
       .populate("supplier", "name")
       .lean();
 
@@ -244,6 +300,7 @@ export const getInventoryReport = async (req, res) => {
         avgCost: money(p.avgCost || 0),
         lastCost: money(p.lastCost || 0),
         stockValue,
+        minStock: Number.isFinite(Number(p.minStock)) ? Number(p.minStock) : null,
       };
     });
 
@@ -253,8 +310,38 @@ export const getInventoryReport = async (req, res) => {
       stockValue: money(rows.reduce((s, r) => s + (r.stockValue || 0), 0)),
     };
 
+    // Build purchase match stage with date filtering for supplier summary
+    const purchaseMatchForSummary = { status: "posted" };
+    if (from || to) {
+      const invoiceDateMatch = {};
+      const createdAtMatch = {};
+      
+      if (from) {
+        const start = new Date(from);
+        start.setHours(0, 0, 0, 0);
+        invoiceDateMatch.$gte = start;
+        createdAtMatch.$gte = start;
+      }
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        invoiceDateMatch.$lte = end;
+        createdAtMatch.$lte = end;
+      }
+      
+      purchaseMatchForSummary.$or = [
+        { invoiceDate: invoiceDateMatch },
+        {
+          $and: [
+            { $or: [{ invoiceDate: { $exists: false } }, { invoiceDate: null }] },
+            { createdAt: createdAtMatch },
+          ],
+        },
+      ];
+    }
+
     const supplierSummary = await Purchase.aggregate([
-      { $match: { status: "posted" } },
+      { $match: purchaseMatchForSummary },
       {
         $group: {
           _id: "$supplier",
@@ -501,11 +588,47 @@ export const exportSalesCsv = async (req, res) => {
 
 export const exportInventoryCsv = async (req, res) => {
   try {
-    const { supplier } = req.query;
+    const { supplier, from, to } = req.query;
     const q = { isDeleted: false };
     if (supplier && mongoose.Types.ObjectId.isValid(supplier)) {
       q.supplier = new mongoose.Types.ObjectId(supplier);
     }
+
+    // Date filtering logic (same as getInventoryReport)
+    let productIdsInRange = null;
+    if (from || to) {
+      const purchaseMatch = { status: "posted" };
+      if (from || to) {
+        const invoiceDateMatch = {};
+        if (from) invoiceDateMatch.$gte = new Date(from);
+        if (to) {
+          const endDate = new Date(to);
+          endDate.setHours(23, 59, 59, 999);
+          invoiceDateMatch.$lte = endDate;
+        }
+        purchaseMatch.$or = [
+          { invoiceDate: invoiceDateMatch },
+          { createdAt: invoiceDateMatch },
+        ];
+      }
+      const purchasesInRange = await Purchase.find(purchaseMatch)
+        .select("items.product")
+        .lean();
+      productIdsInRange = [
+        ...new Set(
+          purchasesInRange.flatMap((p) =>
+            (p.items || []).map((i) => String(i.product))
+          )
+        ),
+      ].map((id) => new mongoose.Types.ObjectId(id));
+      if (productIdsInRange.length === 0) {
+        productIdsInRange = [];
+      }
+    }
+    if (productIdsInRange && productIdsInRange.length > 0) {
+      q._id = { $in: productIdsInRange };
+    }
+
     const products = await Product.find(q)
       .select("code name stock avgCost lastCost supplier")
       .populate("supplier", "name")
@@ -521,20 +644,44 @@ export const exportInventoryCsv = async (req, res) => {
       stockValue: money((p.avgCost || 0) * (p.stock || 0)),
     }));
 
-    sendCsv(
-      res,
-      "inventory.csv",
-      [
-        "code",
-        "name",
-        "supplier",
-        "stock",
-        "avgCost",
-        "lastCost",
-        "stockValue",
-      ],
-      rows
-    );
+    // Calculate supplier stock value summary
+    const supplierStockMap = new Map();
+    for (const p of products) {
+      const supplierName = p.supplier?.name || "-";
+      const stockValue = money((p.avgCost || 0) * (p.stock || 0));
+      supplierStockMap.set(
+        supplierName,
+        (supplierStockMap.get(supplierName) || 0) + stockValue
+      );
+    }
+    const supplierStockSummary = Array.from(supplierStockMap, ([supplier, stockValue]) => ({
+      supplier,
+      stockValue: money(stockValue),
+    })).sort((a, b) => b.stockValue - a.stockValue);
+
+    // Build CSV with multiple sections
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="inventory.csv"`);
+    const esc = (v) =>
+      `"${String(v ?? "")
+        .replaceAll('"', '""')
+        .replaceAll(/\r?\n/g, " ")}"`;
+
+    // Section 1: Product details
+    const productHeaders = ["code", "name", "supplier", "stock", "avgCost", "lastCost", "stockValue"];
+    const productHead = productHeaders.map(esc).join(",") + "\n";
+    const productBody = rows
+      .map((r) => productHeaders.map((h) => esc(r[h])).join(","))
+      .join("\n");
+
+    // Section 2: Stock Value by Supplier
+    const supplierHeaders = ["supplier", "stockValue"];
+    const supplierHead = "\n\nStock Value by Supplier\n" + supplierHeaders.map(esc).join(",") + "\n";
+    const supplierBody = supplierStockSummary
+      .map((r) => supplierHeaders.map((h) => esc(r[h])).join(","))
+      .join("\n");
+
+    res.send(productHead + productBody + supplierHead + supplierBody);
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, message: "Server error" });
@@ -948,11 +1095,47 @@ export const exportSalesPdf = async (req, res) => {
 
 export const exportInventoryPdf = async (req, res) => {
   try {
-    const { supplier } = req.query;
+    const { supplier, from, to } = req.query;
     const q = { isDeleted: false };
     if (supplier && mongoose.Types.ObjectId.isValid(supplier)) {
       q.supplier = new mongoose.Types.ObjectId(supplier);
     }
+
+    // Date filtering logic (same as getInventoryReport)
+    let productIdsInRange = null;
+    if (from || to) {
+      const purchaseMatch = { status: "posted" };
+      if (from || to) {
+        const invoiceDateMatch = {};
+        if (from) invoiceDateMatch.$gte = new Date(from);
+        if (to) {
+          const endDate = new Date(to);
+          endDate.setHours(23, 59, 59, 999);
+          invoiceDateMatch.$lte = endDate;
+        }
+        purchaseMatch.$or = [
+          { invoiceDate: invoiceDateMatch },
+          { createdAt: invoiceDateMatch },
+        ];
+      }
+      const purchasesInRange = await Purchase.find(purchaseMatch)
+        .select("items.product")
+        .lean();
+      productIdsInRange = [
+        ...new Set(
+          purchasesInRange.flatMap((p) =>
+            (p.items || []).map((i) => String(i.product))
+          )
+        ),
+      ].map((id) => new mongoose.Types.ObjectId(id));
+      if (productIdsInRange.length === 0) {
+        productIdsInRange = [];
+      }
+    }
+    if (productIdsInRange && productIdsInRange.length > 0) {
+      q._id = { $in: productIdsInRange };
+    }
+
     const products = await Product.find(q)
       .select("code name stock avgCost lastCost supplier")
       .populate("supplier", "name")
@@ -978,6 +1161,9 @@ export const exportInventoryPdf = async (req, res) => {
       })}`
     );
     if (supplier) doc.text(`Supplier filter: ${supplierName}`);
+    if (from || to) {
+      doc.text(`Date range: ${from || "All"} to ${to || "All"}`);
+    }
     doc.moveDown(0.8);
 
     let totalUnits = 0;
@@ -1004,6 +1190,30 @@ export const exportInventoryPdf = async (req, res) => {
     doc.fontSize(11).text(`Total SKUs: ${products.length}`);
     doc.fontSize(11).text(`Total Units: ${totalUnits}`);
     doc.fontSize(11).text(`Stock Value: ${money(totalValue).toFixed(2)}`);
+
+    // Calculate and add Stock Value by Supplier section
+    const supplierStockMap = new Map();
+    for (const p of products) {
+      const supplierName = p.supplier?.name || "-";
+      const stockValue = money((p.avgCost || 0) * (p.stock || 0));
+      supplierStockMap.set(
+        supplierName,
+        (supplierStockMap.get(supplierName) || 0) + stockValue
+      );
+    }
+    const supplierStockSummary = Array.from(supplierStockMap, ([supplier, stockValue]) => ({
+      supplier,
+      stockValue: money(stockValue),
+    })).sort((a, b) => b.stockValue - a.stockValue);
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Stock Value by Supplier", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+    supplierStockSummary.forEach((item) => {
+      doc.text(
+        `${item.supplier}  |  Stock Value: Rs. ${item.stockValue.toFixed(2)}`
+      );
+    });
 
     doc.end();
   } catch (e) {
@@ -1570,6 +1780,195 @@ export const exportCustomerBalancesCsv = async (req, res) => {
   } catch (err) {
     console.error("exportCustomerBalancesCsv error:", err);
     res.status(500).json({ success: false, error: "Failed to export CSV." });
+  }
+};
+
+export const exportCustomerBalancesPdf = async (req, res) => {
+  try {
+    const {
+      search = "",
+      min = "",
+      max = "",
+      from = "",
+      to = "",
+      sortBy = "outstandingTotal",
+      sortDir = "desc",
+    } = req.query;
+
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+    const qSearch = String(search || "").trim();
+
+    const matchStage = {};
+    if (from || to) {
+      const saleDateMatch = {};
+      if (from) saleDateMatch.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        saleDateMatch.$lte = end;
+      }
+      matchStage.$expr = {
+        $and: [
+          {
+            $gte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$gte || new Date("1970-01-01"),
+            ],
+          },
+          {
+            $lte: [
+              { $ifNull: ["$saleDate", "$createdAt"] },
+              saleDateMatch.$lte || new Date("2999-12-31"),
+            ],
+          },
+        ],
+      };
+    }
+
+    const agg = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$customer",
+          pendingCount: {
+            $sum: {
+              $cond: [{ $gt: [{ $ifNull: ["$amountDue", 0] }, 0] }, 1, 0],
+            },
+          },
+          outstandingTotal: {
+            $sum: { $max: [{ $ifNull: ["$amountDue", 0] }, 0] },
+          },
+          paidTotal: { $sum: { $max: [{ $ifNull: ["$amountPaid", 0] }, 0] } },
+          lastSale: { $max: { $ifNull: ["$saleDate", "$createdAt"] } },
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+    ];
+
+    if (qSearch) {
+      agg.push({
+        $match: {
+          $or: [
+            { "customer.name": { $regex: qSearch, $options: "i" } },
+            { "customer.email": { $regex: qSearch, $options: "i" } },
+            { "customer.phone": { $regex: qSearch, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    if (qMin !== null || qMax !== null) {
+      const range = {};
+      if (qMin !== null) range.$gte = qMin;
+      if (qMax !== null) range.$lte = qMax;
+      agg.push({ $match: { outstandingTotal: range } });
+    }
+
+    agg.push({
+      $project: {
+        _id: 0,
+        name: { $ifNull: ["$customer.name", "—"] },
+        email: { $ifNull: ["$customer.email", ""] },
+        phone: { $ifNull: ["$customer.phone", ""] },
+        outstandingTotal: 1,
+        pendingCount: 1,
+        paidTotal: 1,
+        lastSale: 1,
+      },
+    });
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    const sortStage = {};
+    if (sortBy === "name") sortStage.name = dir;
+    else if (sortBy === "pendingCount") sortStage.pendingCount = dir;
+    else if (sortBy === "lastSale") sortStage.lastSale = dir;
+    else sortStage.outstandingTotal = dir;
+    agg.push({ $sort: sortStage });
+
+    const rows = await Sale.aggregate(agg);
+
+    const doc = pipeDoc(
+      res,
+      `customer_balances_${new Date().toISOString().slice(0, 10)}.pdf`
+    );
+    doc.fontSize(16).text("Customer Balances Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text("Customer Balances", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+
+    if (rows.length === 0) {
+      doc.text("No customer balances found.");
+    } else {
+      let totalOutstanding = 0;
+      let totalPending = 0;
+      let totalPaid = 0;
+
+      rows.forEach((r) => {
+        const outstanding = money(r.outstandingTotal || 0);
+        const pending = asNumber(r.pendingCount, 0);
+        const paid = money(r.paidTotal || 0);
+
+        totalOutstanding += outstanding;
+        totalPending += pending;
+        totalPaid += paid;
+
+        const name = r.name || "—";
+        const email = r.email || "—";
+        const phone = r.phone || "—";
+        const lastSale = r.lastSale
+          ? new Date(r.lastSale).toLocaleDateString("en-LK")
+          : "—";
+
+        doc.text(
+          `${name} | Email: ${email} | Phone: ${phone} | Outstanding: Rs. ${outstanding.toFixed(
+            2
+          )} | Pending: ${pending} | Paid: Rs. ${paid.toFixed(2)} | Last Sale: ${lastSale}`
+        );
+      });
+
+      doc.moveDown(0.5);
+      doc.fontSize(11).text("Summary", { underline: true });
+      doc.moveDown(0.2).fontSize(10);
+      doc.text(`Total Outstanding: Rs. ${totalOutstanding.toFixed(2)}`);
+      doc.text(`Total Pending Invoices: ${totalPending}`);
+      doc.text(`Total Paid: Rs. ${totalPaid.toFixed(2)}`);
+    }
+
+    // Footer page number
+    const addFooter = () => {
+      const range = doc.bufferedPageRange();
+      for (let i = range.start; i < range.start + range.count; i++) {
+        doc.switchToPage(i);
+        doc.fontSize(8).text(`Page ${i + 1} of ${range.count}`, 36, 820, {
+          align: "right",
+          width: 540,
+        });
+      }
+    };
+    doc.on("end", addFooter);
+
+    doc.end();
+  } catch (err) {
+    console.error("exportCustomerBalancesPdf error:", err);
+    if (!res.headersSent)
+      res.status(500).json({ success: false, error: "Failed to export PDF." });
   }
 };
 

@@ -44,17 +44,26 @@ export default function FilterBar({
   };
 
   const Presets = (
-    <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white shrink-0">
+    <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm shrink-0">
       {[
         ["Today", "today"],
         ["This Week", "week"],
         ["This Month", "month"],
         ["Last Month", "lastMonth"],
+        ["All Time", "all"],
       ].map(([label, val], i) => (
         <button
           key={val}
-          onClick={() => setPreset(val)}
-          className={`px-2.5 py-1.5 text-[12px] leading-none hover:bg-gray-50 ${
+          onClick={() => {
+            if (val === "all") {
+              setRange({ ...range, from: "", to: "", type: "all" });
+            } else {
+              setPreset(val);
+            }
+          }}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-50 ${
+            (range.type === val || (val === "all" && !range.from && !range.to)) ? "bg-gray-100 text-gray-900" : "text-gray-700"
+          } ${
             i ? "border-l border-gray-200" : ""
           }`}
         >
@@ -66,38 +75,42 @@ export default function FilterBar({
 
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-3 sm:px-4">
-      {/* Single row; scroll horizontally if it ever overflows */}
-      <div className="flex items-center gap-2 overflow-x-auto min-w-0">
+      {/* Responsive layout: wrap on small screens, single row on larger */}
+      <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
         {/* From */}
         <div className="flex items-center gap-2 shrink-0">
-          <label className="text-sm text-gray-600">From</label>
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">From</label>
           <input
             type="date"
             value={range.from || ""}
             onChange={onChange("from")}
-            className="w-40 sm:w-48 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* To */}
         <div className="flex items-center gap-2 shrink-0">
-          <label className="text-sm text-gray-600">To</label>
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">To</label>
           <input
             type="date"
             value={range.to || ""}
             onChange={onChange("to")}
-            className="w-40 sm:w-48 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        {/* Presets (compact) */}
+        {/* Presets */}
         <div className="shrink-0">{Presets}</div>
 
-        {/* Spacer pushes extras to the far right */}
-        <div className="flex-1" />
+        {/* Spacer pushes extras to the far right on large screens */}
+        <div className="hidden lg:block flex-1 min-w-0" />
 
-        {/* Extras (groupBy / user / export) */}
-        <div className="flex items-center gap-2 shrink-0">{extras}</div>
+        {/* Extras (groupBy / user / export) - with proper wrapping */}
+        {extras && (
+          <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap min-w-0 max-w-full">
+            {extras}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import Customer from "../models/Customer.js";
 import Sale from "../models/Sales.js";
+import PDFDocument from "pdfkit";
 
 // Add customer
 export const addCustomer = async (req, res) => {
@@ -25,13 +26,69 @@ export const addCustomer = async (req, res) => {
 };
 
 // Get customers
+// Query params:
+//  - search: unified search (name, email, phone, address)
+//  - sortBy: field to sort by (name, email, phone, createdAt)
+//  - sortDir: asc | desc
+//  - page: page number (default: 1)
+//  - limit: items per page (default: 25)
 export const getCustomers = async (req, res) => {
   try {
-    const search = req.query.search || "";
-    const customers = await Customer.find({
-      name: { $regex: search, $options: "i" },
+    const {
+      search = "",
+      sortBy = "createdAt",
+      sortDir = "desc",
+      page = 1,
+      limit = 25,
+    } = req.query;
+
+    const q = {};
+
+    // Unified search (name, email, phone, address)
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" };
+      q.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { address: searchRegex },
+      ];
+    }
+
+    // Sorting
+    const validSortFields = {
+      name: "name",
+      email: "email",
+      phone: "phone",
+      createdAt: "createdAt",
+    };
+    const sortField = validSortFields[sortBy] || "createdAt";
+    const sortDirection = sortDir === "asc" ? 1 : -1;
+    const sortObj = { [sortField]: sortDirection, _id: -1 }; // stable tiebreaker
+
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count
+    const total = await Customer.countDocuments(q);
+
+    // Get paginated customers
+    const customers = await Customer.find(q)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum);
+
+    const totalPages = Math.max(1, Math.ceil(total / limitNum));
+
+    return res.json({
+      success: true,
+      customers,
+      total,
+      page: pageNum,
+      totalPages,
     });
-    res.json({ success: true, customers });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, error: "Server error" });
@@ -193,5 +250,155 @@ export const getCustomerSalesByPaymentStatus = async (req, res) => {
   } catch (error) {
     console.error("getCustomerSalesByPaymentStatus error:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Helper functions for export
+const sendCsv = (res, filename, headers, rows) => {
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const esc = (v) =>
+    `"${String(v ?? "")
+      .replaceAll('"', '""')
+      .replaceAll(/\r?\n/g, " ")}"`;
+  const head = headers.map(esc).join(",") + "\n";
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
+  res.send(head + body);
+};
+
+const pipeDoc = (res, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ size: "A4", margin: 36 });
+  doc.on("error", (err) => {
+    console.error("PDF error:", err);
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "PDF generation failed" });
+      }
+      doc.destroy();
+    } catch {}
+  });
+  doc.pipe(res);
+  return doc;
+};
+
+// Export customers CSV
+export const exportCustomersCsv = async (req, res) => {
+  try {
+    const { search = "", sortBy = "createdAt", sortDir = "desc" } = req.query;
+    
+    const q = {};
+    
+    // Unified search (name, email, phone, address)
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" };
+      q.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { address: searchRegex },
+      ];
+    }
+    
+    // Sorting
+    const validSortFields = {
+      name: "name",
+      email: "email",
+      phone: "phone",
+      createdAt: "createdAt",
+    };
+    const sortField = validSortFields[sortBy] || "createdAt";
+    const sortDirection = sortDir === "asc" ? 1 : -1;
+    const sortObj = { [sortField]: sortDirection, _id: -1 };
+    
+    const customers = await Customer.find(q).sort(sortObj).lean();
+    
+    const rows = customers.map((c) => ({
+      name: c.name || "-",
+      email: c.email || "-",
+      phone: c.phone || "-",
+      address: c.address || "-",
+    }));
+    
+    sendCsv(
+      res,
+      `customers_${new Date().toISOString().slice(0, 10)}.csv`,
+      ["name", "email", "phone", "address"],
+      rows
+    );
+  } catch (error) {
+    console.error("Export customers CSV error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+};
+
+// Export customers PDF
+export const exportCustomersPdf = async (req, res) => {
+  try {
+    const { search = "", sortBy = "createdAt", sortDir = "desc" } = req.query;
+    
+    const q = {};
+    
+    // Unified search (name, email, phone, address)
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" };
+      q.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { address: searchRegex },
+      ];
+    }
+    
+    // Sorting
+    const validSortFields = {
+      name: "name",
+      email: "email",
+      phone: "phone",
+      createdAt: "createdAt",
+    };
+    const sortField = validSortFields[sortBy] || "createdAt";
+    const sortDirection = sortDir === "asc" ? 1 : -1;
+    const sortObj = { [sortField]: sortDirection, _id: -1 };
+    
+    const customers = await Customer.find(q).sort(sortObj).lean();
+    
+    const doc = pipeDoc(res, `customers_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.fontSize(16).text("Customers Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+    
+    doc.fontSize(12).text("Customers", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+    
+    customers.forEach((c) => {
+      doc.text(
+        `${c.name || "-"} | Email: ${c.email || "-"} | Phone: ${
+          c.phone || "-"
+        } | Address: ${c.address || "-"}`
+      );
+    });
+    
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(11).text(`Total Customers: ${customers.length}`);
+    
+    doc.end();
+  } catch (error) {
+    console.error("Export customers PDF error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
   }
 };

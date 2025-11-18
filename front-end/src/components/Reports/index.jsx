@@ -1,5 +1,11 @@
 // front-end/src/components/Reports/index.jsx
 import React from "react";
+import {
+  FiDollarSign,
+  FiPackage,
+  FiTrendingUp,
+  FiUsers,
+} from "react-icons/fi";
 import Sales from "./Sales.jsx";
 import Inventory from "./Inventory.jsx";
 import Performance from "./Performance.jsx";
@@ -7,56 +13,87 @@ import CustomerBalances from "./CustomerBalances.jsx";
 
 export default function ReportsIndex() {
   const [tab, setTab] = React.useState("sales"); // "sales" | "inventory" | "performance" | "balances"
+  const [density, setDensity] = React.useState("comfortable");
+
+  const baseTab =
+    "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors";
+
+  const activeTab = "bg-gray-900 text-white";
+  const inactiveTab = "bg-white text-gray-700 hover:bg-gray-100";
 
   return (
     <div className="p-6 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+        <h1 className="text-3xl font-bold">Reports</h1>
         <p className="text-gray-600">
-          Explore sales trends, inventory health, performance KPIs, and customer
-          balances.
+        View structured sales, inventory, performance, and customer balance reports.
         </p>
+        </div>
+        {/* Density */}
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          <button
+            className={`px-3 py-2 text-xs font-medium ${
+              density === "comfortable" ? "bg-gray-100" : "bg-white"
+            }`}
+            onClick={() => setDensity("comfortable")}
+            title="Comfortable density"
+          >
+            Comfortable
+          </button>
+          <button
+            className={`px-3 py-2 text-xs font-medium ${
+              density === "compact" ? "bg-gray-100" : "bg-white"
+            }`}
+            onClick={() => setDensity("compact")}
+            title="Compact density"
+          >
+            Compact
+          </button>
+        </div>
       </div>
 
-      <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+      <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
         <button
-          className={`px-4 py-2 text-sm font-medium ${
-            tab === "sales" ? "bg-gray-100" : "bg-white"
-          }`}
+          className={`${baseTab} ${tab === "sales" ? activeTab : inactiveTab}`}
           onClick={() => setTab("sales")}
         >
-          Sales
+          <FiDollarSign className="text-[15px]" />
+          <span>Sales</span>
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
-            tab === "inventory" ? "bg-gray-100" : "bg-white"
+          className={`${baseTab} ${
+            tab === "inventory" ? activeTab : inactiveTab
           }`}
           onClick={() => setTab("inventory")}
         >
-          Inventory
+          <FiPackage className="text-[15px]" />
+          <span>Inventory</span>
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
-            tab === "performance" ? "bg-gray-100" : "bg-white"
+          className={`${baseTab} ${
+            tab === "performance" ? activeTab : inactiveTab
           }`}
           onClick={() => setTab("performance")}
         >
-          Performance
+          <FiTrendingUp className="text-[15px]" />
+          <span>Performance</span>
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
-            tab === "balances" ? "bg-gray-100" : "bg-white"
+          className={`${baseTab} ${
+            tab === "balances" ? activeTab : inactiveTab
           }`}
           onClick={() => setTab("balances")}
         >
-          Customer Balances
+          <FiUsers className="text-[15px]" />
+          <span>Customer Balances</span>
         </button>
       </div>
 
-      {tab === "sales" && <Sales />}
-      {tab === "inventory" && <Inventory />}
-      {tab === "performance" && <Performance />}
-      {tab === "balances" && <CustomerBalances />}
+      {tab === "sales" && <Sales density={density} />}
+      {tab === "inventory" && <Inventory density={density} />}
+      {tab === "performance" && <Performance density={density} />}
+      {tab === "balances" && <CustomerBalances density={density} />}
     </div>
   );
 }

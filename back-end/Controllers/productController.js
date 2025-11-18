@@ -4,6 +4,7 @@ import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
 import Supplier from "../models/Supplier.js";
 import InventoryLog from "../models/InventoryLog.js";
+import PDFDocument from "pdfkit";
 
 const writeInventoryLog = async ({
   productId,
@@ -203,27 +204,83 @@ const addProduct = async (req, res) => {
 
 /**
  * Get all products (with optional filters); supports dropdown mode
+ * Query params:
+ *  - search: search by name or code
+ *  - brand: filter by brand ID
+ *  - category: filter by category ID
+ *  - stock: filter by stock status (all, low, out, in)
+ *  - code: exact code match
+ *  - sortBy: field to sort by (code, name, price, stock, lastUpdated)
+ *  - sortDir: asc | desc
+ *  - page: page number (default: 1)
+ *  - limit: items per page (default: 25)
+ *  - dropdown: if true, returns dropdown format
  */
 const getProducts = async (req, res) => {
   try {
-    const search = req.query.search || "";
-    const { brand: brandId, code } = req.query;
+    const {
+      search = "",
+      brand: brandId,
+      category: categoryId,
+      stock: stockFilter,
+      code,
+      sortBy = "lastUpdated",
+      sortDir = "desc",
+      page = 1,
+      limit = 25,
+      dropdown,
+    } = req.query;
 
     const q = {
       isDeleted: false,
-      name: { $regex: search, $options: "i" },
     };
 
+    // Search by name or code
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" };
+      q.$or = [
+        { name: searchRegex },
+        { code: searchRegex },
+      ];
+    }
+
+    // Filters
     if (brandId) q.brand = brandId;
+    if (categoryId) q.category = categoryId;
     if (code) q.code = code;
 
+    // Stock filter
+    if (stockFilter && stockFilter !== "all") {
+      if (stockFilter === "low") {
+        q.stock = { $gt: 0, $lte: 5 };
+      } else if (stockFilter === "out") {
+        q.stock = 0;
+      } else if (stockFilter === "in") {
+        q.stock = { $gt: 5 };
+      }
+    }
+
+    // Sorting
+    const validSortFields = {
+      code: "code",
+      name: "name",
+      price: "price",
+      stock: "stock",
+      lastUpdated: "lastUpdated",
+    };
+    const sortField = validSortFields[sortBy] || "lastUpdated";
+    const sortDirection = sortDir === "asc" ? 1 : -1;
+    const sortObj = { [sortField]: sortDirection, _id: -1 }; // stable tiebreaker
+
+    // Dropdown mode: used by your React AsyncSelect (no pagination)
+    if (dropdown) {
     const products = await Product.find(q)
       .populate("category")
       .populate("brand")
-      .populate("supplier");
+        .populate("supplier")
+        .sort(sortObj)
+        .limit(500); // reasonable limit for dropdowns
 
-    // Dropdown mode: used by your React AsyncSelect
-    if (req.query.dropdown) {
       const dropdownOptions = products.map((p) => ({
         value: p._id,
         label: `${p.code} - ${p.name}`,
@@ -231,14 +288,40 @@ const getProducts = async (req, res) => {
       return res.json(dropdownOptions);
     }
 
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count
+    const total = await Product.countDocuments(q);
+
+    // Get paginated products
+    const products = await Product.find(q)
+      .populate("category")
+      .populate("brand")
+      .populate("supplier")
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum);
+
+    const totalPages = Math.max(1, Math.ceil(total / limitNum));
+
+    // Get metadata (categories, suppliers, brands) - only on first page or when needed
     const categories = await Category.find();
     const suppliers = await Supplier.find();
-    // only active brands for UI
     const brands = await Brand.find({ active: true }).sort({ name: 1 });
 
-    return res
-      .status(200)
-      .json({ success: true, products, categories, suppliers, brands });
+    return res.status(200).json({
+      success: true,
+      products,
+      categories,
+      suppliers,
+      brands,
+      total,
+      page: pageNum,
+      totalPages,
+    });
   } catch (error) {
     return res
       .status(500)
@@ -414,6 +497,170 @@ const deleteProduct = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, error: "Server error " + error.message });
+  }
+};
+
+const sendCsv = (res, filename, headers, rows) => {
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const esc = (v) =>
+    `"${String(v ?? "")
+      .replaceAll('"', '""')
+      .replaceAll(/\r?\n/g, " ")}"`;
+  const head = headers.map(esc).join(",") + "\n";
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
+  res.send(head + body);
+};
+
+const pipeDoc = (res, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ size: "A4", margin: 36 });
+  doc.on("error", (err) => {
+    console.error("PDF error:", err);
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "PDF generation failed" });
+      }
+      doc.destroy();
+    } catch {}
+  });
+  doc.pipe(res);
+  return doc;
+};
+
+const money = (n) => Number(Number(n || 0).toFixed(2));
+
+export const exportProductsCsv = async (req, res) => {
+  try {
+    const { search, category, brand, stock } = req.query;
+    const query = { isDeleted: false };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (category && category !== "all") {
+      query.category = category;
+    }
+    if (brand && brand !== "all") {
+      query.brand = brand;
+    }
+    if (stock === "low") {
+      query.stock = { $gt: 0, $lt: 5 };
+    } else if (stock === "out") {
+      query.stock = 0;
+    } else if (stock === "in") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .select("code name price stock category brand supplier")
+      .populate("category", "name")
+      .populate("brand", "name")
+      .populate("supplier", "name")
+      .sort({ lastUpdated: -1 })
+      .lean();
+
+    const rows = products.map((p) => ({
+      code: p.code || "-",
+      name: p.name || "-",
+      category: p.category?.name || "-",
+      brand: p.brand?.name || "-",
+      supplier: p.supplier?.name || "-",
+      price: money(p.price || 0),
+      stock: Number(p.stock || 0),
+    }));
+
+    sendCsv(
+      res,
+      `products_${new Date().toISOString().slice(0, 10)}.csv`,
+      ["code", "name", "category", "brand", "supplier", "price", "stock"],
+      rows
+    );
+  } catch (error) {
+    console.error("Export products CSV error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+export const exportProductsPdf = async (req, res) => {
+  try {
+    const { search, category, brand, stock } = req.query;
+    const query = { isDeleted: false };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (category && category !== "all") {
+      query.category = category;
+    }
+    if (brand && brand !== "all") {
+      query.brand = brand;
+    }
+    if (stock === "low") {
+      query.stock = { $gt: 0, $lt: 5 };
+    } else if (stock === "out") {
+      query.stock = 0;
+    } else if (stock === "in") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .select("code name price stock category brand supplier")
+      .populate("category", "name")
+      .populate("brand", "name")
+      .populate("supplier", "name")
+      .sort({ lastUpdated: -1 })
+      .lean();
+
+    const doc = pipeDoc(res, `products_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.fontSize(16).text("Products Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text("Products", { underline: true });
+    doc.moveDown(0.3).fontSize(10);
+
+    let totalValue = 0;
+    products.forEach((p) => {
+      const value = money((p.price || 0) * (p.stock || 0));
+      totalValue += value;
+      doc.text(
+        `${p.code || "-"} | ${p.name || "-"} | Category: ${
+          p.category?.name || "-"
+        } | Brand: ${p.brand?.name || "-"} | Supplier: ${
+          p.supplier?.name || "-"
+        } | Price: Rs. ${money(p.price || 0)} | Stock: ${
+          p.stock || 0
+        } | Value: Rs. ${money(value)}`
+      );
+    });
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(11).text(`Total Products: ${products.length}`);
+    doc.fontSize(11).text(`Total Stock Value: Rs. ${money(totalValue)}`);
+
+    doc.end();
+  } catch (error) {
+    console.error("Export products PDF error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Server error" });
+    }
   }
 };
 

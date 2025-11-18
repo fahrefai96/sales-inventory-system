@@ -7,6 +7,8 @@ import {
   deleteSupplier,
   getSupplierProducts,
   getSupplierPurchases,
+  exportSuppliersCsv,
+  exportSuppliersPdf,
 } from "../Controllers/supplierController.js";
 
 const router = express.Router();
@@ -19,5 +21,7 @@ router.get("/:id/purchases", authMiddleware, getSupplierPurchases);
 
 router.put("/:id", authMiddleware, updateSupplier);
 router.delete("/:id", authMiddleware, requireRole(["admin"]), deleteSupplier);
+router.get("/export/csv", authMiddleware, exportSuppliersCsv);
+router.get("/export/pdf", authMiddleware, exportSuppliersPdf);
 
 export default router;

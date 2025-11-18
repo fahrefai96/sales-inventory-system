@@ -1,11 +1,9 @@
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+// frontend/src/components/Purchases.jsx
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import axiosInstance from "../utils/api";
+import axios from "axios";
+import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { fuzzySearch } from "../utils/fuzzySearch";
 
 /** =========================
  * Utilities & Small Bits
@@ -14,18 +12,15 @@ const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
 };
-const SORTERS = {
-  createdAt: (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
-  grandTotal: (a, b) => Number(a.grandTotal || 0) - Number(b.grandTotal || 0),
-  supplier: (a, b) =>
-    (a.supplier?.name || "").localeCompare(b.supplier?.name || ""),
-  status: (a, b) => (a.status || "").localeCompare(b.status || ""),
-};
-const fmtLKR = (n) => `Rs ${Number(n || 0).toLocaleString()}`;
-const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
+
+const fmtLKR = (n) => `Rs. ${Number(n || 0).toLocaleString()}`;
+const formatDateTime = (d) =>
+  d ? new Date(d).toLocaleDateString("en-LK") : "—";
+
 const authHeader = () => ({
   Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
 });
+
 const isDraft = (s) => String(s || "").toLowerCase() === "draft";
 const isPosted = (s) => String(s || "").toLowerCase() === "posted";
 
@@ -38,15 +33,151 @@ const Field = ({ label, required, children }) => (
   </label>
 );
 
+// Combo component for searchable dropdowns
+const Combo = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  required = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const display = selected ? selected.label : "";
+
+  const filtered = query
+    ? options.filter((o) =>
+        (o.label || "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef(null);
+
+  const onInputKeyDown = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      commitSelection(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const commitSelection = (opt) => {
+    onChange(opt.value);
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="combo-listbox"
+        aria-autocomplete="list"
+        placeholder={placeholder}
+        value={open ? query : display}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onInputKeyDown}
+        required={required && !value}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {value && value !== "" && value !== "all" && !open && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          title="Clear"
+          aria-label="Clear"
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          id="combo-listbox"
+          role="listbox"
+          ref={listRef}
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+        >
+          {filtered.length ? (
+            filtered.map((opt, idx) => (
+              <div
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                data-index={idx}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  commitSelection(opt);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  opt.value === value ? "bg-gray-50 font-medium" : ""
+                } ${idx === activeIndex ? "bg-gray-50" : ""}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Th = ({ label, sortKey, sortBy, setSort }) => {
   const isActive = sortBy.key === sortKey;
   return (
     <th className="px-4 py-3 text-left">
       <button
+        type="button"
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
           isActive ? "text-gray-900" : "text-gray-600"
         }`}
         onClick={() => setSort(sortKey)}
+        title={`Sort by ${label}`}
       >
         {label}
         <span className="text-[10px]">
@@ -121,6 +252,7 @@ const Pagination = ({
               className={`px-3 py-1.5 text-sm ${
                 pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
               }`}
+              title={`Show ${n} rows`}
             >
               {n}
             </button>
@@ -222,9 +354,6 @@ const StatusChip = ({ status }) => {
 /** =========================
  * Quick Add Product Modal
  * ========================= */
-/** =========================
- * Quick Add Product Modal (uses category.sizeOptions)
- * ========================= */
 const QuickAddProductModal = ({
   open,
   onClose,
@@ -243,13 +372,11 @@ const QuickAddProductModal = ({
     price: "",
   });
 
-  // selected category + sizes
   const selectedCategory = React.useMemo(
     () => categories.find((c) => c._id === value.category) || null,
     [categories, value.category]
   );
 
-  // pull sizes from category.sizeOptions (backend shape)
   const sizeOptions = React.useMemo(() => {
     const arr = Array.isArray(selectedCategory?.sizeOptions)
       ? selectedCategory.sizeOptions
@@ -257,7 +384,6 @@ const QuickAddProductModal = ({
     return arr.filter(Boolean);
   }, [selectedCategory]);
 
-  // clear invalid size if category changes
   React.useEffect(() => {
     if (
       value.size &&
@@ -286,7 +412,6 @@ const QuickAddProductModal = ({
       price: Number(value.price || 0),
     };
 
-    // validations (mirror Product module)
     if (!payload.code) return alert("Code is required");
     if (!payload.name) return alert("Name is required");
     if (!payload.category) return alert("Category is required");
@@ -367,54 +492,51 @@ const QuickAddProductModal = ({
           {/* Brand / Category / Size */}
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Brand">
-              <select
-                name="brand"
+              <Combo
                 value={value.brand}
-                onChange={onChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- select --</option>
-                {brands.map((b) => (
-                  <option key={b._id} value={b._id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  const fakeEvent = { target: { name: "brand", value: val } };
+                  onChange(fakeEvent);
+                }}
+                options={[
+                  { value: "", label: "-- select --" },
+                  ...brands.map((b) => ({ value: b._id, label: b.name })),
+                ]}
+                placeholder="-- select --"
+              />
             </Field>
 
             <Field label="Category" required>
-              <select
-                name="category"
+              <Combo
                 value={value.category}
-                onChange={onChange}
+                onChange={(val) => {
+                  const fakeEvent = { target: { name: "category", value: val } };
+                  onChange(fakeEvent);
+                }}
+                options={[
+                  { value: "", label: "-- select --" },
+                  ...categories.map((c) => ({ value: c._id, label: c.name })),
+                ]}
+                placeholder="-- select --"
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- select --</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
 
             <Field label="Size" required={sizeOptions.length > 0}>
               {sizeOptions.length > 0 ? (
-                <select
-                  name="size"
+                <Combo
                   value={value.size}
-                  onChange={onChange}
+                  onChange={(val) => {
+                    const fakeEvent = { target: { name: "size", value: val } };
+                    onChange(fakeEvent);
+                  }}
+                  options={[
+                    { value: "", label: "-- select --" },
+                    ...sizeOptions.map((s) => ({ value: s, label: s })),
+                  ]}
+                  placeholder="-- select --"
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- select --</option>
-                  {sizeOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : (
                 <input
                   type="text"
@@ -479,7 +601,6 @@ const QuickAddProductModal = ({
     </div>
   );
 };
-
 /** =========================
  * Main Component
  * ========================= */
@@ -494,17 +615,27 @@ const Purchases = () => {
 
   // ui state (list)
   const [density, setDensity] = useState("comfortable");
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+
+  // server-side filters
+  const [query, setQuery] = useState(""); // search (invoice, supplier, note, etc.)
+  const [statusFilter, setStatusFilter] = useState(""); // draft / posted / cancelled
+  const [fromDate, setFromDate] = useState(""); // from (date)
+  const [toDate, setToDate] = useState(""); // to (date)
+  const [minTotal, setMinTotal] = useState(""); // min grandTotal
+  const [maxTotal, setMaxTotal] = useState(""); // max grandTotal
+
+  // server-side sorting
   const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
 
-  // pagination
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(1);
+  // server-side pagination
+  const [pageSize, setPageSize] = useState(25); // limit
+  const [page, setPage] = useState(1); // current page (1-based)
+  const [total, setTotal] = useState(0); // total records (from backend)
+  const [totalPages, setTotalPages] = useState(1);
 
   // drawer (create/edit draft)
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editId, setEditId] = useState(null); // null = create, string = editing draft
+  const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
     supplier: "",
     invoiceNo: "",
@@ -523,7 +654,7 @@ const Purchases = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
 
-  // user role (admin/staff)
+  // user role
   const role = (() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -533,16 +664,40 @@ const Purchases = () => {
     }
   })();
 
-  /** ---------- Fetchers ---------- */
+  /** ---------- Fetchers (SERVER-SIDE LIST) ---------- */
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
     try {
+      const params = {
+        page,
+        limit: pageSize,
+        sortBy: sortBy.key, // "createdAt" | "grandTotal" | "supplier" | "status"
+        sortDir: sortBy.dir, // "asc" | "desc"
+      };
+
+      if (query.trim()) params.search = query.trim();
+      if (statusFilter) params.status = statusFilter;
+      if (fromDate) params.from = fromDate;
+      if (toDate) params.to = toDate;
+      if (minTotal) params.min = minTotal;
+      if (maxTotal) params.max = maxTotal;
+
       const { data } = await axiosInstance.get("/purchases", {
         headers: authHeader(),
+        params,
       });
-      setPurchases(
-        Array.isArray(data?.data) ? data.data : data?.purchases || []
-      );
+
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : data?.purchases || [];
+
+      setPurchases(list);
+      setTotal(data?.total ?? list.length);
+      setTotalPages(data?.totalPages || 1);
+
+      if (typeof data?.page === "number") {
+        setPage(data.page || 1);
+      }
     } catch (e) {
       alert(
         e?.response?.data?.error || e?.response?.data?.message || e.message
@@ -550,7 +705,18 @@ const Purchases = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [
+    page,
+    pageSize,
+    query,
+    statusFilter,
+    fromDate,
+    toDate,
+    minTotal,
+    maxTotal,
+    sortBy.key,
+    sortBy.dir,
+  ]);
 
   const fetchSuppliers = useCallback(async () => {
     try {
@@ -596,81 +762,175 @@ const Purchases = () => {
     }
   }, []);
 
+  // initial + whenever filters/sort/pagination change
   useEffect(() => {
     fetchPurchases();
+  }, [fetchPurchases]);
+
+  // dropdowns only on mount
+  useEffect(() => {
     fetchSuppliers();
     fetchProductDropdown();
     fetchBrands();
     fetchCategories();
-  }, [
-    fetchPurchases,
-    fetchSuppliers,
-    fetchProductDropdown,
-    fetchBrands,
-    fetchCategories,
-  ]);
+  }, [fetchSuppliers, fetchProductDropdown, fetchBrands, fetchCategories]);
 
-  /** ---------- Search, Filter & Sort (list) ---------- */
-  const debounceRef = useRef(null);
-  const onSearchChange = (e) => {
-    const val = e.target.value;
-    setQuery(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setQuery((p) => p), 250);
+  // Close drawers/modals on ESC key press
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        if (viewOpen) {
+          setViewOpen(false);
+          setViewData(null);
+        }
+        if (drawerOpen) {
+          setDrawerOpen(false);
+          setEditId(null);
+        }
+        if (quickOpen) {
+          setQuickOpen(false);
+          setQuickRowIndex(null);
+        }
+      }
+    };
+    if (drawerOpen || viewOpen || quickOpen) {
+      document.addEventListener("keydown", handleEsc);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [drawerOpen, viewOpen, quickOpen]);
+
+  // Apply fuzzy search to purchases (frontend only, on top of server results)
+  const displayPurchases = useMemo(() => {
+    if (!query || !query.trim()) return purchases;
+    return fuzzySearch(purchases, query, ["invoiceNo", "supplier.name", "note"], 0.4);
+  }, [purchases, query]);
+
+  const handleExportCsv = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("search", query.trim());
+      if (statusFilter) params.set("status", statusFilter);
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+
+      const apiBase =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const token = localStorage.getItem("pos-token");
+      const url = `${apiBase}/purchases/export/csv${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+      const res = await axios.get(url, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data && res.data.size > 0) {
+        const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `purchases_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+      }
+    } catch (e) {
+      if (e.response && e.response.data instanceof Blob) {
+        const blob = new Blob([e.response.data], {
+          type: "text/csv;charset=utf-8",
+        });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `purchases_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+        return;
+      }
+      console.error(e);
+      alert("Failed to export CSV.");
+    }
   };
 
-  const filtered = useMemo(() => {
-    const q = (query || "").toLowerCase().trim();
-    let list = [...purchases];
+  const handleExportPdf = async () => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    if (statusFilter) params.set("status", statusFilter);
+    if (fromDate) params.set("from", fromDate);
+    if (toDate) params.set("to", toDate);
 
-    if (statusFilter)
-      list = list.filter(
-        (p) => String(p.status).toLowerCase() === statusFilter
-      );
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    const token = localStorage.getItem("pos-token");
+    params.set("token", token);
+    const url = `${apiBase}/purchases/export/pdf?${params.toString()}`;
 
-    if (q) {
-      list = list.filter((p) => {
-        const supplier = p.supplier?.name || "";
-        const created = new Date(p.createdAt || "").toLocaleString("en-LK");
-        const invoice = p.invoiceNo || "";
-        return (
-          supplier.toLowerCase().includes(q) ||
-          String(p.grandTotal || "")
-            .toLowerCase()
-            .includes(q) ||
-          (p.note || "").toLowerCase().includes(q) ||
-          created.toLowerCase().includes(q) ||
-          invoice.toLowerCase().includes(q)
-        );
-      });
-    }
+    // Use window.open for PDF exports to avoid streaming issues
+    window.open(url, "_blank");
+  };
 
-    const sorter = SORTERS[sortBy.key] || SORTERS.createdAt;
-    list.sort((a, b) => {
-      const res = sorter(a, b);
-      return sortBy.dir === "asc" ? res : -res;
-    });
+  /** ---------- Search & Filters (all server-side) ---------- */
+  const onSearchChange = (e) => {
+    setQuery(e.target.value);
+    setPage(1);
+  };
 
-    return list;
-  }, [purchases, query, sortBy, statusFilter]);
+  const onStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+    setPage(1);
+  };
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, total);
-  const paged = filtered.slice(startIdx, endIdx);
+  const onFromDateChange = (e) => {
+    setFromDate(e.target.value);
+    setPage(1);
+  };
 
-  useEffect(() => setPage(1), [query, sortBy, pageSize, statusFilter]);
+  const onToDateChange = (e) => {
+    setToDate(e.target.value);
+    setPage(1);
+  };
 
-  /** ---------- Helpers ---------- */
-  const dens = DENSITIES[density];
+  const onMinTotalChange = (e) => {
+    setMinTotal(e.target.value);
+    setPage(1);
+  };
+
+  const onMaxTotalChange = (e) => {
+    setMaxTotal(e.target.value);
+    setPage(1);
+  };
+
+  /** ---------- Sorting (server-side) ---------- */
   const setSort = (key) => {
     setSortBy((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
+    setPage(1);
   };
+
+  /** ---------- Pagination (server-side) ---------- */
+  const dens = DENSITIES[density];
+
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize;
+  const endIdx = total === 0 ? 0 : Math.min(startIdx + purchases.length, total);
+
+  const changePage = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+  };
+
+  const changePageSize = (n) => {
+    setPageSize(n);
+    setPage(1);
+  };
+
+  /** ---------- Helpers for drawer & view ---------- */
   const productLabel = (id) =>
     productOptions.find((o) => o.value === id)?.label || "—";
 
@@ -679,8 +939,10 @@ const Purchases = () => {
     const u = Number(row.unitCost || 0);
     return q > 0 && u >= 0 ? q * u : 0;
   };
+
   const computeSubTotal = () =>
     form.items.reduce((sum, r) => sum + computeLineTotal(r), 0);
+
   const computeGrandTotal = () => {
     const sub = computeSubTotal();
     const discount = Number(form.discount || 0);
@@ -702,6 +964,7 @@ const Purchases = () => {
     setEditId(null);
     setDrawerOpen(true);
   };
+
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditId(null);
@@ -712,15 +975,18 @@ const Purchases = () => {
       ...f,
       items: [...f.items, { product: "", quantity: "", unitCost: "" }],
     }));
+
   const removeRow = (idx) =>
     setForm((f) => ({
       ...f,
       items: f.items.filter((_, i) => i !== idx),
     }));
+
   const onFormChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
   };
+
   const onItemChange = (idx, field, value) => {
     setForm((f) => {
       const items = [...f.items];
@@ -756,7 +1022,6 @@ const Purchases = () => {
 
     try {
       if (editId) {
-        // UPDATE DRAFT
         const { data } = await axiosInstance.put(
           `/purchases/${editId}`,
           payload,
@@ -769,7 +1034,6 @@ const Purchases = () => {
         closeDrawer();
         await openView(data.data._id);
       } else {
-        // CREATE DRAFT
         const { data } = await axiosInstance.post("/purchases", payload, {
           headers: { ...authHeader(), "Content-Type": "application/json" },
         });
@@ -803,6 +1067,7 @@ const Purchases = () => {
       alert(e?.response?.data?.error || e.message);
     }
   };
+
   const closeView = () => {
     setViewOpen(false);
     setViewData(null);
@@ -921,8 +1186,8 @@ const Purchases = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Purchases</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Purchases</h1>
+          <p className="text-gray-600 text-base">
             Create drafts, post to update stock, cancel posted, or delete
             drafts.
           </p>
@@ -930,6 +1195,7 @@ const Purchases = () => {
         <div className="flex items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
             <button
+              type="button"
               className={`px-3 py-2 text-xs font-medium ${
                 density === "comfortable" ? "bg-gray-100" : "bg-white"
               }`}
@@ -938,6 +1204,7 @@ const Purchases = () => {
               Comfortable
             </button>
             <button
+              type="button"
               className={`px-3 py-2 text-xs font-medium ${
                 density === "compact" ? "bg-gray-100" : "bg-white"
               }`}
@@ -946,54 +1213,153 @@ const Purchases = () => {
               Compact
             </button>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows:</span>
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-              {[25, 50, 100].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(n);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-2 text-xs ${
-                    pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
           <button
+            type="button"
             onClick={openDrawer}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Add Purchase
+            New Purchase
           </button>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
-        <input
-          type="text"
-          placeholder="Search by supplier, invoice, note, amount, or date…"
-          defaultValue={query}
-          onChange={onSearchChange}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="posted">Posted</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      {/* Toolbar / Filters */}
+      <div className="mb-4 space-y-3">
+        <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2">
+          <div>
+            <input
+              type="text"
+              placeholder="Search by date, supplier, amount"
+              value={query}
+              onChange={onSearchChange}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <Combo
+              value={statusFilter}
+              onChange={(val) => {
+                const fakeEvent = { target: { value: val } };
+                onStatusChange(fakeEvent);
+              }}
+              options={[
+                { value: "", label: "All statuses" },
+                { value: "draft", label: "Draft" },
+                { value: "posted", label: "Posted" },
+                { value: "cancelled", label: "Cancelled" },
+              ]}
+              placeholder="All statuses"
+            />
+          </div>
+
+          <div>
+            <div className="relative">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={onFromDateChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-12 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                From
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="relative">
+              <input
+                type="date"
+                value={toDate}
+                onChange={onToDateChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-12 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                To
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                type="number"
+                min="0"
+                value={minTotal}
+                onChange={onMinTotalChange}
+                placeholder="Min Rs"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1">
+              <input
+                type="number"
+                min="0"
+                value={maxTotal}
+                onChange={onMaxTotalChange}
+                placeholder="Max Rs"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Clear Button and Export Buttons */}
+        <div className="flex justify-end items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <button
+              onClick={handleExportCsv}
+              className="px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export CSV"
+            >
+              <FaFileCsv className="text-xs" />
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportPdf}
+              className="border-l border-gray-200 px-3 py-2 h-[38px] text-sm hover:bg-gray-50 flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <FaDownload className="text-xs" />
+              Export PDF
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setStatusFilter("");
+              setFromDate("");
+              setToDate("");
+              setMinTotal("");
+              setMaxTotal("");
+              setPage(1);
+            }}
+            className="rounded-lg border border-gray-300 px-4 py-2 h-[38px] text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+          >
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => changePageSize(n)}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -1003,7 +1369,7 @@ const Purchases = () => {
             <thead className="sticky top-0 z-10 bg-gray-50">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                 <Th
-                  label="Date"
+                  label="Invoice Date"
                   sortKey="createdAt"
                   sortBy={sortBy}
                   setSort={setSort}
@@ -1014,7 +1380,9 @@ const Purchases = () => {
                   sortBy={sortBy}
                   setSort={setSort}
                 />
-                <th className="px-4 py-3 text-left">Items</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                  Items
+                </th>
                 <Th
                   label="Total"
                   sortKey="grandTotal"
@@ -1027,32 +1395,37 @@ const Purchases = () => {
                   sortBy={sortBy}
                   setSort={setSort}
                 />
-                <th className="px-4 py-3 text-left">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
                 <SkeletonRows rows={pageSize} dens={dens} cols={6} />
-              ) : paged.length ? (
-                paged.map((p) => (
+              ) : displayPurchases.length ? (
+                displayPurchases.map((p) => (
                   <tr key={p._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text}`}>
-                      {formatDateTime(p.createdAt)}
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
+                      {formatDateTime(p.invoiceDate || p.createdAt)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.supplier?.name || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {p.items?.length || 0}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {fmtLKR(p.grandTotal)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       <StatusChip status={p.status} />
                     </td>
-                    <td className={`${dens.cell} ${dens.text} space-x-3`}>
+                    <td
+                      className={`${dens.cell} text-sm text-gray-700 space-x-3`}
+                    >
                       <button
+                        type="button"
                         onClick={() => openView(p._id)}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                       >
@@ -1062,18 +1435,21 @@ const Purchases = () => {
                       {isDraft(p.status) && (
                         <>
                           <button
+                            type="button"
                             onClick={() => openEdit(p._id)}
                             className="text-gray-700 hover:text-gray-900 font-medium"
                           >
                             Edit
                           </button>
                           <button
+                            type="button"
                             onClick={() => postDraft(p._id)}
                             className="text-green-600 hover:text-green-800 font-medium"
                           >
                             Post
                           </button>
                           <button
+                            type="button"
                             onClick={() => deleteDraft(p._id)}
                             className="text-red-600 hover:text-red-800 font-medium"
                           >
@@ -1084,6 +1460,7 @@ const Purchases = () => {
 
                       {isPosted(p.status) && role === "admin" && (
                         <button
+                          type="button"
                           onClick={() => cancelPosted(p._id)}
                           className="text-red-600 hover:text-red-800 font-medium"
                         >
@@ -1104,6 +1481,7 @@ const Purchases = () => {
                         Create your first draft purchase to restock inventory.
                       </p>
                       <button
+                        type="button"
                         onClick={openDrawer}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                       >
@@ -1117,10 +1495,10 @@ const Purchases = () => {
           </table>
         </div>
 
-        {/* Pagination footer */}
+        {/* Pagination footer (server-side now) */}
         <Pagination
           pageSize={pageSize}
-          setPageSize={setPageSize}
+          setPageSize={changePageSize}
           page={page}
           setPage={setPage}
           total={total}
@@ -1146,10 +1524,11 @@ const Purchases = () => {
                   {editId ? "Edit Purchase (Draft)" : "Add Purchase (Draft)"}
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
-                  Header & line items
+                  Header &amp; line items
                 </p>
               </div>
               <button
+                type="button"
                 onClick={closeDrawer}
                 className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -1165,19 +1544,21 @@ const Purchases = () => {
               <div className="flex-1 px-5 py-4 space-y-4 pb-28">
                 {/* Supplier */}
                 <Field label="Supplier">
-                  <select
-                    name="supplier"
+                  <Combo
                     value={form.supplier}
-                    onChange={onFormChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- optional --</option>
-                    {suppliers.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name} {s.country ? `(${s.country})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => {
+                      const fakeEvent = { target: { name: "supplier", value: val } };
+                      onFormChange(fakeEvent);
+                    }}
+                    options={[
+                      { value: "", label: "-- optional --" },
+                      ...suppliers.map((s) => ({
+                        value: s._id,
+                        label: `${s.name}${s.country ? ` (${s.country})` : ""}`,
+                      })),
+                    ]}
+                    placeholder="-- optional --"
+                  />
                 </Field>
 
                 {/* Invoice */}
@@ -1232,21 +1613,20 @@ const Purchases = () => {
                           <tr key={idx}>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <select
-                                  value={row.product}
-                                  onChange={(e) =>
-                                    onItemChange(idx, "product", e.target.value)
-                                  }
-                                  className="w-[80px] rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  required
-                                >
-                                  <option value="">select</option>
-                                  {productOptions.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
+                                <div className="flex-1 min-w-[120px]">
+                                  <Combo
+                                    value={row.product}
+                                    onChange={(val) =>
+                                      onItemChange(idx, "product", val)
+                                    }
+                                    options={[
+                                      { value: "", label: "select" },
+                                      ...productOptions,
+                                    ]}
+                                    placeholder="select"
+                                    required
+                                  />
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1409,18 +1789,21 @@ const Purchases = () => {
                 {isDraft(viewData?.status) && (
                   <>
                     <button
+                      type="button"
                       onClick={() => openEdit(viewData._id)}
                       className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
                     >
                       Edit
                     </button>
                     <button
+                      type="button"
                       onClick={() => postDraft(viewData._id)}
                       className="rounded-md border border-green-600 px-2 py-1 text-sm text-green-700 hover:bg-green-50"
                     >
                       Post
                     </button>
                     <button
+                      type="button"
                       onClick={() => deleteDraft(viewData._id)}
                       className="rounded-md border border-red-600 px-2 py-1 text-sm text-red-700 hover:bg-red-50"
                     >
@@ -1430,6 +1813,7 @@ const Purchases = () => {
                 )}
                 {isPosted(viewData?.status) && role === "admin" && (
                   <button
+                    type="button"
                     onClick={() => cancelPosted(viewData._id)}
                     className="rounded-md border border-red-600 px-2 py-1 text-sm text-red-700 hover:bg-red-50"
                   >
@@ -1437,6 +1821,7 @@ const Purchases = () => {
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={closeView}
                   className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
                 >
@@ -1504,11 +1889,9 @@ const Purchases = () => {
         onCreated={(created) => {
           if (!created?._id || quickRowIndex == null) return;
 
-          // append to dropdown
           const label = `${created.code} - ${created.name}`;
           appendProductOption({ value: created._id, label });
 
-          // set row to new product
           setForm((f) => {
             const items = [...f.items];
             items[quickRowIndex] = {

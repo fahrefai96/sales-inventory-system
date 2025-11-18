@@ -45,7 +45,13 @@ const pct = (cur, prev) => {
   return `${d > 0 ? "+" : ""}${d.toFixed(1)}%`;
 };
 
-export default function Performance() {
+const DENSITIES = {
+  comfortable: { text: "text-sm", gap: "gap-4" },
+  compact: { text: "text-xs", gap: "gap-3" },
+};
+
+export default function Performance({ density = "comfortable" }) {
+  const dens = DENSITIES[density] || DENSITIES.comfortable;
   const [range, setRange] = useState(() => {
     const today = new Date();
     const pad = (n) => String(n).padStart(2, "0");
@@ -204,10 +210,10 @@ export default function Performance() {
 
   // ---- Exports in toolbar (Users + Products) ----
   const exportExtras = (
-    <div className="flex ">
+    <>
       {/* Users */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-gray-600 min-w-[64px] text-right">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
           Users
         </span>
         <ExportButtons
@@ -219,8 +225,8 @@ export default function Performance() {
       </div>
 
       {/* Products */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-gray-600 min-w-[64px] text-right">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
           Products
         </span>
         <ExportButtons
@@ -230,13 +236,13 @@ export default function Performance() {
           }}
         />
       </div>
-    </div>
+    </>
   );
 
   return (
     <>
       <ReportPageHeader
-        title="Performance Analytics"
+        title="Performance Report"
         subtitle="Track user performance and product trends."
       />
 
@@ -248,11 +254,54 @@ export default function Performance() {
       />
 
       {/* KPI row with deltas */}
-      <KpiCards items={kpis} />
+      <KpiCards items={kpis} density={density} />
+
+      {/* Tables — let ReportTable render its own soft card (same as Inventory) */}
+      <div className={`grid lg:grid-cols-2 ${dens.gap} mb-6`}>
+        <div>
+          <div className={`${dens.text} font-medium mb-2`}>User Performance</div>
+          {loadingU ? (
+            <div className={`${dens.text} text-gray-500`}>Loading…</div>
+          ) : (
+            <ReportTable density={density}
+              columns={userCols}
+              rows={users}
+              empty="No user performance"
+            />
+          )}
+        </div>
+
+        <div>
+          <div className={`${dens.text} font-medium mb-2`}>Top Products</div>
+          {loadingP ? (
+            <div className={`${dens.text} text-gray-500`}>Loading…</div>
+          ) : (
+            <ReportTable density={density}
+              columns={topCols}
+              rows={products.top}
+              empty="No top products"
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className={`${dens.text} font-medium mb-2`}>Slow Movers</div>
+        {loadingP ? (
+          <div className={`${dens.text} text-gray-500`}>Loading…</div>
+        ) : (
+          <ReportTable
+            density={density}
+            columns={slowCols}
+            rows={products.slow}
+            empty="No slow movers"
+          />
+        )}
+      </div>
 
       {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
-        <ChartCard title="Revenue per User">
+      <div className={`grid lg:grid-cols-2 ${dens.gap}`}>
+        <ChartCard title="Revenue per User" density={density}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={users}
@@ -280,7 +329,7 @@ export default function Performance() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Top Products (Qty)">
+        <ChartCard title="Top Products (Qty)" density={density}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={products.top}
@@ -307,48 +356,6 @@ export default function Performance() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-      </div>
-
-      {/* Tables — let ReportTable render its own soft card (same as Inventory) */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div>
-          <div className="text-sm font-medium mb-2">User Performance</div>
-          {loadingU ? (
-            <div className="text-sm text-gray-500">Loading…</div>
-          ) : (
-            <ReportTable
-              columns={userCols}
-              rows={users}
-              empty="No user performance"
-            />
-          )}
-        </div>
-
-        <div>
-          <div className="text-sm font-medium mb-2">Top Products</div>
-          {loadingP ? (
-            <div className="text-sm text-gray-500">Loading…</div>
-          ) : (
-            <ReportTable
-              columns={topCols}
-              rows={products.top}
-              empty="No top products"
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <div className="text-sm font-medium mb-2">Slow Movers</div>
-        {loadingP ? (
-          <div className="text-sm text-gray-500">Loading…</div>
-        ) : (
-          <ReportTable
-            columns={slowCols}
-            rows={products.slow}
-            empty="No slow movers"
-          />
-        )}
       </div>
     </>
   );

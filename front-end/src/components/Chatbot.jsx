@@ -6,17 +6,23 @@ const SUGGESTIONS = [
   "Show low stock items",
   "What is today's sales total?",
   "How much is outstanding?",
+  "Top products",
+  "Top customers",
+  "Stock value",
   "How to add a product?",
   "How to record a payment?",
-  "How to post a purchase?",
-  "Helpdesk contact",
 ];
+
+const DENSITIES = {
+  comfortable: { message: "px-3 py-2", text: "text-sm", gap: "gap-3" },
+  compact: { message: "px-2 py-1.5", text: "text-xs", gap: "gap-2" },
+};
 
 const Chatbot = () => {
   const [messages, setMessages] = React.useState([
     {
       from: "bot",
-      text: "Hi, I’m your SIMS assistant. Ask me about low stock, today’s sales, outstanding invoices, or how to do tasks like adding products and recording payments.",
+      text: "Hi! I'm your SIMS assistant. I can help you with:\n\n📊 Sales & Revenue (today, this week, this month)\n📦 Inventory (low stock, stock value, product search)\n💰 Financials (outstanding receivables)\n🏆 Analytics (top products, top customers)\n📝 How-to guides (add products, create sales, record payments)\n🔍 Search (find products, find customers)\n\nJust ask me anything!",
       intent: "WELCOME",
       at: new Date().toISOString(),
     },
@@ -24,8 +30,10 @@ const Chatbot = () => {
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [density, setDensity] = React.useState("comfortable");
 
   const containerRef = React.useRef(null);
+  const dens = DENSITIES[density];
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
@@ -95,15 +103,73 @@ const Chatbot = () => {
     sendMessage(text);
   };
 
+  const handleKeyDown = (e) => {
+    // Submit on Enter, but allow Shift+Enter for new line
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!loading && input.trim()) {
+        handleSubmit(e);
+      }
+    }
+  };
+
+  const clearChat = () => {
+    if (window.confirm("Clear all chat messages?")) {
+      setMessages([
+        {
+          from: "bot",
+          text: "Hi! I'm your SIMS assistant. I can help you with:\n\n📊 Sales & Revenue (today, this week, this month)\n📦 Inventory (low stock, stock value, product search)\n💰 Financials (outstanding receivables)\n🏆 Analytics (top products, top customers)\n📝 How-to guides (add products, create sales, record payments)\n🔍 Search (find products, find customers)\n\nJust ask me anything!",
+          intent: "WELCOME",
+          at: new Date().toISOString(),
+        },
+      ]);
+      setError("");
+      setInput("");
+    }
+  };
+
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="p-6">
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-gray-900">Chatbot</h1>
-        <p className="text-sm text-gray-500">
-          Ask system-related questions, get quick stats (sales, stock, dues),
-          and step-by-step guidance for common tasks.
-        </p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold text-gray-900">Chatbot</h1>
+          <p className="text-gray-600 text-base">
+            Ask system-related questions, get quick stats (sales, stock, dues),
+            and step-by-step guidance for common tasks.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Density */}
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "comfortable" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("comfortable")}
+              title="Comfortable density"
+            >
+              Comfortable
+            </button>
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "compact" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("compact")}
+              title="Compact density"
+            >
+              Compact
+            </button>
+          </div>
+          {/* Clear Chat */}
+          <button
+            onClick={clearChat}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            title="Clear chat"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       {/* Suggestions */}
@@ -113,7 +179,7 @@ const Chatbot = () => {
             key={s}
             type="button"
             onClick={() => handleSuggestionClick(s)}
-            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200"
             disabled={loading}
           >
             {s}
@@ -131,14 +197,18 @@ const Chatbot = () => {
       {/* Chat area */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4"
+        className="mb-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4"
+        style={{ maxHeight: "calc(100vh - 450px)", minHeight: "400px" }}
       >
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-gray-500">
-            No messages yet. Start by asking a question.
+            <div className="text-center">
+              <div className="mb-2 text-4xl">💬</div>
+              <p>No messages yet. Start by asking a question.</p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className={density === "comfortable" ? "space-y-4" : "space-y-3"}>
             {messages.map((m, idx) => (
               <div
                 key={idx}
@@ -147,18 +217,18 @@ const Chatbot = () => {
                 }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                  className={`max-w-[80%] rounded-2xl ${dens.message} ${dens.text} ${
                     m.from === "user"
-                      ? "bg-blue-600 text-white rounded-br-sm"
-                      : "bg-gray-50 text-gray-900 rounded-bl-sm border border-gray-200"
+                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-sm shadow-md"
+                      : "bg-white text-gray-900 rounded-bl-sm border border-gray-200 shadow-sm"
                   }`}
                 >
-                  <div className="whitespace-pre-line">{m.text}</div>
+                  <div className="whitespace-pre-line leading-relaxed">{m.text}</div>
                   {m.intent &&
                     m.intent !== "WELCOME" &&
                     m.intent !== "ERROR" && (
                       <div
-                        className={`mt-1 text-[10px] uppercase tracking-wide ${
+                        className={`mt-2 text-[10px] uppercase tracking-wide ${
                           m.from === "user" ? "text-blue-100" : "text-gray-400"
                         }`}
                       >
@@ -170,8 +240,8 @@ const Chatbot = () => {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="inline-flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2 text-xs text-gray-500 border border-gray-200">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
+                <div className={`inline-flex items-center gap-2 rounded-2xl bg-white ${dens.message} ${dens.text} text-gray-500 border border-gray-200 shadow-sm`}>
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
                   <span>Thinking…</span>
                 </div>
               </div>
@@ -181,32 +251,32 @@ const Chatbot = () => {
       </div>
 
       {/* Input */}
-      <form
-        onSubmit={handleSubmit}
-        className="mt-4 flex items-end gap-2 border-t border-gray-200 pt-3"
-      >
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Ask a question
-          </label>
-          <textarea
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder={`Examples: "Show low stock items", "What is today's sales total?", "How to record a payment?"`}
-          />
-        </div>
-        <div className="pb-1">
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Sending..." : "Send"}
-          </button>
-        </div>
-      </form>
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <form onSubmit={handleSubmit} className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              Ask a question
+            </label>
+            <textarea
+              rows={2}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={`Examples: "Show low stock items", "What is today's sales total?", "How to record a payment?"`}
+            />
+          </div>
+          <div className="pb-1">
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Sending..." : "Send"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

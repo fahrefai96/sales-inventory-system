@@ -29,8 +29,10 @@ export default function ReportTable({
   empty = "No data",
   pageSizeOptions = [25, 50, 100],
   defaultPageSize = 25,
+  density: densityProp,
 }) {
-  const [density, setDensity] = React.useState("comfortable");
+  const [internalDensity, setDensity] = React.useState("comfortable");
+  const density = densityProp || internalDensity;
   const [pageSize, setPageSize] = React.useState(defaultPageSize);
   const [page, setPage] = React.useState(1);
   const [sortBy, setSortBy] = React.useState(() => {
@@ -97,27 +99,29 @@ export default function ReportTable({
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       {/* Top toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 border-b border-gray-200">
-        {/* Density */}
-        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-          <button
-            className={`px-3 py-2 text-xs font-medium ${
-              density === "comfortable" ? "bg-gray-100" : "bg-white"
-            }`}
-            onClick={() => setDensity("comfortable")}
-            title="Comfortable density"
-          >
-            Comfortable
-          </button>
-          <button
-            className={`px-3 py-2 text-xs font-medium ${
-              density === "compact" ? "bg-gray-100" : "bg-white"
-            }`}
-            onClick={() => setDensity("compact")}
-            title="Compact density"
-          >
-            Compact
-          </button>
-        </div>
+        {/* Density - only show if not controlled by parent */}
+        {!densityProp && (
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "comfortable" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("comfortable")}
+              title="Comfortable density"
+            >
+              Comfortable
+            </button>
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "compact" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("compact")}
+              title="Compact density"
+            >
+              Compact
+            </button>
+          </div>
+        )}
 
         {/* Rows per page */}
         <div className="flex items-center gap-2">
@@ -186,7 +190,7 @@ export default function ReportTable({
             ) : (
               paged.map((row, idx) => (
                 <tr
-                  key={row._id || idx}
+                  key={row._id || row.productId || row.id || idx}
                   className={`hover:bg-gray-50 ${dens.row}`}
                 >
                   {columns.map((c) => (

@@ -8,6 +8,8 @@ import {
   getSaleInvoicePdf,
   recordPayment,
   adjustPayment,
+  exportSalesListCsv,
+  exportSalesListPdf,
 } from "../Controllers/saleController.js";
 
 const router = express.Router();
@@ -37,5 +39,9 @@ router.patch(
 
 // Adjust payment (admin only)
 router.post("/:id/payment-adjust", requireRole(["admin"]), adjustPayment);
+
+// Export endpoints
+router.get("/export/csv", authMiddleware, exportSalesListCsv);
+router.get("/export/pdf", authMiddleware, exportSalesListPdf);
 
 export default router;

@@ -1,6 +1,9 @@
 // /src/components/Suppliers.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "../utils/api";
+import axios from "axios";
+import { FaDownload, FaFileCsv } from "react-icons/fa";
+import { fuzzySearch } from "../utils/fuzzySearch";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
@@ -72,6 +75,29 @@ const Suppliers = () => {
     fetchSuppliers();
   }, []);
 
+  // Close drawers/modals on ESC key press
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        if (drawerOpen) {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }
+        if (profileOpen) {
+          setProfileOpen(false);
+          setSupplierPurchases([]);
+          setProfileSupplier(null);
+        }
+      }
+    };
+    if (drawerOpen || profileOpen) {
+      document.addEventListener("keydown", handleEsc);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [drawerOpen, profileOpen]);
+
   // -------- Search (debounced) --------
   const debounceRef = useRef(null);
   const onSearchChange = (e) => {
@@ -83,20 +109,14 @@ const Suppliers = () => {
 
   // -------- Derived list (search + sort) --------
   const filtered = useMemo(() => {
-    const q = (query || "").toLowerCase().trim();
     let list = [...suppliers];
 
-    if (q) {
-      list = list.filter(
-        (s) =>
-          (s.name || "").toLowerCase().includes(q) ||
-          (s.email || "").toLowerCase().includes(q) ||
-          (s.phone || "").toLowerCase().includes(q) ||
-          (s.address || "").toLowerCase().includes(q) ||
-          (s.country || "").toLowerCase().includes(q)
-      );
+    // Apply fuzzy search if query exists
+    if (query && query.trim()) {
+      list = fuzzySearch(list, query, ["name", "email", "phone", "address", "country"], 0.4);
     }
 
+    // Apply sorting
     const sorter = SORTERS[sortBy.key] || SORTERS.createdAt;
     list.sort((a, b) => {
       const res = sorter(a, b);
@@ -124,6 +144,54 @@ const Suppliers = () => {
 
   // -------- Helpers --------
   const dens = DENSITIES[density];
+
+  const handleExportCsv = async () => {
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const token = localStorage.getItem("pos-token");
+      const res = await axios.get(`${apiBase}/supplier/export/csv`, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data && res.data.size > 0) {
+        const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `suppliers_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+      }
+    } catch (e) {
+      if (e.response && e.response.data instanceof Blob) {
+        const blob = new Blob([e.response.data], { type: "text/csv;charset=utf-8" });
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `suppliers_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+        return;
+      }
+      console.error(e);
+      alert("Failed to export CSV.");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    const token = localStorage.getItem("pos-token");
+    const url = `${apiBase}/supplier/export/pdf?token=${token}`;
+    
+    // Use window.open for PDF exports to avoid streaming issues
+    window.open(url, "_blank");
+  };
+
   const setSort = (key) => {
     setSortBy((prev) =>
       prev.key === key
@@ -134,7 +202,7 @@ const Suppliers = () => {
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-LK") : "—");
   const formatMoney = (v) =>
-    `Rs ${Number(v || 0).toLocaleString("en-LK", {
+    `Rs. ${Number(v || 0).toLocaleString("en-LK", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
@@ -259,8 +327,8 @@ const Suppliers = () => {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Suppliers</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900">Suppliers</h1>
+          <p className="text-gray-600 text-base">
             Manage supplier records and view their purchase history.
           </p>
         </div>
@@ -286,28 +354,6 @@ const Suppliers = () => {
               Compact
             </button>
           </div>
-          {/* Rows per page */}
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows:</span>
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-              {[25, 50, 100].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(n);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-2 text-xs ${
-                    pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
-                  }`}
-                  title={`Show ${n} rows`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
           {/* Add */}
           <button
             onClick={openDrawerForCreate}
@@ -319,19 +365,57 @@ const Suppliers = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <input
-            type="text"
-            placeholder="Search by name, email, phone, address, or country…"
-            defaultValue={query}
-            onChange={onSearchChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          placeholder="Search by name, email, phone, address, or country…"
+          defaultValue={query}
+          onChange={onSearchChange}
+          className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <button
+            onClick={handleExportCsv}
+            className="px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+            title="Export CSV"
+          >
+            <FaFileCsv className="text-xs" />
+            Export CSV
+          </button>
+          <button
+            onClick={handleExportPdf}
+            className="border-l border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1.5"
+            title="Export PDF"
+          >
+            <FaDownload className="text-xs" />
+            Export PDF
+          </button>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Rows per page selector */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">Rows:</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              className={`px-3 py-2 text-xs ${
+                pageSize === n ? "bg-gray-100 font-medium" : "bg-white"
+              }`}
+              title={`Show ${n} rows`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="max-h-[70vh] overflow-auto">
           <table className="min-w-full table-auto">
@@ -375,31 +459,31 @@ const Suppliers = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
                 <SkeletonRows rows={pageSize} dens={dens} cols={7} />
               ) : paged.length > 0 ? (
                 paged.map((s) => (
                   <tr key={s._id} className={`hover:bg-gray-50 ${dens.row}`}>
-                    <td className={`${dens.cell} ${dens.text} text-gray-800`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.name}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.email || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.phone || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.address || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-600`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.country || "—"}
                     </td>
-                    <td className={`${dens.cell} ${dens.text} text-gray-500`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       {formatDateTime(s.createdAt)}
                     </td>
-                    <td className={`${dens.cell} ${dens.text}`}>
+                    <td className={`${dens.cell} text-sm text-gray-700`}>
                       <div className="flex flex-wrap gap-3">
                         <button
                           onClick={() => openSupplierPurchases(s._id)}
@@ -640,11 +724,11 @@ const Suppliers = () => {
                       <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                         {supplierPurchases.map((p) => (
                           <tr key={p._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">{p.invoiceNo || "—"}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-sm text-gray-700">{p.invoiceNo || "—"}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               {formatDate(p.invoiceDate || p.createdAt)}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               <span
                                 className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
                                   p.status
@@ -653,13 +737,13 @@ const Suppliers = () => {
                                 {formatStatus(p.status)}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               {Array.isArray(p.items) ? p.items.length : 0}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               {formatMoney(p.grandTotal)}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               {formatDateTime(p.createdAt)}
                             </td>
                           </tr>
