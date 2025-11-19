@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import Sale from "../models/Sales.js";
 import Purchase from "../models/Purchase.js";
 import Supplier from "../models/Supplier.js";
+import Settings from "../models/Settings.js";
 
 /* ----------------------------- helpers ----------------------------- */
 
@@ -51,10 +52,22 @@ const getSummary = async (req, res) => {
       .populate("category", "name")
       .lean();
 
-    // Low Stock (active only, threshold < 5 for now)
+    // Get low stock threshold from Settings (default to 5)
+    let lowStockThreshold = 5;
+    try {
+      const settings = await Settings.findOne().lean();
+      if (settings?.inventory?.lowStockThreshold != null) {
+        lowStockThreshold = Number(settings.inventory.lowStockThreshold);
+      }
+    } catch (error) {
+      console.error("Error fetching low stock threshold from settings:", error);
+      // Use default 5 if there's an error
+    }
+
+    // Low Stock (active only, using dynamic threshold)
     const lowStock = await Product.find({
       ...activeFilter,
-      stock: { $gt: 0, $lt: 5 },
+      stock: { $gt: 0, $lt: lowStockThreshold },
     })
       .select("name category stock")
       .populate("category", "name")
@@ -148,6 +161,7 @@ const getSummary = async (req, res) => {
       highestSaleProduct,
       receivables, // { totalOutstanding, invoiceCount }
       deadStockCount,
+      lowStockThreshold, // Include threshold in response
     };
 
     return res.status(200).json(dashboardData);

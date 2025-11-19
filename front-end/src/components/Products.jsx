@@ -19,6 +19,7 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(5);
 
   const [query, setQuery] = useState("");
   const [density, setDensity] = useState("comfortable");
@@ -125,6 +126,38 @@ const Products = () => {
     fetchBrands();
   }, []);
 
+  // Fetch inventory settings to get low stock threshold
+  useEffect(() => {
+    const fetchInventorySettings = async () => {
+      try {
+        const { data } = await axiosInstance.get("/settings/inventory", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+          },
+        });
+        if (data?.success && data?.inventory?.lowStockThreshold != null) {
+          setLowStockThreshold(Number(data.inventory.lowStockThreshold));
+        }
+      } catch (err) {
+        console.error("Failed to fetch inventory settings:", err);
+        // Use default 5 if fetch fails
+      }
+    };
+    fetchInventorySettings();
+
+    // Listen for inventory settings updates
+    const handleSettingsUpdate = (event) => {
+      if (event.detail?.lowStockThreshold != null) {
+        setLowStockThreshold(Number(event.detail.lowStockThreshold));
+      }
+    };
+
+    window.addEventListener("inventorySettingsUpdated", handleSettingsUpdate);
+    return () => {
+      window.removeEventListener("inventorySettingsUpdated", handleSettingsUpdate);
+    };
+  }, []);
+
   // Auto-fetch when filters, sorting, or pagination changes
   useEffect(() => {
     fetchProducts();
@@ -170,10 +203,11 @@ const Products = () => {
 
   const stockPill = (s) => {
     const n = Number(s || 0);
+    const threshold = Number(lowStockThreshold) || 5; // Ensure it's a number, default to 5
     const style =
       n === 0
         ? "bg-red-100 text-red-700"
-        : n <= 5
+        : n < threshold
         ? "bg-amber-100 text-amber-700"
         : "bg-emerald-100 text-emerald-700";
     return (
@@ -396,11 +430,12 @@ const Products = () => {
     const brandFilter = filters.brand !== "all"
       ? brands.find((b) => b._id === filters.brand)?.name || "All Brands"
       : "All Brands";
-    const stockFilter = filters.stock === "low" ? "Low (≤5)" 
+    const stockFilter = filters.stock === "low" ? `Low (<${lowStockThreshold})` 
       : filters.stock === "out" ? "Out (0)"
-      : filters.stock === "in" ? "In Stock (>5)"
+      : filters.stock === "in" ? `In Stock (≥${lowStockThreshold})`
       : "All Stock";
 
+    const threshold = lowStockThreshold; // Capture threshold for use in template
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -488,7 +523,7 @@ const Products = () => {
             <tbody>
               ${displayProducts.map((p) => {
                 const stock = Number(p.stock || 0);
-                const stockClass = stock === 0 ? "stock-zero" : stock <= 5 ? "stock-low" : "stock-ok";
+                const stockClass = stock === 0 ? "stock-zero" : stock < ` + threshold + ` ? "stock-low" : "stock-ok";
                 return `
                   <tr>
                     <td>${p.code || "—"}</td>
@@ -641,9 +676,9 @@ const Products = () => {
             onChange={(val) => setFilters((f) => ({ ...f, stock: val }))}
             options={[
               { value: "all", label: "All Stock" },
-              { value: "low", label: "Low (≤5)" },
+              { value: "low", label: `Low (<${lowStockThreshold})` },
               { value: "out", label: "Out (0)" },
-              { value: "in", label: "In Stock (>5)" },
+              { value: "in", label: `In Stock (≥${lowStockThreshold})` },
             ]}
             placeholder="All Stock"
           />

@@ -10,6 +10,16 @@ const settingsSchema = new mongoose.Schema(
       ownerName: String,
       logoUrl: String,
     },
+    inventory: {
+      lowStockThreshold: {
+        type: Number,
+        default: 5,
+      },
+      showCostPrice: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   {
     timestamps: true,

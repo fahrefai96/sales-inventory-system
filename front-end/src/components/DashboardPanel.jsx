@@ -321,6 +321,7 @@ export default function DashboardPanel() {
   const densityCls = DENSITIES[density];
   const outOfStockCount = dashboard?.outOfStock?.length || 0;
   const lowStockCount = dashboard?.lowStock?.length || 0;
+  const lowStockThreshold = dashboard?.lowStockThreshold ?? 5;
 
   const kpis = useMemo(() => {
     const KPIs = salesReport?.KPIs || {};
@@ -655,7 +656,7 @@ export default function DashboardPanel() {
             <div
               className={`rounded shadow bg-white ${densityCls.card} text-center`}
             >
-              <KpiHeader icon={<FaArrowDown />} label="Low Stock (<5)" />
+              <KpiHeader icon={<FaArrowDown />} label={`Low Stock (<${lowStockThreshold})`} />
               <div className="text-2xl font-semibold mt-1">
                 {fmt(lowStockCount)}
               </div>

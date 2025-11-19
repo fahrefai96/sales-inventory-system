@@ -4,6 +4,7 @@ import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
 import Supplier from "../models/Supplier.js";
 import InventoryLog from "../models/InventoryLog.js";
+import Settings from "../models/Settings.js";
 import PDFDocument from "pdfkit";
 import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
@@ -250,14 +251,24 @@ const getProducts = async (req, res) => {
     if (categoryId) q.category = categoryId;
     if (code) q.code = code;
 
-    // Stock filter
+    // Stock filter - get threshold from Settings
     if (stockFilter && stockFilter !== "all") {
+      let lowStockThreshold = 5; // default
+      try {
+        const settings = await Settings.findOne().lean();
+        if (settings?.inventory?.lowStockThreshold != null) {
+          lowStockThreshold = Number(settings.inventory.lowStockThreshold);
+        }
+      } catch (error) {
+        console.error("Error fetching low stock threshold from settings:", error);
+      }
+
       if (stockFilter === "low") {
-        q.stock = { $gt: 0, $lte: 5 };
+        q.stock = { $gt: 0, $lt: lowStockThreshold };
       } else if (stockFilter === "out") {
         q.stock = 0;
       } else if (stockFilter === "in") {
-        q.stock = { $gt: 5 };
+        q.stock = { $gte: lowStockThreshold };
       }
     }
 
@@ -551,12 +562,26 @@ export const exportProductsCsv = async (req, res) => {
     if (brand && brand !== "all") {
       query.brand = brand;
     }
-    if (stock === "low") {
-      query.stock = { $gt: 0, $lt: 5 };
-    } else if (stock === "out") {
-      query.stock = 0;
-    } else if (stock === "in") {
-      query.stock = { $gt: 0 };
+    
+    // Stock filter - get threshold from Settings
+    if (stock && stock !== "all") {
+      let lowStockThreshold = 5; // default
+      try {
+        const settings = await Settings.findOne().lean();
+        if (settings?.inventory?.lowStockThreshold != null) {
+          lowStockThreshold = Number(settings.inventory.lowStockThreshold);
+        }
+      } catch (error) {
+        console.error("Error fetching low stock threshold from settings:", error);
+      }
+
+      if (stock === "low") {
+        query.stock = { $gt: 0, $lt: lowStockThreshold };
+      } else if (stock === "out") {
+        query.stock = 0;
+      } else if (stock === "in") {
+        query.stock = { $gte: lowStockThreshold };
+      }
     }
 
     const products = await Product.find(query)
@@ -606,12 +631,25 @@ export const exportProductsPdf = async (req, res) => {
     if (brand && brand !== "all") {
       query.brand = brand;
     }
-    if (stock === "low") {
-      query.stock = { $gt: 0, $lt: 5 };
-    } else if (stock === "out") {
-      query.stock = 0;
-    } else if (stock === "in") {
-      query.stock = { $gt: 0 };
+    // Stock filter - get threshold from Settings
+    if (stock && stock !== "all") {
+      let lowStockThreshold = 5; // default
+      try {
+        const settings = await Settings.findOne().lean();
+        if (settings?.inventory?.lowStockThreshold != null) {
+          lowStockThreshold = Number(settings.inventory.lowStockThreshold);
+        }
+      } catch (error) {
+        console.error("Error fetching low stock threshold from settings:", error);
+      }
+
+      if (stock === "low") {
+        query.stock = { $gt: 0, $lt: lowStockThreshold };
+      } else if (stock === "out") {
+        query.stock = 0;
+      } else if (stock === "in") {
+        query.stock = { $gte: lowStockThreshold };
+      }
     }
 
     const products = await Product.find(query)

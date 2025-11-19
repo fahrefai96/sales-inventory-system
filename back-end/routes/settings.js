@@ -3,6 +3,8 @@ import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   getGeneralSettings,
   updateGeneralSettings,
+  getInventorySettings,
+  updateInventorySettings,
 } from "../Controllers/settingsController.js";
 
 const router = express.Router();
@@ -26,6 +28,22 @@ router.put(
   authMiddleware,
   requireRole(["admin"]),
   updateGeneralSettings
+);
+
+// Get inventory settings (admin only)
+router.get(
+  "/inventory",
+  authMiddleware,
+  requireRole(["admin"]),
+  getInventorySettings
+);
+
+// Update inventory settings (admin only)
+router.put(
+  "/inventory",
+  authMiddleware,
+  requireRole(["admin"]),
+  updateInventorySettings
 );
 
 export default router;
