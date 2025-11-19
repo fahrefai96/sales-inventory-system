@@ -3,6 +3,7 @@ import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   addSale,
   getSales,
+  getSaleById,
   updateSale,
   deleteSale,
   getSaleInvoicePdf,
@@ -20,8 +21,11 @@ router.post("/add", authMiddleware, addSale);
 // Get all sales (supports filters from your existing controller)
 router.get("/", authMiddleware, getSales);
 
-// Generate & download invoice PDF
+// Generate & download invoice PDF (must come before /:id route)
 router.get("/:id/invoice.pdf", authMiddleware, getSaleInvoicePdf);
+
+// Get single sale by ID
+router.get("/:id", authMiddleware, getSaleById);
 
 // Update sale
 router.put("/:id", authMiddleware, updateSale);

@@ -20,7 +20,7 @@ const generateSaleId = async () => {
 // Create Sale
 const addSale = async (req, res) => {
   try {
-    const { products, customer, saleDate, discount } = req.body;
+    const { products, customer, saleDate, discount, paymentMethod, chequeNumber, chequeDate, chequeBank, chequeStatus } = req.body;
 
     if (!products || products.length === 0)
       return res
@@ -65,16 +65,47 @@ const addSale = async (req, res) => {
     const discountedAmount =
       totalAmount - totalAmount * ((Number(discount) || 0) / 100);
 
-    const sale = new Sale({
+    // Validate and set paymentMethod (default to "cash" if not provided or invalid)
+    const validPaymentMethod = paymentMethod === "cash" || paymentMethod === "cheque" ? paymentMethod : "cash";
+
+    // Handle saleDate: if provided, combine with current time to preserve local timezone
+    let finalSaleDate;
+    if (saleDate) {
+      const providedDate = new Date(saleDate);
+      const now = new Date();
+      // Set the date from provided date but keep current time
+      finalSaleDate = new Date(
+        providedDate.getFullYear(),
+        providedDate.getMonth(),
+        providedDate.getDate(),
+        now.getHours(),
+        now.getMinutes(),
+        now.getSeconds(),
+        now.getMilliseconds()
+      );
+    } else {
+      finalSaleDate = new Date();
+    }
+
+    const saleData = {
       saleId: await generateSaleId(),
       products,
       totalAmount,
       customer,
       createdBy: req.user._id,
-      saleDate: saleDate ? new Date(saleDate) : new Date(),
+      saleDate: finalSaleDate,
       discount: Number(discount) || 0,
       discountedAmount,
-    });
+      paymentMethod: validPaymentMethod,
+    };
+
+    // Include optional cheque fields if present
+    if (chequeNumber !== undefined) saleData.chequeNumber = chequeNumber;
+    if (chequeDate !== undefined) saleData.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
+    if (chequeBank !== undefined) saleData.chequeBank = chequeBank;
+    if (chequeStatus !== undefined) saleData.chequeStatus = chequeStatus;
+
+    const sale = new Sale(saleData);
 
     await sale.save();
 
@@ -267,7 +298,7 @@ const getSales = async (req, res) => {
 // Update Sale
 const updateSale = async (req, res) => {
   try {
-    const { products, customer, saleDate, discount } = req.body;
+    const { products, customer, saleDate, discount, paymentMethod, chequeNumber, chequeDate, chequeBank, chequeStatus } = req.body;
     const sale = await Sale.findById(req.params.id);
     if (!sale)
       return res
@@ -344,6 +375,17 @@ const updateSale = async (req, res) => {
     sale.discount = isNaN(safeDiscount) ? sale.discount : safeDiscount;
     sale.discountedAmount = discountedAmount;
     sale.updatedBy = req.user._id;
+
+    // Update paymentMethod if provided
+    if (paymentMethod === "cash" || paymentMethod === "cheque") {
+      sale.paymentMethod = paymentMethod;
+    }
+
+    // Update optional cheque fields if present
+    if (chequeNumber !== undefined) sale.chequeNumber = chequeNumber;
+    if (chequeDate !== undefined) sale.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
+    if (chequeBank !== undefined) sale.chequeBank = chequeBank;
+    if (chequeStatus !== undefined) sale.chequeStatus = chequeStatus;
 
     await sale.save();
 
@@ -777,9 +819,38 @@ const adjustPayment = async (req, res) => {
   }
 };
 
+// Get Sale by ID
+const getSaleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sale = await Sale.findById(id)
+      .populate({
+        path: "products.product",
+        select: "name price code size brand",
+        populate: { path: "brand", select: "name" },
+      })
+      .populate("customer", "name")
+      .populate("createdBy", "name")
+      .populate("updatedBy", "name")
+      .lean();
+
+    if (!sale) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
+    }
+
+    return res.json({ success: true, data: sale });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export {
   addSale,
   getSales,
+  getSaleById,
   updateSale,
   deleteSale,
   getSaleInvoicePdf,

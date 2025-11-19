@@ -24,6 +24,7 @@ import aiSmartAlertsRoutes from "./routes/aiSmartAlerts.js";
 import aiMonthlySummaryRoutes from "./routes/aiMonthlySummary.js";
 import aiAnomalyRoutes from "./routes/aiAnomaly.js";
 import aiDemandClassificationRoutes from "./routes/aiDemandClassification.js";
+import settingsRoutes from "./routes/settings.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -81,6 +82,7 @@ app.use("/api/smart-alerts", aiSmartAlertsRoutes);
 app.use("/api/ai-monthly-summary", aiMonthlySummaryRoutes);
 app.use("/api/ai-anomaly", aiAnomalyRoutes);
 app.use("/api/ai-demand", aiDemandClassificationRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.listen(process.env.PORT, () => {
   connectdb();

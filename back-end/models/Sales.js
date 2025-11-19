@@ -98,6 +98,21 @@ const saleSchema = new mongoose.Schema(
     amountPaid: { type: Number, default: 0 },
     amountDue: { type: Number, default: 0 },
 
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "cheque"],
+      default: "cash",
+    },
+
+    chequeNumber: String,
+    chequeDate: Date,
+    chequeBank: String,
+    chequeStatus: {
+      type: String,
+      enum: ["pending", "cleared", "bounced"],
+      default: "pending",
+    },
+
     // payment history (normal payments + admin adjustments)
     payments: [paymentEntrySchema],
   },

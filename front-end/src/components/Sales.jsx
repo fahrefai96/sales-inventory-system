@@ -183,6 +183,7 @@ const Sales = () => {
   );
   const [discount, setDiscount] = useState(0);
   const [discountedAmount, setDiscountedAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -192,9 +193,7 @@ const Sales = () => {
 
   // Filter dropdowns
   const [customerFilter, setCustomerFilter] = useState("all");
-  const [productFilter, setProductFilter] = useState("all");
   const [customerOptions, setCustomerOptions] = useState([]);
-  const [productOptions, setProductOptions] = useState([]);
 
   // UI
   const [uiError, setUiError] = useState("");
@@ -235,6 +234,10 @@ const Sales = () => {
   const [adjustNote, setAdjustNote] = useState("");
   const [adjustError, setAdjustError] = useState("");
   const [adjustLoading, setAdjustLoading] = useState(false);
+
+  // View modal state
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewSale, setViewSale] = useState(null);
 
   // Product dropdown
   const loadProductOptions = async (inputValue) => {
@@ -283,7 +286,6 @@ const Sales = () => {
 
       if (unifiedSearch.trim()) params.set("search", unifiedSearch.trim());
       if (customerFilter && customerFilter !== "all") params.set("customer", customerFilter);
-      if (productFilter && productFilter !== "all") params.set("product", productFilter);
       if (paymentStatus) params.set("status", paymentStatus);
 
       if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
@@ -333,7 +335,6 @@ const Sales = () => {
     pageSize,
     unifiedSearch,
     customerFilter,
-    productFilter,
     paymentStatus,
     dateFrom,
     dateTo,
@@ -343,7 +344,7 @@ const Sales = () => {
     sortBy.dir,
   ]);
 
-  // Load customer and product options for filters
+  // Load customer options for filters
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
@@ -360,20 +361,6 @@ const Sales = () => {
         setCustomerOptions(
           customers.map((c) => ({ value: c._id || c.value, label: c.name || c.label }))
         );
-
-        // Load products
-        const productRes = await axios.get(
-          `http://localhost:3000/api/products?dropdown=true&search=`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const products = Array.isArray(productRes.data)
-          ? productRes.data
-          : Array.isArray(productRes.data?.products)
-          ? productRes.data.products
-          : [];
-        setProductOptions(
-          products.map((p) => ({ value: p.value || p._id, label: p.label || p.name }))
-        );
       } catch (err) {
         console.error("Error loading filter options:", err);
       }
@@ -389,7 +376,7 @@ const Sales = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [customerFilter, productFilter]);
+  }, [customerFilter]);
 
   // Close modals on ESC key press
   useEffect(() => {
@@ -401,6 +388,7 @@ const Sales = () => {
           setSelectedCustomer(null);
           setQuantities({});
           setEditingSaleId(null);
+          setPaymentMethod("cash");
           setModalError("");
         }
         if (isPaymentOpen) {
@@ -417,15 +405,18 @@ const Sales = () => {
           setAdjustNote("");
           setAdjustError("");
         }
+        if (isViewOpen) {
+          closeViewModal();
+        }
       }
     };
-    if (isModalOpen || isPaymentOpen || isAdjustOpen) {
+    if (isModalOpen || isPaymentOpen || isAdjustOpen || isViewOpen) {
       document.addEventListener("keydown", handleEsc);
     }
     return () => {
       document.removeEventListener("keydown", handleEsc);
     };
-  }, [isModalOpen, isPaymentOpen, isAdjustOpen]);
+  }, [isModalOpen, isPaymentOpen, isAdjustOpen, isViewOpen]);
 
   const recalculateDiscountedAmount = (totalAmount) => {
     const discountAmount = (totalAmount * discount) / 100;
@@ -582,6 +573,7 @@ const Sales = () => {
     );
     setDiscount(sale.discount || 0);
     setDiscountedAmount(sale.discountedAmount || sale.totalAmount);
+    setPaymentMethod(sale.paymentMethod || "cash");
 
     setIsModalOpen(true);
   };
@@ -661,6 +653,7 @@ const Sales = () => {
         saleDate,
         discount,
         discountedAmount,
+        paymentMethod,
       };
 
       if (editingSaleId) {
@@ -682,6 +675,7 @@ const Sales = () => {
       setQuantities({});
       setDiscount(0);
       setDiscountedAmount(0);
+      setPaymentMethod("cash");
       setModalError("");
 
       fetchSales(1, pageSize); // reload page 1
@@ -713,6 +707,28 @@ const Sales = () => {
     } catch {
       return "";
     }
+  };
+
+  const formatDateTime = (d) => {
+    try {
+      return d ? new Date(d).toLocaleString("en-LK") : "—";
+    } catch {
+      return "—";
+    }
+  };
+
+  const fmtLKR = (n) => `Rs. ${Number(n || 0).toFixed(2)}`;
+
+  // Open view modal
+  const openViewModal = (sale) => {
+    setViewSale(sale);
+    setIsViewOpen(true);
+  };
+
+  // Close view modal
+  const closeViewModal = () => {
+    setIsViewOpen(false);
+    setViewSale(null);
   };
 
   /** ---------- Sorting (server-side) ---------- */
@@ -908,8 +924,7 @@ const Sales = () => {
                 <th>Sale ID</th>
                 <th>Customer</th>
                 <th>Date</th>
-                <th>Products</th>
-                <th>Discount</th>
+                <th>Items</th>
                 <th style="text-align: right;">Total</th>
                 <th>Status</th>
                 <th style="text-align: right;">Paid</th>
@@ -921,17 +936,15 @@ const Sales = () => {
                 const status = getStatus(sale);
                 const due = getDue(sale);
                 const paid = getPaid(sale);
-                const products = Array.isArray(sale.products) 
-                  ? sale.products.map((p) => p?.product?.name || "-").join(", ")
-                  : "";
+                const itemCount = Array.isArray(sale.products) ? sale.products.length : 0;
+                const itemsText = itemCount === 0 ? "0 items" : itemCount === 1 ? "1 item" : `${itemCount} items`;
                 
                 return `
                   <tr>
                     <td>${sale.saleId || ""}</td>
                     <td>${sale.customer?.name || "—"}</td>
                     <td>${formatDateTimeLocal(sale.createdAt || sale.saleDate)}</td>
-                    <td>${products}</td>
-                    <td>${sale.discount || 0}%</td>
+                    <td>${itemsText}</td>
                     <td style="text-align: right;">Rs. ${Number(sale.discountedAmount || 0).toFixed(2)}</td>
                     <td>
                       <span class="status-${status}">
@@ -1006,6 +1019,7 @@ const Sales = () => {
               setSaleDate(new Date().toISOString().slice(0, 10));
               setDiscount(0);
               setDiscountedAmount(0);
+              setPaymentMethod("cash");
               setIsModalOpen(true);
             }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -1033,13 +1047,13 @@ const Sales = () => {
 
       {/* FILTER BAR */}
       <div className="mb-4 space-y-3">
-        {/* First row: Search, Customer, Product, Payment Status */}
-        <div className="grid gap-3 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
+        {/* First row: Search, Customer, Payment Status */}
+        <div className="grid gap-3 lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-2">
           {/* Unified search bar */}
           <div>
             <input
               type="text"
-              placeholder="Search by sale ID, customer, products"
+              placeholder="Search by sale ID, customer"
               value={unifiedSearch}
               onChange={(e) => {
                 setUnifiedSearch(e.target.value);
@@ -1062,22 +1076,6 @@ const Sales = () => {
                 ...customerOptions,
               ]}
               placeholder="All Customers"
-            />
-          </div>
-
-          {/* Product Filter */}
-          <div>
-            <Combo
-              value={productFilter}
-              onChange={(val) => {
-                setProductFilter(val);
-                setPage(1);
-              }}
-              options={[
-                { value: "all", label: "All Products" },
-                ...productOptions,
-              ]}
-              placeholder="All Products"
             />
           </div>
 
@@ -1200,7 +1198,6 @@ const Sales = () => {
             onClick={() => {
               setUnifiedSearch("");
               setCustomerFilter("all");
-              setProductFilter("all");
               setPaymentStatus("");
               setDateFrom("");
               setDateTo("");
@@ -1253,16 +1250,7 @@ const Sales = () => {
                   setSort={setSort}
                 />
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  Products
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  Discount
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  Unit Price(s)
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                  Quantities
+                  Items
                 </th>
                 <Th
                   label="Total Amount"
@@ -1281,12 +1269,16 @@ const Sales = () => {
 
             <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
-                <SkeletonRows rows={pageSize} dens={dens} cols={10} />
+                <SkeletonRows rows={pageSize} dens={dens} cols={7} />
               ) : pageRows.length > 0 ? (
                 pageRows.map((sale) => {
                   const status = getStatus(sale);
                   const due = getDue(sale);
                   const paid = getPaid(sale);
+                  
+                  // Calculate item count
+                  const itemCount = Array.isArray(sale.products) ? sale.products.length : 0;
+                  const itemsText = itemCount === 0 ? "0 items" : itemCount === 1 ? "1 item" : `${itemCount} items`;
 
                   return (
                     <tr
@@ -1308,69 +1300,9 @@ const Sales = () => {
                         {formatDateTimeLocal(sale.createdAt || sale.saleDate)}
                       </td>
 
-                      {/* Products with hover */}
+                      {/* Items */}
                       <td className={`${dens.cell} text-sm text-gray-700`}>
-                        {Array.isArray(sale.products) &&
-                          sale.products.map((p) => {
-                            const key = p?.product?._id || Math.random();
-                            const name = p?.product?.name || "-";
-                            const brand = p?.product?.brand?.name || "";
-                            const size = p?.product?.size || "";
-                            const hasMeta = brand || size;
-
-                            return (
-                              <div key={key} className="relative group w-fit">
-                                <span
-                                  className={
-                                    hasMeta ? "cursor-help hover:underline" : ""
-                                  }
-                                >
-                                  {name}
-                                </span>
-
-                                {/* Hover Tooltip */}
-                                {hasMeta && (
-                                  <div className="pointer-events-none absolute left-0 bottom-[120%] z-10 hidden w-max max-w-xs rounded-md bg-black/90 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
-                                    {brand && (
-                                      <div>
-                                        <strong>Brand:</strong> {brand}
-                                      </div>
-                                    )}
-                                    {size && (
-                                      <div>
-                                        <strong>Size:</strong> {size}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </td>
-
-                      {/* Discount */}
-                      <td className={`${dens.cell} text-sm text-gray-700`}>
-                        {sale.discount}%
-                      </td>
-
-                      {/* Unit Prices */}
-                      <td className={`${dens.cell} text-sm text-gray-700`}>
-                        {sale.products.map((p) => (
-                          <div key={p?.product?._id || Math.random()}>
-                            Rs. {Number(
-                              p?.unitPrice ?? p?.product?.price ?? 0
-                            ).toFixed(2)}
-                          </div>
-                        ))}
-                      </td>
-
-                      {/* Quantities */}
-                      <td className={`${dens.cell} text-sm text-gray-700`}>
-                        {sale.products.map((p) => (
-                          <div key={p?.product?._id || Math.random()}>
-                            {p.quantity}
-                          </div>
-                        ))}
+                        {itemsText}
                       </td>
 
                       {/* Total Amount */}
@@ -1381,6 +1313,19 @@ const Sales = () => {
                       {/* Payment Column */}
                       <td className={`${dens.cell} text-sm text-gray-700`}>
                         <div className="flex flex-col gap-1">
+                          {/* Payment Method badge */}
+                          {sale.paymentMethod && (
+                            <span
+                              className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                sale.paymentMethod === "cash"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "bg-purple-50 text-purple-700"
+                              }`}
+                            >
+                              {sale.paymentMethod === "cash" ? "Cash" : "Cheque"}
+                            </span>
+                          )}
+                          
                           {/* Status badge */}
                           <span
                             className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
@@ -1406,6 +1351,14 @@ const Sales = () => {
                       {/* ACTIONS */}
                       <td className={`${dens.cell} text-sm text-gray-700`}>
                         <div className="flex flex-wrap gap-3">
+                          {/* View */}
+                          <button
+                            onClick={() => openViewModal(sale)}
+                            className="text-gray-700 hover:text-gray-900 font-medium"
+                          >
+                            View
+                          </button>
+
                           {/* Edit */}
                           <button
                             onClick={() => openModalForEdit(sale)}
@@ -1477,7 +1430,7 @@ const Sales = () => {
                 <tr>
                   <td
                     className="px-6 py-10 text-center text-gray-500"
-                    colSpan={10}
+                    colSpan={7}
                   >
                     No sales found.
                   </td>
@@ -1629,6 +1582,40 @@ const Sales = () => {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2"
                   />
                 </Field>
+
+                {/* Payment Method */}
+                <Field label="Payment Method">
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cash"
+                        checked={paymentMethod === "cash"}
+                        onChange={(e) => {
+                          setPaymentMethod(e.target.value);
+                          setModalError("");
+                        }}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Cash</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cheque"
+                        checked={paymentMethod === "cheque"}
+                        onChange={(e) => {
+                          setPaymentMethod(e.target.value);
+                          setModalError("");
+                        }}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Cheque</span>
+                    </label>
+                  </div>
+                </Field>
               </div>
 
               {/* FOOTER */}
@@ -1642,6 +1629,7 @@ const Sales = () => {
                       setSelectedCustomer(null);
                       setQuantities({});
                       setEditingSaleId(null);
+                      setPaymentMethod("cash");
                       setModalError("");
                     }}
                     className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -1825,6 +1813,175 @@ const Sales = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================== VIEW SALE DETAIL MODAL ====================== */}
+      {isViewOpen && viewSale && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          onClick={closeViewModal}
+        >
+          <div
+            className="bg-white w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-lg shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Sale — {viewSale?.customer?.name || "—"}
+                </h2>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  {formatDateTime(viewSale?.createdAt || viewSale?.saleDate)} ·{" "}
+                  {fmtLKR(viewSale?.discountedAmount || viewSale?.totalAmount || 0)} ·{" "}
+                  <span
+                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${
+                      getStatus(viewSale) === "paid"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : getStatus(viewSale) === "partial"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {getStatus(viewSale)}
+                  </span>
+                  {" · "}
+                  <span
+                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                      (viewSale?.paymentMethod || "cash") === "cash"
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-purple-50 text-purple-700"
+                    }`}
+                  >
+                    {(viewSale?.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Sale ID: {viewSale?.saleId || "—"}
+                  {viewSale?.saleDate
+                    ? ` • Date: ${new Date(viewSale.saleDate).toLocaleDateString("en-LK")}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Payment Method and Status Info */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded border border-gray-200 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Payment Method
+                  </div>
+                  <div className="text-sm text-gray-900">
+                    <span
+                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                        (viewSale?.paymentMethod || "cash") === "cash"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-purple-50 text-purple-700"
+                      }`}
+                    >
+                      {(viewSale?.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded border border-gray-200 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Payment Status
+                  </div>
+                  <div className="text-sm text-gray-900">
+                    <div>Paid: {fmtLKR(getPaid(viewSale))}</div>
+                    <div>Due: {fmtLKR(getDue(viewSale))}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items Table */}
+              <div className="overflow-hidden rounded border border-gray-200">
+                <table className="min-w-full table-auto">
+                  <thead className="bg-gray-50">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                      <th className="px-4 py-3">Product</th>
+                      <th className="px-4 py-3">Quantity</th>
+                      <th className="px-4 py-3">Unit Price</th>
+                      <th className="px-4 py-3">Discount</th>
+                      <th className="px-4 py-3">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                    {Array.isArray(viewSale.products) && viewSale.products.length > 0 ? (
+                      viewSale.products.map((item, idx) => {
+                        const productName = item?.product?.name || "-";
+                        const productCode = item?.product?.code || "";
+                        const brand = item?.product?.brand?.name || "";
+                        const size = item?.product?.size || "";
+                        const quantity = item?.quantity || 0;
+                        const unitPrice = item?.unitPrice ?? item?.product?.price ?? 0;
+                        const discountPct = viewSale?.discount || 0;
+                        const lineTotal = unitPrice * quantity;
+
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div>
+                                {productCode ? `${productCode} - ` : ""}
+                                {productName}
+                              </div>
+                              {(brand || size) && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {brand && `Brand: ${brand}`}
+                                  {brand && size && " • "}
+                                  {size && `Size: ${size}`}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">{quantity}</td>
+                            <td className="px-4 py-3">{fmtLKR(unitPrice)}</td>
+                            <td className="px-4 py-3">
+                              {discountPct > 0 ? `${discountPct}%` : "—"}
+                            </td>
+                            <td className="px-4 py-3">{fmtLKR(lineTotal)}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-3 text-center text-gray-500">
+                          No items
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totals */}
+              <div className="flex items-center justify-end">
+                <div className="text-right space-y-1">
+                  <div className="text-sm text-gray-500">
+                    Subtotal: {fmtLKR(viewSale?.totalAmount || 0)}
+                  </div>
+                  {viewSale?.discount > 0 && (
+                    <div className="text-sm text-gray-500">
+                      Discount ({viewSale.discount}%): -{fmtLKR((viewSale.totalAmount * viewSale.discount) / 100)}
+                    </div>
+                  )}
+                  <div className="text-sm text-gray-500">Total Amount</div>
+                  <div className="text-xl font-semibold text-gray-900">
+                    {fmtLKR(viewSale?.discountedAmount || viewSale?.totalAmount || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

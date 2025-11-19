@@ -1140,16 +1140,17 @@ const Customers = () => {
                             <th className="px-4 py-3">Paid</th>
                             <th className="px-4 py-3">Due</th>
                             <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Payment Method</th>
                             <th className="px-4 py-3">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                           {pendingLoading ? (
-                            <SkeletonRows rows={5} dens={dens} cols={7} />
+                            <SkeletonRows rows={5} dens={dens} cols={8} />
                           ) : pendingRows.length === 0 ? (
                             <tr>
                               <td
-                                colSpan="7"
+                                colSpan="8"
                                 className="px-4 py-6 text-center text-gray-500"
                               >
                                 No pending invoices.
@@ -1178,6 +1179,17 @@ const Customers = () => {
                                   <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(due)}</td>
                                   <td className="px-4 py-3 text-sm text-gray-700 capitalize">
                                     {s.paymentStatus || "unpaid"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    <span
+                                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                        (s.paymentMethod || "cash") === "cash"
+                                          ? "bg-blue-50 text-blue-700"
+                                          : "bg-purple-50 text-purple-700"
+                                      }`}
+                                    >
+                                      {(s.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
+                                    </span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-gray-700">
                                     <button
@@ -1259,15 +1271,16 @@ const Customers = () => {
                             <th className="px-4 py-3">Total</th>
                             <th className="px-4 py-3">Paid</th>
                             <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Payment Method</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                           {paidLoading ? (
-                            <SkeletonRows rows={5} dens={dens} cols={5} />
+                            <SkeletonRows rows={5} dens={dens} cols={6} />
                           ) : paidRows.length === 0 ? (
                             <tr>
                               <td
-                                colSpan="5"
+                                colSpan="6"
                                 className="px-4 py-6 text-center text-gray-500"
                               >
                                 No paid invoices yet.
@@ -1291,6 +1304,17 @@ const Customers = () => {
                                   <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(paid)}</td>
                                   <td className="px-4 py-3 text-sm text-gray-700 capitalize">
                                     {s.paymentStatus || "paid"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    <span
+                                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                        (s.paymentMethod || "cash") === "cash"
+                                          ? "bg-blue-50 text-blue-700"
+                                          : "bg-purple-50 text-purple-700"
+                                      }`}
+                                    >
+                                      {(s.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
+                                    </span>
                                   </td>
                                 </tr>
                               );
