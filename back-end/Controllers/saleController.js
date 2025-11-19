@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import InventoryLog from "../models/InventoryLog.js";
 import PDFDocument from "pdfkit";
 import Customer from "../models/Customer.js";
+import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
 // Generate Sale ID
 const generateSaleId = async () => {
@@ -476,6 +477,9 @@ const getSaleInvoicePdf = async (req, res) => {
         .json({ success: false, message: "Sale not found" });
     }
 
+    // Fetch business information
+    const businessInfo = await getBusinessInfo();
+
     const filename = `${sale.saleId || "invoice"}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -495,16 +499,8 @@ const getSaleInvoicePdf = async (req, res) => {
     });
     doc.pipe(res);
 
-    // Header
-    doc
-      .fontSize(18)
-      .text("A2R Ceramic & Hardware", { align: "left" })
-      .moveDown(0.3);
-    doc.fontSize(10).text("Inventory Management System", { align: "left" });
-    doc.fontSize(10).text("Tel: +94-xxx-xxx-xxxx  |  Email: info@a2r.local", {
-      align: "left",
-    });
-    doc.moveDown(1);
+    // Add business information header
+    addBusinessHeader(doc, businessInfo);
 
     // Title + meta
     const invoiceDate = sale.createdAt || sale.saleDate;
@@ -1008,6 +1004,11 @@ export const exportSalesListPdf = async (req, res) => {
     }
 
     const doc = pipeDoc(res, `sales_${new Date().toISOString().slice(0, 10)}.pdf`);
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("Sales Report", { align: "left" }).moveDown(0.3);
     doc
       .fontSize(10)

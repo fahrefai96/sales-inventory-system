@@ -7,6 +7,11 @@ import {
 
 const router = express.Router();
 
+// Test route to verify router is working
+router.get("/test", (req, res) => {
+  res.json({ success: true, message: "Settings router is working" });
+});
+
 // Get general settings (admin only)
 router.get(
   "/general",

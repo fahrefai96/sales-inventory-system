@@ -3,6 +3,7 @@ import Supplier from "../models/Supplier.js";
 import Product from "../models/Product.js";
 import Purchase from "../models/Purchase.js";
 import PDFDocument from "pdfkit";
+import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
 // POST /api/supplier/add
 const addSupplier = async (req, res) => {
@@ -249,6 +250,11 @@ export const exportSuppliersPdf = async (req, res) => {
     const suppliers = await Supplier.find().sort({ createdAt: -1 }).lean();
 
     const doc = pipeDoc(res, `suppliers_${new Date().toISOString().slice(0, 10)}.pdf`);
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("Suppliers Report", { align: "left" }).moveDown(0.3);
     doc
       .fontSize(10)

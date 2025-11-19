@@ -25,6 +25,7 @@ import aiMonthlySummaryRoutes from "./routes/aiMonthlySummary.js";
 import aiAnomalyRoutes from "./routes/aiAnomaly.js";
 import aiDemandClassificationRoutes from "./routes/aiDemandClassification.js";
 import settingsRoutes from "./routes/settings.js";
+import catalogRouter from "./routes/catalog.js";
 
 console.log("Mounted /api/supplier at", new Date().toISOString());
 
@@ -71,6 +72,7 @@ app.use("/api/sales", salesRouter);
 app.use("/api/customers", customerRouter);
 app.use("/api/users", usersRoute);
 app.use("/api/brands", brandRoutes);
+app.use("/api/catalog", catalogRouter);
 app.use("/api/inventory-logs", inventoryLogsRoutes);
 app.use("/api/purchases", purchaseRouter);
 app.use("/api/reports", reportRouter);
@@ -83,6 +85,7 @@ app.use("/api/ai-monthly-summary", aiMonthlySummaryRoutes);
 app.use("/api/ai-anomaly", aiAnomalyRoutes);
 app.use("/api/ai-demand", aiDemandClassificationRoutes);
 app.use("/api/settings", settingsRoutes);
+console.log("Mounted /api/settings routes at", new Date().toISOString());
 
 app.listen(process.env.PORT, () => {
   connectdb();

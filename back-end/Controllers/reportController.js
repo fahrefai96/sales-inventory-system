@@ -5,6 +5,7 @@ import Product from "../models/Product.js";
 import Purchase from "../models/Purchase.js";
 import User from "../models/User.js";
 import Customer from "../models/Customer.js";
+import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
 /** ------- helpers ------- */
 const asDate = (v) => (v ? new Date(v) : null);
@@ -929,7 +930,11 @@ export const exportSalesPdf = async (req, res) => {
     // PDF
     const doc = pipeDoc(res, `sales_report_${groupBy}.pdf`);
 
-    // Header
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+
+    // Report Header
     doc.fontSize(16).text("Sales Report", { align: "left" }).moveDown(0.25);
     doc
       .fontSize(10)
@@ -1154,6 +1159,11 @@ export const exportInventoryPdf = async (req, res) => {
     }
 
     const doc = pipeDoc(res, "inventory_report.pdf");
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("Inventory Report", { align: "left" }).moveDown(0.3);
     doc.fontSize(10).text(
       `Generated: ${new Date().toLocaleString("en-LK", {
@@ -1290,6 +1300,11 @@ export const exportPerformanceUsersPdf = async (req, res) => {
     ]);
 
     const doc = pipeDoc(res, "performance_users.pdf");
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("User Performance", { align: "left" }).moveDown(0.3);
     doc
       .fontSize(10)
@@ -1387,6 +1402,11 @@ export const exportPerformanceProductsPdf = async (req, res) => {
       .lean();
 
     const doc = pipeDoc(res, "performance_products.pdf");
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc
       .fontSize(16)
       .text("Product Performance", { align: "left" })
@@ -1900,6 +1920,11 @@ export const exportCustomerBalancesPdf = async (req, res) => {
       res,
       `customer_balances_${new Date().toISOString().slice(0, 10)}.pdf`
     );
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("Customer Balances Report", { align: "left" }).moveDown(0.3);
     doc
       .fontSize(10)

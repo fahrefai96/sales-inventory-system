@@ -9,13 +9,13 @@ import Products from "./components/Products.jsx";
 import Sales from "./components/Sales.jsx";
 import Customer from "./components/Customers.jsx";
 import DashboardPanel from "./components/DashboardPanel";
-import Users from "./pages/Users.jsx";
 import Logout from "./pages/Logout.jsx";
 import Catalog from "./components/Catalog.jsx";
 import InventoryLogs from "./components/InventoryLogs";
 import Purchases from "./components/Purchases";
 import Reports from "./components/Reports/index.jsx";
 import AnalyticsHome from "./components/AnalyticsAndInsights/AnalyticsHome.jsx";
+import Settings from "./components/Settings/index.jsx";
 
 import Chatbot from "./components/Chatbot.jsx";
 
@@ -50,10 +50,10 @@ function App() {
           <Route path="purchases" element={<Purchases />} />
           <Route path="sales" element={<Sales />} />
           <Route path="customers" element={<Customer />} />
-          <Route path="users" element={<Users />} />
           <Route path="inventory-logs" element={<InventoryLogs />} />
           <Route path="analytics" element={<AnalyticsHome />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="logout" element={<Logout />} />
         </Route>

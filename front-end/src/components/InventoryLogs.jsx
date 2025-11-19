@@ -567,8 +567,16 @@ const InventoryLogs = () => {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+    // Create a hidden iframe for printing (no new tab)
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
 
     const productFilter = selectedProductId
       ? productOptions.find((p) => p.value === selectedProductId)?.label || "All Products"
@@ -680,17 +688,59 @@ const InventoryLogs = () => {
           <div class="footer">
             Generated on ${new Date().toLocaleString("en-LK")} | Page 1
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
         </body>
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // Use a flag to prevent duplicate print calls
+    let hasPrinted = false;
+    let fallbackTimeout = null;
+    
+    const doPrint = () => {
+      if (hasPrinted) return;
+      hasPrinted = true;
+      
+      // Clear fallback timeout if it exists
+      if (fallbackTimeout) {
+        clearTimeout(fallbackTimeout);
+        fallbackTimeout = null;
+      }
+      
+      setTimeout(() => {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            // Remove iframe after print dialog interaction
+            setTimeout(() => {
+              if (iframe.parentNode) {
+                document.body.removeChild(iframe);
+              }
+            }, 2000);
+          }
+        } catch (e) {
+          console.error("Print error:", e);
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }
+      }, 100);
+    };
+
+    // Set onload handler
+    iframe.onload = doPrint;
+    
+    // Fallback timeout (only if onload didn't fire within 500ms)
+    fallbackTimeout = setTimeout(() => {
+      if (!hasPrinted) {
+        doPrint();
+      }
+    }, 500);
   };
 
   const clearFilters = () => {

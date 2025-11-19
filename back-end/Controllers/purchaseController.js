@@ -5,6 +5,7 @@ import Product from "../models/Product.js";
 import InventoryLog from "../models/InventoryLog.js";
 import Supplier from "../models/Supplier.js";
 import PDFDocument from "pdfkit";
+import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
 // ---------- helpers ----------
 function computeTotals(payload) {
@@ -618,6 +619,11 @@ export const exportPurchasesPdf = async (req, res) => {
       .lean();
 
     const doc = pipeDoc(res, `purchases_${new Date().toISOString().slice(0, 10)}.pdf`);
+    
+    // Fetch and add business information header
+    const businessInfo = await getBusinessInfo();
+    addBusinessHeader(doc, businessInfo);
+    
     doc.fontSize(16).text("Purchases Report", { align: "left" }).moveDown(0.3);
     doc
       .fontSize(10)

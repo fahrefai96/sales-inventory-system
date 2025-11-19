@@ -496,122 +496,25 @@ export default function Catalog() {
     URL.revokeObjectURL(href);
   };
 
-  const handleExportPdf = () => {
-    const data = tab === "categories" ? catFiltered : brandFiltered;
-    const title = tab === "categories" ? "Categories" : "Brands";
+  const handleExportPdf = async () => {
+    const type = tab === "categories" ? "categories" : "brands";
     const searchQuery = tab === "categories" ? catSearch : brandSearch;
 
     const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
     const token = localStorage.getItem("pos-token");
     
-    // For PDF, we'll use a simple approach: generate HTML and print it
-    // Since there's no backend endpoint, we'll create a print-friendly version
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${title} - PDF Export</title>
-          <style>
-            @media print {
-              @page {
-                margin: 1cm;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-              }
-            }
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-            }
-            h1 {
-              margin: 0 0 10px 0;
-              font-size: 24px;
-            }
-            .info {
-              margin-bottom: 20px;
-              font-size: 12px;
-              color: #666;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 11px;
-            }
-            th {
-              background-color: #f3f4f6;
-              border: 1px solid #d1d5db;
-              padding: 8px;
-              text-align: left;
-              font-weight: bold;
-            }
-            td {
-              border: 1px solid #d1d5db;
-              padding: 6px;
-            }
-            tr:nth-child(even) {
-              background-color: #f9fafb;
-            }
-            .footer {
-              margin-top: 20px;
-              font-size: 11px;
-              color: #666;
-              text-align: right;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${title}</h1>
-          <div class="info">
-            <div><strong>Total Records:</strong> ${data.length} | <strong>Generated:</strong> ${new Date().toLocaleString("en-LK")}</div>
-            ${searchQuery ? `<div><strong>Search:</strong> ${searchQuery}</div>` : ""}
-          </div>
-          <table>
-            <thead>
-              <tr>
-                ${tab === "categories" 
-                  ? "<th>Name</th><th>Sizes</th>"
-                  : "<th>Name</th><th>Active</th>"}
-              </tr>
-            </thead>
-            <tbody>
-              ${data.map((item) => {
-                if (tab === "categories") {
-                  return `
-                    <tr>
-                      <td>${item.name || "—"}</td>
-                      <td>${(item.sizeOptions || []).join(", ") || "—"}</td>
-                    </tr>
-                  `;
-                } else {
-                  return `
-                    <tr>
-                      <td>${item.name || "—"}</td>
-                      <td>${item.active !== false ? "Yes" : "No"}</td>
-                    </tr>
-                  `;
-                }
-              }).join("")}
-            </tbody>
-          </table>
-          <div class="footer">
-            Generated on ${new Date().toLocaleString("en-LK")} | Page 1
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const params = new URLSearchParams();
+    params.set("type", type);
+    params.set("token", token);
+    if (searchQuery && searchQuery.trim()) {
+      params.set("search", searchQuery.trim());
+    }
+    
+    const url = `${apiBase}/catalog/export/pdf?${params.toString()}`;
+    
+    // Use window.open for PDF exports to avoid CORS and streaming issues
+    // The authMiddleware supports reading token from query.token for PDF downloads
+    window.open(url, "_blank");
   };
 
   const handlePrint = () => {
@@ -619,8 +522,16 @@ export default function Catalog() {
     const title = tab === "categories" ? "Categories" : "Brands";
     const searchQuery = tab === "categories" ? catSearch : brandSearch;
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+    // Create a hidden iframe for printing (no new tab)
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -714,17 +625,59 @@ export default function Catalog() {
           <div class="footer">
             Generated on ${new Date().toLocaleString("en-LK")} | Page 1
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
         </body>
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // Use a flag to prevent duplicate print calls
+    let hasPrinted = false;
+    let fallbackTimeout = null;
+    
+    const doPrint = () => {
+      if (hasPrinted) return;
+      hasPrinted = true;
+      
+      // Clear fallback timeout if it exists
+      if (fallbackTimeout) {
+        clearTimeout(fallbackTimeout);
+        fallbackTimeout = null;
+      }
+      
+      setTimeout(() => {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            // Remove iframe after print dialog interaction
+            setTimeout(() => {
+              if (iframe.parentNode) {
+                document.body.removeChild(iframe);
+              }
+            }, 2000);
+          }
+        } catch (e) {
+          console.error("Print error:", e);
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }
+      }, 100);
+    };
+
+    // Set onload handler
+    iframe.onload = doPrint;
+    
+    // Fallback timeout (only if onload didn't fire within 500ms)
+    fallbackTimeout = setTimeout(() => {
+      if (!hasPrinted) {
+        doPrint();
+      }
+    }, 500);
   };
 
   // ===== UI =====

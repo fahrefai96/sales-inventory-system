@@ -11,11 +11,11 @@ import {
   FiBarChart2,
   FiTrendingUp,
   FiMessageSquare,
-  FiUserCheck,
   FiClipboard,
   FiLogOut,
   FiLayers,
   FiUser,
+  FiSettings,
 } from "react-icons/fi";
 
 const Sidebar = () => {
@@ -73,7 +73,11 @@ const Sidebar = () => {
       path: "/admin-dashboard/inventory-logs",
       icon: <FiClipboard />,
     },
-    { name: "Users", path: "/admin-dashboard/users", icon: <FiUserCheck /> },
+    {
+      name: "Settings",
+      path: "/admin-dashboard/settings",
+      icon: <FiSettings />,
+    },
   ];
 
   const logoutItem = {
