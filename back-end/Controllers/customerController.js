@@ -367,18 +367,21 @@ export const getCustomerPayments = async (req, res) => {
       .lean();
 
     // Flatten all payments from all sales
+    // NOTE: Includes ALL payments regardless of amount sign (positive or negative)
+    // Negative amounts represent refunds/adjustments and should appear in payment history
     const rows = [];
     
     for (const sale of sales) {
       if (sale.payments && Array.isArray(sale.payments)) {
         for (const payment of sale.payments) {
+          // Include all payments - do not filter by amount sign
           rows.push({
             saleId: sale.saleId,
             saleObjectId: sale._id,
             saleDate: sale.saleDate || sale.createdAt,
-            amount: payment.amount,
-            type: payment.type || "payment",
-            note: payment.note || "",
+            amount: payment.amount, // Can be positive or negative
+            type: payment.type || "payment", // "payment" or "adjustment" - important for identifying refunds
+            note: payment.note || "", // Contains reason like "Refund for returned goods"
             method: payment.method,
             chequeNumber: payment.chequeNumber,
             chequeDate: payment.chequeDate,
@@ -398,13 +401,14 @@ export const getCustomerPayments = async (req, res) => {
     const recentRows = rows.slice(0, 10);
 
     // Compute totals (from all payments, not just recent 10)
+    // NOTE: Includes negative amounts (refunds) in totals - they reduce the totals
     const totalPayments = rows
       .filter(p => p.type === "payment")
-      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0); // Negative amounts included
     
     const totalAdjustments = rows
       .filter(p => p.type === "adjustment")
-      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0); // Negative amounts included
 
     return res.json({
       success: true,

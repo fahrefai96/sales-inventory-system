@@ -816,57 +816,6 @@ const CustomerInsights = ({ density = "comfortable" }) => {
           )}
         </div>
       </div>
-
-      {/* Outstanding balances */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Customers with outstanding balance
-        </h3>
-        <p className="text-xs text-gray-500 mb-3">
-          Customers who still owe payments on their invoices.
-        </p>
-        {segments.outstanding.length === 0 ? (
-          <div className="text-xs text-gray-500">
-            No customers with outstanding balances.
-          </div>
-        ) : (
-          <div className="max-h-80 overflow-auto">
-            <table className="min-w-full text-xs">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-3 py-2 text-left font-semibold">
-                    Customer
-                  </th>
-                  <th className="px-3 py-2 text-right font-semibold">
-                    Outstanding
-                  </th>
-                  <th className="px-3 py-2 text-right font-semibold">
-                    Last order
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {segments.outstanding.map((c) => (
-                  <tr key={c.customerId} className="border-t border-gray-100">
-                    <td className="px-3 py-1.5">
-                      <div className="font-medium text-gray-900">{c.name}</div>
-                      <div className="text-[11px] text-gray-500">
-                        {c.phone || c.email || c.customerId}
-                      </div>
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      {fmtMoney(c.outstandingDue)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      {fmtDate(c.lastOrderDate)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

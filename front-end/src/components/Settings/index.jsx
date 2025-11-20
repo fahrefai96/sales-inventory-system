@@ -3,7 +3,6 @@ import GeneralSettings from "./General.jsx";
 import UserSettings from "./Users.jsx";
 import SalesSettings from "./Sales.jsx";
 import InventorySettings from "./Inventory.jsx";
-import BackupSettings from "./Backup.jsx";
 
 export default function Settings() {
   // Get user role from localStorage
@@ -16,7 +15,7 @@ export default function Settings() {
     }
   })();
 
-  const [activeTab, setActiveTab] = useState("general"); // "general" | "users" | "sales" | "inventory" | "backup"
+  const [activeTab, setActiveTab] = useState("general"); // "general" | "users" | "sales" | "inventory"
 
   // Redirect to general tab if non-admin tries to access users tab
   useEffect(() => {
@@ -79,14 +78,6 @@ export default function Settings() {
         >
           <span>Sales</span>
         </button>
-        <button
-          className={`${baseTab} ${
-            activeTab === "backup" ? activeTabStyle : inactiveTabStyle
-          }`}
-          onClick={() => setActiveTab("backup")}
-        >
-          <span>Backup</span>
-        </button>
       </div>
 
       {/* Content Area */}
@@ -95,7 +86,6 @@ export default function Settings() {
         {activeTab === "users" && <UserSettings />}
         {activeTab === "sales" && <SalesSettings />}
         {activeTab === "inventory" && <InventorySettings />}
-        {activeTab === "backup" && <BackupSettings />}
       </div>
     </div>
   );

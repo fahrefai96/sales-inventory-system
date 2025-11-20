@@ -93,10 +93,17 @@ export default function Performance({ density = "comfortable" }) {
   const fetchUsers = async () => {
     setLoadingU(true);
     try {
+      // Build query params, omitting empty dates for "All Time"
+      const params = new URLSearchParams();
+      if (range.from) params.set("from", range.from);
+      if (range.to) params.set("to", range.to);
+      params.set("page", String(userPage));
+      params.set("limit", String(userLimit));
+      params.set("sortBy", userSortBy);
+      params.set("sortDir", userSortDir);
+      
       // current
-      const r = await api.get(
-        `/reports/performance/users?from=${range.from}&to=${range.to}&page=${userPage}&limit=${userLimit}&sortBy=${userSortBy}&sortDir=${userSortDir}`
-      );
+      const r = await api.get(`/reports/performance/users?${params.toString()}`);
       const data = r?.data?.data || { rows: [], total: 0, page: 1, limit: 25 };
       const cur = {
         rows: (Array.isArray(data.rows) ? data.rows : []).map((u) => ({
@@ -112,19 +119,27 @@ export default function Performance({ density = "comfortable" }) {
       setUsers(cur);
 
       // previous (same-length window) - for KPIs only, no pagination
-      const pr = prevRangeOf(range.from, range.to);
-      const rp = await api.get(
-        `/reports/performance/users?from=${pr.from}&to=${pr.to}&page=1&limit=200`
-      );
-      const prevData = rp?.data?.data || { rows: [] };
-      const listPrev = Array.isArray(prevData.rows) ? prevData.rows : [];
-      const prev = listPrev.map((u) => ({
-        ...u,
-        orders: num(u.orders),
-        revenue: num(u.revenue),
-        aov: num(u.aov),
-      }));
-      setPrevUsers(prev);
+      // Skip previous period if "All Time" is selected
+      if (range.from && range.to) {
+        const pr = prevRangeOf(range.from, range.to);
+        const prevParams = new URLSearchParams();
+        prevParams.set("from", pr.from);
+        prevParams.set("to", pr.to);
+        prevParams.set("page", "1");
+        prevParams.set("limit", "200");
+        const rp = await api.get(`/reports/performance/users?${prevParams.toString()}`);
+        const prevData = rp?.data?.data || { rows: [] };
+        const listPrev = Array.isArray(prevData.rows) ? prevData.rows : [];
+        const prev = listPrev.map((u) => ({
+          ...u,
+          orders: num(u.orders),
+          revenue: num(u.revenue),
+          aov: num(u.aov),
+        }));
+        setPrevUsers(prev);
+      } else {
+        setPrevUsers([]);
+      }
     } catch {
       setUsers({ rows: [], total: 0, page: 1, limit: 25 });
       setPrevUsers([]);

@@ -878,6 +878,150 @@ const getSaleById = async (req, res) => {
   }
 };
 
+// Return sale items
+const returnSaleItems = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items, reason, refundMethod } = req.body;
+
+    // Load sale
+    const sale = await Sale.findById(id).populate("products.product");
+    if (!sale) {
+      return res.status(404).json({ success: false, message: "Sale not found." });
+    }
+
+    // Validation
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "No items to return." });
+    }
+
+    let totalReturnAmount = 0;
+    const logsToWrite = [];
+
+    // Process each return item
+    for (const returnItem of items) {
+      const { productId, quantity: returnQty } = returnItem;
+
+      // Validate quantity
+      const qtyNum = Number(returnQty);
+      if (!qtyNum || qtyNum <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity for product ${productId}. Quantity must be a positive number.`,
+        });
+      }
+
+      // Find corresponding line in sale.products
+      const saleLine = sale.products.find(
+        (p) => String(p.product._id || p.product) === String(productId)
+      );
+
+      if (!saleLine) {
+        return res.status(400).json({
+          success: false,
+          message: `Product ${productId} was not part of this sale.`,
+        });
+      }
+
+      // Calculate max returnable
+      const soldQty = saleLine.quantity || 0;
+      const alreadyReturnedQty = Array.isArray(sale.returns)
+        ? sale.returns
+            .filter((r) => String(r.product?._id || r.product) === String(productId))
+            .reduce((sum, r) => sum + (r.quantity || 0), 0)
+        : 0;
+
+      const maxReturnable = soldQty - alreadyReturnedQty;
+
+      if (qtyNum > maxReturnable) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot return ${qtyNum} units of product ${productId}. Maximum returnable: ${maxReturnable} (sold: ${soldQty}, already returned: ${alreadyReturnedQty}).`,
+        });
+      }
+
+      // Calculate line amount using unit price from sale line
+      const unitPrice = saleLine.unitPrice || 0;
+      const lineAmount = unitPrice * qtyNum;
+      totalReturnAmount += lineAmount;
+
+      // Add to sale.returns
+      sale.returns.push({
+        product: productId,
+        quantity: qtyNum,
+        amount: lineAmount,
+        reason: reason || "",
+        createdAt: new Date(),
+      });
+
+      // Update product stock
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `Product ${productId} not found.`,
+        });
+      }
+
+      const beforeQty = product.stock;
+      product.stock += qtyNum;
+      const afterQty = product.stock;
+      await product.save();
+
+      // Create inventory log entry
+      logsToWrite.push({
+        product: productId,
+        action: "stock.adjust", // Using existing action since "sale.return" is not in enum
+        delta: +qtyNum, // positive for stock increase
+        beforeQty,
+        afterQty,
+        sale: sale._id,
+        note: `Customer return - ${reason || "No reason provided"}`,
+        actor: req.user._id,
+      });
+    }
+
+    // Update sale totals
+    sale.returnTotal = Number(sale.returnTotal || 0) + totalReturnAmount;
+    sale.discountedAmount = Math.max(0, Number(sale.discountedAmount || 0) - totalReturnAmount);
+
+    // Optional refund as negative payment
+    if (refundMethod && refundMethod !== "none") {
+      if (refundMethod === "cash" || refundMethod === "cheque") {
+        sale.payments.push({
+          amount: -totalReturnAmount,
+          type: "adjustment",
+          note: `Refund for returned goods (${refundMethod})`,
+          createdAt: new Date(),
+          createdBy: req.user._id,
+        });
+
+        sale.amountPaid = Math.max(0, Number(sale.amountPaid || 0) - totalReturnAmount);
+      }
+    }
+
+    // Write inventory logs
+    if (logsToWrite.length > 0) {
+      await InventoryLog.insertMany(logsToWrite);
+    }
+
+    // Save sale (pre-save hook will recompute amountDue and paymentStatus)
+    await sale.save();
+
+    return res.json({
+      success: true,
+      sale,
+    });
+  } catch (error) {
+    console.error("Error processing return:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process return.",
+      error: error.message,
+    });
+  }
+};
+
 export {
   addSale,
   getSales,
@@ -887,6 +1031,7 @@ export {
   getSaleInvoicePdf,
   recordPayment,
   adjustPayment,
+  returnSaleItems,
 };
 
 const sendCsv = (res, filename, headers, rows) => {

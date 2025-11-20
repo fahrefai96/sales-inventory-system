@@ -14,6 +14,7 @@ import {
   getCustomerBalances,
   getReceivablesReport,
   getCustomerPaymentsReport,
+  getSalesReturns,
 
   // CSV exports
   exportSalesCsv,
@@ -55,6 +56,7 @@ router.get("/receivables", getReceivablesReport);
 router.get("/receivables/summary", getReceivables);
 router.get("/customer-balances", getCustomerBalances);
 router.get("/customer-payments", getCustomerPaymentsReport);
+router.get("/sales-returns", getSalesReturns);
 
 /* -------- CSV exports -------- */
 

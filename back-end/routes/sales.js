@@ -9,6 +9,7 @@ import {
   getSaleInvoicePdf,
   recordPayment,
   adjustPayment,
+  returnSaleItems,
   exportSalesListCsv,
   exportSalesListPdf,
 } from "../Controllers/saleController.js";
@@ -43,6 +44,9 @@ router.patch(
 
 // Adjust payment (admin only)
 router.post("/:id/payment-adjust", authMiddleware, requireRole(["admin"]), adjustPayment);
+
+// Return sale items
+router.post("/:id/return", authMiddleware, returnSaleItems);
 
 // Export endpoints
 router.get("/export/csv", authMiddleware, exportSalesListCsv);

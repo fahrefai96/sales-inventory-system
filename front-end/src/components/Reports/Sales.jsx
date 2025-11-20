@@ -5,18 +5,6 @@ import ReportPageHeader from "./ReportPageHeader.jsx";
 import FilterBar from "./FilterBar.jsx";
 import KpiCards from "./KpiCards.jsx";
 import ExportButtons from "./ExportButtons.jsx";
-import ChartCard from "./ChartCard.jsx";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
 
 // number safety
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -199,11 +187,13 @@ export default function Sales({ density = "comfortable" }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [loadingReturns, setLoadingReturns] = useState(false);
   const [data, setData] = useState({
-    KPIs: { orders: 0, revenue: 0, avgOrderValue: 0 },
+    KPIs: { orders: 0, revenue: 0, avgOrderValue: 0, grossSales: 0, returnsTotal: 0, netSales: 0 },
     series: [],
     topProducts: { rows: [], total: 0, page: 1, limit: 10 },
     topCustomers: { rows: [], total: 0, page: 1, limit: 10 },
+    returns: { rows: [], total: 0, page: 1, limit: 25 },
   });
   const [users, setUsers] = useState([]);
 
@@ -219,11 +209,20 @@ export default function Sales({ density = "comfortable" }) {
   const [topCustomersSortBy, setTopCustomersSortBy] = useState("revenue");
   const [topCustomersSortDir, setTopCustomersSortDir] = useState("desc");
 
+  // Returns pagination and sorting
+  const [returnsPage, setReturnsPage] = useState(1);
+  const [returnsLimit, setReturnsLimit] = useState(25);
+  const [returnsSortBy, setReturnsSortBy] = useState("createdAt");
+  const [returnsSortDir, setReturnsSortDir] = useState("desc");
+
   // prev KPIs (for deltas)
   const [prevKpis, setPrevKpis] = useState({
     orders: 0,
     revenue: 0,
     avgOrderValue: 0,
+    grossSales: 0,
+    returnsTotal: 0,
+    netSales: 0,
   });
 
   useEffect(() => {
@@ -257,16 +256,20 @@ export default function Sales({ density = "comfortable" }) {
 
       const r = await api.get(`/reports/sales?${params.toString()}`);
       const payload = r?.data || {};
-      setData({
+      setData((prev) => ({
         KPIs: {
           orders: num(payload?.KPIs?.orders),
-          revenue: num(payload?.KPIs?.revenue),
+          revenue: num(payload?.KPIs?.revenue), // netSales
           avgOrderValue: num(payload?.KPIs?.avgOrderValue),
+          grossSales: num(payload?.KPIs?.grossSales || 0),
+          returnsTotal: num(payload?.KPIs?.returnsTotal || 0),
+          netSales: num(payload?.KPIs?.netSales || payload?.KPIs?.revenue || 0),
         },
         series: Array.isArray(payload?.series) ? payload.series : [],
         topProducts: payload?.topProducts || { rows: [], total: 0, page: 1, limit: 10 },
         topCustomers: payload?.topCustomers || { rows: [], total: 0, page: 1, limit: 10 },
-      });
+        returns: prev.returns || { rows: [], total: 0, page: 1, limit: 25 }, // Preserve existing returns data
+      }));
 
       // previous period (same length range)
       const pr = prevRangeOf(range.from, range.to);
@@ -282,6 +285,9 @@ export default function Sales({ density = "comfortable" }) {
         orders: num(prev?.KPIs?.orders),
         revenue: num(prev?.KPIs?.revenue),
         avgOrderValue: num(prev?.KPIs?.avgOrderValue),
+        grossSales: num(prev?.KPIs?.grossSales || 0),
+        returnsTotal: num(prev?.KPIs?.returnsTotal || 0),
+        netSales: num(prev?.KPIs?.netSales || prev?.KPIs?.revenue || 0),
       });
     } catch {
       // keep previous
@@ -315,9 +321,16 @@ export default function Sales({ density = "comfortable" }) {
         sub: `vs prev ${pct(data.KPIs.orders, prevKpis.orders)}`,
       },
       {
-        label: "Revenue",
+        label: "Revenue (Net)",
         value: fmt(data.KPIs.revenue),
         sub: `vs prev ${pct(data.KPIs.revenue, prevKpis.revenue)}`,
+      },
+      {
+        label: "Returns",
+        value: fmt(data.KPIs.returnsTotal),
+        sub: data.KPIs.grossSales > 0 
+          ? `${((data.KPIs.returnsTotal / data.KPIs.grossSales) * 100).toFixed(1)}% of gross`
+          : "No returns",
       },
       {
         label: "Avg Order Value",
@@ -349,6 +362,60 @@ export default function Sales({ density = "comfortable" }) {
     }
     setTopCustomersPage(1);
   };
+
+  const handleReturnsSort = (key) => {
+    if (returnsSortBy === key) {
+      setReturnsSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setReturnsSortBy(key);
+      setReturnsSortDir("asc");
+    }
+    setReturnsPage(1);
+  };
+
+  const fetchReturns = async () => {
+    setLoadingReturns(true);
+    try {
+      const params = new URLSearchParams();
+      if (range.from) params.set("from", range.from);
+      if (range.to) params.set("to", range.to);
+      params.set("page", String(returnsPage));
+      params.set("limit", String(returnsLimit));
+      params.set("sortBy", returnsSortBy);
+      params.set("sortDir", returnsSortDir);
+
+      const r = await api.get(`/reports/sales-returns?${params.toString()}`);
+      const payload = r?.data?.data || { rows: [], total: 0, page: 1, limit: 25 };
+      setData((prev) => ({
+        ...prev,
+        returns: {
+          rows: Array.isArray(payload.rows) ? payload.rows : [],
+          total: payload.total || 0,
+          page: payload.page || 1,
+          limit: payload.limit || 25,
+        },
+      }));
+    } catch (err) {
+      console.error("Error fetching returns:", err);
+      setData((prev) => ({
+        ...prev,
+        returns: { rows: [], total: 0, page: 1, limit: 25 },
+      }));
+    } finally {
+      setLoadingReturns(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReturns(); // eslint-disable-next-line
+  }, [
+    range.from,
+    range.to,
+    returnsPage,
+    returnsLimit,
+    returnsSortBy,
+    returnsSortDir,
+  ]);
 
   // Sortable table header component
   const Th = ({ label, sortKey, sortBy, sortDir, setSort, align = "left" }) => {
@@ -673,50 +740,147 @@ export default function Sales({ density = "comfortable" }) {
         </div>
       </div>
 
-      {/* Charts row */}
-      <div className={`grid lg:grid-cols-2 ${dens.gap}`}>
-        <ChartCard title="Revenue over Time" density={density}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={data.series}
-              margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis
-                domain={[0, (max) => Math.ceil(max * 1.1)]}
-                tickFormatter={(v) => v.toLocaleString()}
-              />
-              <Tooltip
-                formatter={(v) =>
-                  Array.isArray(v) ? v : Number(v || 0).toLocaleString()
-                }
-              />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Orders over Time" density={density}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data.series}
-              margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
-              barCategoryGap="30%"
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis domain={[0, (max) => Math.ceil(max * 1.15)]} />
-              <Tooltip />
-              <Bar dataKey="orders" maxBarSize={24} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      {/* Returns Table */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className={`${dens.text} font-medium`}>Returned Sales</div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Rows:</span>
+            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+              {[25, 50, 100].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setReturnsLimit(n);
+                    setReturnsPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm ${
+                    returnsLimit === n ? "bg-gray-100 font-medium" : "bg-white"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="max-h-[50vh] overflow-auto">
+            <table className="min-w-full table-auto">
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr className="text-gray-800">
+                  <Th
+                    label="Sale ID"
+                    sortKey="saleId"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="left"
+                  />
+                  <Th
+                    label="Customer"
+                    sortKey="customer"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="left"
+                  />
+                  <Th
+                    label="Product"
+                    sortKey="product"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="left"
+                  />
+                  <Th
+                    label="Quantity"
+                    sortKey="quantity"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="right"
+                  />
+                  <Th
+                    label="Amount"
+                    sortKey="amount"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="right"
+                  />
+                  <Th
+                    label="Date"
+                    sortKey="createdAt"
+                    sortBy={returnsSortBy}
+                    sortDir={returnsSortDir}
+                    setSort={handleReturnsSort}
+                    align="left"
+                  />
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                    Reason
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+                {loadingReturns ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : data.returns.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      No returns found
+                    </td>
+                  </tr>
+                ) : (
+                  data.returns.rows.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className={`px-4 py-3 ${dens.text}`}>{row.saleId || "—"}</td>
+                      <td className={`px-4 py-3 ${dens.text}`}>{row.customerName || "—"}</td>
+                      <td className={`px-4 py-3 ${dens.text}`}>
+                        {row.productCode ? `${row.productCode} - ` : ""}
+                        {row.productName || "—"}
+                      </td>
+                      <td className={`px-4 py-3 ${dens.text} text-right tabular-nums`}>
+                        {row.quantity || 0}
+                      </td>
+                      <td className={`px-4 py-3 ${dens.text} text-right tabular-nums`}>
+                        Rs. {Number(row.amount || 0).toFixed(2)}
+                      </td>
+                      <td className={`px-4 py-3 ${dens.text}`}>
+                        {row.createdAt
+                          ? new Date(row.createdAt).toLocaleString("en-LK")
+                          : "—"}
+                      </td>
+                      <td className={`px-4 py-3 ${dens.text}`}>{row.reason || "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm text-gray-500">
+              Showing{" "}
+              {data.returns.total === 0
+                ? 0
+                : (returnsPage - 1) * returnsLimit + 1}
+              –
+              {Math.min(returnsPage * returnsLimit, data.returns.total)} of{" "}
+              {data.returns.total}
+            </span>
+            <Pagination
+              page={returnsPage}
+              setPage={setReturnsPage}
+              totalPages={Math.max(1, Math.ceil(data.returns.total / returnsLimit))}
+            />
+          </div>
+        </div>
       </div>
     </>
   );

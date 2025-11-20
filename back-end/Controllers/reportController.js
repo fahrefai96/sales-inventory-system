@@ -12,6 +12,10 @@ const asDate = (v) => (v ? new Date(v) : null);
 const clampRange = (from, to) => {
   const end = to ? new Date(to) : new Date();
   const start = from ? new Date(from) : new Date(end.getTime() - 29 * 864e5);
+  // Set start to beginning of day (00:00:00.000)
+  start.setHours(0, 0, 0, 0);
+  // Set end to end of day (23:59:59.999) for inclusive date range
+  end.setHours(23, 59, 59, 999);
   if (Number.isNaN(start.getTime())) throw new Error("Invalid 'from' date");
   if (Number.isNaN(end.getTime())) throw new Error("Invalid 'to' date");
   return { start, end };
@@ -64,9 +68,24 @@ export const getSalesReport = async (req, res) => {
     } = req.query;
     const { start, end } = clampRange(from, to);
 
-    const match = { saleDate: { $gte: start, $lte: end } };
+    // Match sales by saleDate or createdAt (fallback for sales without saleDate)
+    const match = {
+      $and: [
+        {
+          $or: [
+            { saleDate: { $gte: start, $lte: end } },
+            { 
+              $and: [
+                { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+                { createdAt: { $gte: start, $lte: end } }
+              ]
+            }
+          ]
+        }
+      ]
+    };
     if (user && mongoose.Types.ObjectId.isValid(user)) {
-      match.createdBy = new mongoose.Types.ObjectId(user);
+      match.$and.push({ createdBy: new mongoose.Types.ObjectId(user) });
     }
 
     const revenueExpr = {
@@ -90,13 +109,23 @@ export const getSalesReport = async (req, res) => {
         $group: {
           _id: {
             $dateToString: {
-              date: "$saleDate",
+              date: { $ifNull: ["$saleDate", "$createdAt"] },
               format: fmt,
               timezone: "Asia/Colombo",
             },
           },
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          orders: 1,
+          grossSales: "$revenue",
+          returnsTotal: 1,
+          revenue: { $subtract: ["$revenue", { $ifNull: ["$returnsTotal", 0] }] }, // netSales
         },
       },
       { $sort: { _id: 1 } },
@@ -110,36 +139,63 @@ export const getSalesReport = async (req, res) => {
           _id: null,
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
         },
       },
     ]);
     const currOrders = kpiAgg[0]?.orders || 0;
-    const currRevenue = money(kpiAgg[0]?.revenue || 0);
-    const currAov = money(currRevenue / Math.max(1, currOrders));
+    const grossSales = money(kpiAgg[0]?.revenue || 0);
+    const returnsTotal = money(kpiAgg[0]?.returnsTotal || 0);
+    const netSales = money(grossSales - returnsTotal);
+    const currAov = money(netSales / Math.max(1, currOrders));
 
     // === previous-period comparisons ===
     const { prevStart, prevEnd } = previousWindow(start, end);
+    const prevMatch = {
+      $and: [
+        {
+          $or: [
+            { saleDate: { $gte: prevStart, $lte: prevEnd } },
+            { 
+              $and: [
+                { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+                { createdAt: { $gte: prevStart, $lte: prevEnd } }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+    if (user && mongoose.Types.ObjectId.isValid(user)) {
+      prevMatch.$and.push({ createdBy: new mongoose.Types.ObjectId(user) });
+    }
     const prevAgg = await Sale.aggregate([
-      { $match: { ...match, saleDate: { $gte: prevStart, $lte: prevEnd } } },
+      { $match: prevMatch },
       {
         $group: {
           _id: null,
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
         },
       },
     ]);
     const prevOrders = prevAgg[0]?.orders || 0;
-    const prevRevenue = money(prevAgg[0]?.revenue || 0);
-    const prevAov = money(prevRevenue / Math.max(1, prevOrders));
+    const prevGrossSales = money(prevAgg[0]?.revenue || 0);
+    const prevReturnsTotal = money(prevAgg[0]?.returnsTotal || 0);
+    const prevNetSales = money(prevGrossSales - prevReturnsTotal);
+    const prevAov = money(prevNetSales / Math.max(1, prevOrders));
 
     const KPIs = {
       orders: currOrders,
-      revenue: currRevenue,
+      grossSales,
+      returnsTotal,
+      revenue: netSales, // Display netSales as revenue
+      netSales,
       avgOrderValue: currAov,
       deltas: {
         ordersPct: pctDelta(currOrders, prevOrders),
-        revenuePct: pctDelta(currRevenue, prevRevenue),
+        revenuePct: pctDelta(netSales, prevNetSales),
         aovPct: pctDelta(currAov, prevAov),
         previousRange: { from: prevStart, to: prevEnd },
       },
@@ -267,7 +323,10 @@ export const getSalesReport = async (req, res) => {
       series: series.map((r) => ({
         period: r._id,
         orders: r.orders,
-        revenue: money(r.revenue),
+        grossSales: money(r.grossSales || r.revenue),
+        returnsTotal: money(r.returnsTotal || 0),
+        revenue: money(r.revenue), // netSales
+        netSales: money(r.revenue),
       })),
       topProducts: {
         rows: topProducts.map((p) => ({
@@ -570,7 +629,33 @@ export const getUserPerformance = async (req, res) => {
       sortBy = "revenue", // "name" | "orders" | "revenue" | "aov"
       sortDir = "desc",
     } = req.query;
-    const { start, end } = clampRange(from, to);
+    
+    // Handle "All Time" case (empty dates or empty strings)
+    const isAllTime = (!from || from === "") && (!to || to === "");
+    let match = {};
+    let start, end;
+    
+    if (!isAllTime) {
+      const range = clampRange(from, to);
+      start = range.start;
+      end = range.end;
+      // clampRange already sets start to 00:00:00 and end to 23:59:59.999
+      // Match sales by saleDate or createdAt (fallback for sales without saleDate)
+      match = {
+        $or: [
+          { saleDate: { $gte: start, $lte: end } },
+          { 
+            $and: [
+              { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+              { createdAt: { $gte: start, $lte: end } }
+            ]
+          }
+        ]
+      };
+    } else {
+      // For "All Time", match all sales (no date filter)
+      match = {};
+    }
 
     const revenueExpr = {
       $cond: [
@@ -597,12 +682,21 @@ export const getUserPerformance = async (req, res) => {
     else sortStage.revenue = sortDirNum; // default: revenue
 
     const userPerfAgg = [
-      { $match: { saleDate: { $gte: start, $lte: end } } },
+      { $match: match },
       {
         $group: {
           _id: "$createdBy",
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          orders: 1,
+          revenue: { $subtract: ["$revenue", { $ifNull: ["$returnsTotal", 0] }] }, // netSales (after returns)
+          returnsTotal: 1,
         },
       },
       {
@@ -620,7 +714,7 @@ export const getUserPerformance = async (req, res) => {
           userId: "$user._id",
           name: { $ifNull: ["$user.name", "(unknown)"] },
           orders: 1,
-          revenue: 1,
+          revenue: 1, // Already netSales (after returns) from previous stage
           aov: {
             $cond: [
               { $gt: ["$orders", 0] },
@@ -654,7 +748,7 @@ export const getUserPerformance = async (req, res) => {
 
     return res.json({
       success: true,
-      range: { from: start, to: end },
+      range: isAllTime ? { from: null, to: null } : { from: start, to: end },
       data: {
         rows: data,
         total,
@@ -688,7 +782,33 @@ export const getProductTrends = async (req, res) => {
       slowSortBy = "stock", // "code" | "name" | "stock"
       slowSortDir = "asc",
     } = req.query;
-    const { start, end } = clampRange(from, to);
+    
+    // Handle "All Time" case (empty dates or empty strings)
+    const isAllTime = (!from || from === "") && (!to || to === "");
+    let match = {};
+    let start, end;
+    
+    if (!isAllTime) {
+      const range = clampRange(from, to);
+      start = range.start;
+      end = range.end;
+      // clampRange already sets start to 00:00:00 and end to 23:59:59.999
+      // Match sales by saleDate or createdAt (fallback for sales without saleDate)
+      match = {
+        $or: [
+          { saleDate: { $gte: start, $lte: end } },
+          { 
+            $and: [
+              { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+              { createdAt: { $gte: start, $lte: end } }
+            ]
+          }
+        ]
+      };
+    } else {
+      // For "All Time", match all sales (no date filter)
+      match = {};
+    }
 
     // Top products with pagination and sorting
     const topPageNum = Math.max(1, parseInt(topPage, 10) || 1);
@@ -703,7 +823,7 @@ export const getProductTrends = async (req, res) => {
     else topSortStage.qty = topSortDirNum; // default: qty
 
     const topAgg = [
-      { $match: { saleDate: { $gte: start, $lte: end } } },
+      { $match: match },
       { $unwind: "$products" },
       {
         $group: {
@@ -762,7 +882,7 @@ export const getProductTrends = async (req, res) => {
     else slowSort.stock = slowSortDirNum; // default: stock
 
     const soldIds = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
+      { $match: match },
       { $unwind: "$products" },
       { $group: { _id: "$products.product" } },
     ]).then((r) => new Set(r.map((x) => String(x._id))));
@@ -794,7 +914,7 @@ export const getProductTrends = async (req, res) => {
 
     return res.json({
       success: true,
-      range: { from: start, to: end },
+      range: isAllTime ? { from: null, to: null } : { from: start, to: end },
       top: {
         rows: top.map((t) => ({ ...t, revenue: money(t.revenue) })),
         total: topTotal,
@@ -870,7 +990,99 @@ export const exportSalesCsv = async (req, res) => {
       orders: r.orders,
       revenue: money(r.revenue),
     }));
-    sendCsv(res, `sales_${groupBy}.csv`, ["period", "orders", "revenue"], rows);
+
+    // Fetch returns data
+    const returnsMatch = {
+      $and: [
+        {
+          $or: [
+            { saleDate: { $gte: start, $lte: end } },
+            {
+              $and: [
+                { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+                { createdAt: { $gte: start, $lte: end } },
+              ],
+            },
+          ],
+        },
+        { 
+          $expr: { 
+            $gt: [{ $size: { $ifNull: ["$returns", []] } }, 0]
+          }
+        },
+      ],
+    };
+
+    const returns = await Sale.aggregate([
+      { $match: returnsMatch },
+      { $unwind: "$returns" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "returns.product",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customer",
+          foreignField: "_id",
+          as: "customerDoc",
+        },
+      },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          saleId: 1,
+          customerName: { $ifNull: ["$customerDoc.name", "(unknown)"] },
+          productName: { $ifNull: ["$product.name", "(unknown)"] },
+          productCode: { $ifNull: ["$product.code", ""] },
+          quantity: "$returns.quantity",
+          amount: "$returns.amount",
+          reason: { $ifNull: ["$returns.reason", ""] },
+          createdAt: "$returns.createdAt",
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    const returnRows = returns.map((r) => ({
+      saleId: r.saleId || "",
+      customer: r.customerName || "",
+      product: r.productCode ? `${r.productCode} - ${r.productName}` : r.productName || "",
+      quantity: r.quantity || 0,
+      amount: money(r.amount),
+      date: r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-LK") : "",
+      reason: r.reason || "",
+    }));
+
+    // Build CSV with multiple sections
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="sales_${groupBy}.csv"`);
+    const esc = (v) =>
+      `"${String(v ?? "")
+        .replaceAll('"', '""')
+        .replaceAll(/\r?\n/g, " ")}"`;
+
+    // Section 1: Sales by period
+    const seriesHeaders = ["period", "orders", "revenue"];
+    const seriesHead = seriesHeaders.map(esc).join(",") + "\n";
+    const seriesBody = rows
+      .map((r) => seriesHeaders.map((h) => esc(r[h])).join(","))
+      .join("\n");
+
+    // Section 2: Returns
+    const returnsHeaders = ["saleId", "customer", "product", "quantity", "amount", "date", "reason"];
+    const returnsHead = "\n\nReturned Sales\n" + returnsHeaders.map(esc).join(",") + "\n";
+    const returnsBody = returnRows
+      .map((r) => returnsHeaders.map((h) => esc(r[h])).join(","))
+      .join("\n");
+
+    res.send(seriesHead + seriesBody + returnsHead + returnsBody);
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, message: "Server error" });
@@ -1174,6 +1386,16 @@ export const exportSalesPdf = async (req, res) => {
           },
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          orders: 1,
+          grossSales: "$revenue",
+          returnsTotal: 1,
+          revenue: { $subtract: ["$revenue", { $ifNull: ["$returnsTotal", 0] }] }, // netSales
         },
       },
       { $sort: { _id: 1 } },
@@ -1187,12 +1409,15 @@ export const exportSalesPdf = async (req, res) => {
           _id: null,
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
         },
       },
     ]);
     const currOrders = kpiAgg[0]?.orders || 0;
-    const currRevenue = money(kpiAgg[0]?.revenue || 0);
-    const currAov = money(currRevenue / Math.max(1, currOrders));
+    const grossSales = money(kpiAgg[0]?.revenue || 0);
+    const returnsTotal = money(kpiAgg[0]?.returnsTotal || 0);
+    const netSales = money(grossSales - returnsTotal);
+    const currAov = money(netSales / Math.max(1, currOrders));
 
     // previous period
     const { prevStart, prevEnd } = previousWindow(start, end);
@@ -1203,12 +1428,15 @@ export const exportSalesPdf = async (req, res) => {
           _id: null,
           orders: { $sum: 1 },
           revenue: { $sum: revenueExpr },
+          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
         },
       },
     ]);
     const prevOrders = prevAgg[0]?.orders || 0;
-    const prevRevenue = money(prevAgg[0]?.revenue || 0);
-    const prevAov = money(prevRevenue / Math.max(1, prevOrders));
+    const prevGrossSales = money(prevAgg[0]?.revenue || 0);
+    const prevReturnsTotal = money(prevAgg[0]?.returnsTotal || 0);
+    const prevNetSales = money(prevGrossSales - prevReturnsTotal);
+    const prevAov = money(prevNetSales / Math.max(1, prevOrders));
 
     // optional cashier
     let cashierNote = "";
@@ -1241,11 +1469,13 @@ export const exportSalesPdf = async (req, res) => {
         `Total Orders: ${currOrders}  (${pctDelta(currOrders, prevOrders)}%)`
       )
       .text(
-        `Total Revenue: ${currRevenue.toFixed(2)}  (${pctDelta(
-          currRevenue,
-          prevRevenue
+        `Total Revenue (Net): ${netSales.toFixed(2)}  (${pctDelta(
+          netSales,
+          prevNetSales
         )}%)`
       )
+      .text(`Returns Total: ${returnsTotal.toFixed(2)}`)
+      .text(`Gross Sales: ${grossSales.toFixed(2)}`)
       .text(
         `Avg Order Value: ${currAov.toFixed(2)}  (${pctDelta(
           currAov,
@@ -1363,6 +1593,84 @@ export const exportSalesPdf = async (req, res) => {
           `${c.name}  |  Orders: ${c.orders}  |  Revenue: ${money(
             c.revenue
           ).toFixed(2)}`
+        );
+      });
+    }
+
+    doc.moveDown(0.8);
+
+    // Returns section
+    const returnsMatch = {
+      $and: [
+        {
+          $or: [
+            { saleDate: { $gte: start, $lte: end } },
+            {
+              $and: [
+                { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+                { createdAt: { $gte: start, $lte: end } },
+              ],
+            },
+          ],
+        },
+        { 
+          $expr: { 
+            $gt: [{ $size: { $ifNull: ["$returns", []] } }, 0]
+          }
+        },
+      ],
+    };
+    if (user && mongoose.Types.ObjectId.isValid(user)) {
+      returnsMatch.$and.push({ createdBy: new mongoose.Types.ObjectId(user) });
+    }
+
+    const returns = await Sale.aggregate([
+      { $match: returnsMatch },
+      { $unwind: "$returns" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "returns.product",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customer",
+          foreignField: "_id",
+          as: "customerDoc",
+        },
+      },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          saleId: 1,
+          customerName: { $ifNull: ["$customerDoc.name", "(unknown)"] },
+          productName: { $ifNull: ["$product.name", "(unknown)"] },
+          productCode: { $ifNull: ["$product.code", ""] },
+          quantity: "$returns.quantity",
+          amount: "$returns.amount",
+          reason: { $ifNull: ["$returns.reason", ""] },
+          createdAt: "$returns.createdAt",
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    doc.fontSize(12).text("Returned Sales", { underline: true });
+    doc.moveDown(0.25).fontSize(10);
+    if (!returns.length) {
+      doc.text("No returns in this range");
+    } else {
+      returns.forEach((r) => {
+        const productDisplay = r.productCode ? `${r.productCode} - ${r.productName}` : r.productName;
+        const returnDate = r.createdAt ? fmtDate(r.createdAt) : "-";
+        doc.text(
+          `Sale ID: ${r.saleId || "-"}  |  Customer: ${r.customerName}  |  Product: ${productDisplay}  |  Qty: ${r.quantity}  |  Amount: ${money(r.amount).toFixed(2)}  |  Date: ${returnDate}${r.reason ? `  |  Reason: ${r.reason}` : ""}`
         );
       });
     }
@@ -2558,6 +2866,8 @@ export const getCustomerPaymentsReport = async (req, res) => {
       .lean();
 
     // Flatten all payments from all sales
+    // NOTE: Includes ALL payments regardless of amount sign (positive or negative)
+    // Negative amounts represent refunds/adjustments and should appear in payment history
     const rows = [];
     for (const sale of sales) {
       if (sale.payments && Array.isArray(sale.payments)) {
@@ -2573,15 +2883,16 @@ export const getCustomerPaymentsReport = async (req, res) => {
             }
           }
 
+          // Include all payments - do not filter by amount sign
           rows.push({
             customerId: sale.customer?._id || null,
             customerName: sale.customer?.name || "—",
             saleId: sale.saleId,
             saleObjectId: sale._id,
             saleDate: sale.saleDate || sale.createdAt,
-            amount: Number(payment.amount || 0),
-            type: payment.type || "payment",
-            note: payment.note || "",
+            amount: Number(payment.amount || 0), // Can be positive or negative
+            type: payment.type || "payment", // "payment" or "adjustment" - important for identifying refunds
+            note: payment.note || "", // Contains reason like "Refund for returned goods"
             method: payment.method || null,
             chequeNumber: payment.chequeNumber || null,
             chequeDate: payment.chequeDate || null,
@@ -2640,13 +2951,14 @@ export const getCustomerPaymentsReport = async (req, res) => {
     );
 
     // Calculate from payment rows
+    // NOTE: Includes negative amounts (refunds) in totals - they reduce the totals
     totalPayments = rows
       .filter((p) => p.type === "payment")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + p.amount, 0); // Negative amounts included
 
     totalAdjustments = rows
       .filter((p) => p.type === "adjustment")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + p.amount, 0); // Negative amounts included
 
     res.json({
       success: true,
@@ -2731,6 +3043,8 @@ export const exportCustomerPaymentsCsv = async (req, res) => {
       .lean();
 
     // Flatten all payments
+    // NOTE: Includes ALL payments regardless of amount sign (positive or negative)
+    // Negative amounts represent refunds/adjustments and should appear in payment history
     const rows = [];
     for (const sale of sales) {
       if (sale.payments && Array.isArray(sale.payments)) {
@@ -2745,19 +3059,20 @@ export const exportCustomerPaymentsCsv = async (req, res) => {
             }
           }
 
+          // Include all payments - do not filter by amount sign
           rows.push({
             customerName: sale.customer?.name || "—",
             saleId: sale.saleId,
             date: payment.createdAt
               ? new Date(payment.createdAt).toLocaleString("en-LK")
               : "—",
-            amount: Number(payment.amount || 0),
-            type: payment.type || "payment",
+            amount: Number(payment.amount || 0), // Can be positive or negative
+            type: payment.type || "payment", // "payment" or "adjustment" - important for identifying refunds
             method: payment.method || "—",
             chequeNumber: payment.chequeNumber || "—",
             chequeBank: payment.chequeBank || "—",
             chequeStatus: payment.chequeStatus || "—",
-            note: payment.note || "",
+            note: payment.note || "", // Contains reason like "Refund for returned goods"
           });
         }
       }
@@ -2909,6 +3224,8 @@ export const exportCustomerPaymentsPdf = async (req, res) => {
       .lean();
 
     // Flatten all payments
+    // NOTE: Includes ALL payments regardless of amount sign (positive or negative)
+    // Negative amounts represent refunds/adjustments and should appear in payment history
     const rows = [];
     let totalOutstandingBalance = 0;
     for (const sale of sales) {
@@ -2936,18 +3253,19 @@ export const exportCustomerPaymentsPdf = async (req, res) => {
               })
             : "—";
 
+          // Include all payments - do not filter by amount sign
           rows.push({
             customerName: sale.customer?.name || "—",
             saleId: sale.saleId,
             date: dateStr,
-            amount: Number(payment.amount || 0),
-            type: payment.type || "payment",
+            amount: Number(payment.amount || 0), // Can be positive or negative
+            type: payment.type || "payment", // "payment" or "adjustment" - important for identifying refunds
             method: payment.method || "—",
             chequeInfo:
               payment.method === "cheque" && payment.chequeNumber
                 ? `${payment.chequeNumber}${payment.chequeBank ? ` / ${payment.chequeBank}` : ""}${payment.chequeStatus ? ` (${payment.chequeStatus})` : ""}`
                 : "—",
-            note: payment.note || "",
+            note: payment.note || "", // Contains reason like "Refund for returned goods"
           });
         }
       }
@@ -2980,12 +3298,13 @@ export const exportCustomerPaymentsPdf = async (req, res) => {
     });
 
     // Calculate totals
+    // NOTE: Includes negative amounts (refunds) in totals - they reduce the totals
     const totalPayments = rows
       .filter((p) => p.type === "payment")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + p.amount, 0); // Negative amounts included
     const totalAdjustments = rows
       .filter((p) => p.type === "adjustment")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + p.amount, 0); // Negative amounts included
 
     // PDF
     const doc = pipeDoc(
@@ -3105,5 +3424,147 @@ export const exportCustomerPaymentsPdf = async (req, res) => {
         error: "Failed to export customer payments PDF.",
       });
     }
+  }
+};
+
+/** ===========================
+ *  SALES RETURNS REPORT
+ *  GET /api/reports/sales-returns?from&to&page&limit&sortBy&sortDir
+ *  =========================== */
+export const getSalesReturns = async (req, res) => {
+  try {
+    const {
+      from,
+      to,
+      page = "1",
+      limit = "25",
+      sortBy = "createdAt", // "saleId" | "customer" | "product" | "quantity" | "amount" | "date" | "createdAt"
+      sortDir = "desc",
+    } = req.query;
+
+    // Handle "All Time" case (empty dates or empty strings)
+    const isAllTime = (!from || from === "") && (!to || to === "");
+    let match = {};
+    let start, end;
+
+    if (!isAllTime) {
+      const range = clampRange(from, to);
+      start = range.start;
+      end = range.end;
+      // Match sales by saleDate or createdAt (fallback for sales without saleDate)
+      match = {
+        $and: [
+          {
+            $or: [
+              { saleDate: { $gte: start, $lte: end } },
+              {
+                $and: [
+                  { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
+                  { createdAt: { $gte: start, $lte: end } },
+                ],
+              },
+            ],
+          },
+          { 
+            $expr: { 
+              $gt: [{ $size: { $ifNull: ["$returns", []] } }, 0]
+            }
+          }, // Only sales with returns
+        ],
+      };
+    } else {
+      // For "All Time", match all sales with returns
+      match = { 
+        $expr: { 
+          $gt: [{ $size: { $ifNull: ["$returns", []] } }, 0]
+        }
+      };
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const sortDirNum = sortDir === "asc" ? 1 : -1;
+
+    // Unwind returns to get individual return entries
+    const returnsAgg = [
+      { $match: match },
+      { $unwind: "$returns" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "returns.product",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customer",
+          foreignField: "_id",
+          as: "customerDoc",
+        },
+      },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          saleId: 1,
+          customerName: { $ifNull: ["$customerDoc.name", "(unknown)"] },
+          productName: { $ifNull: ["$product.name", "(unknown)"] },
+          productCode: { $ifNull: ["$product.code", ""] },
+          quantity: "$returns.quantity",
+          amount: "$returns.amount",
+          reason: { $ifNull: ["$returns.reason", ""] },
+          createdAt: "$returns.createdAt",
+          saleDate: 1,
+        },
+      },
+    ];
+
+    // Get total count before pagination
+    const countAgg = [
+      ...returnsAgg,
+      { $count: "total" },
+    ];
+    const countResult = await Sale.aggregate(countAgg);
+    const total = countResult[0]?.total || 0;
+
+    // Build sort stage
+    const sortStage = {};
+    if (sortBy === "saleId") sortStage.saleId = sortDirNum;
+    else if (sortBy === "customer") sortStage.customerName = sortDirNum;
+    else if (sortBy === "product") sortStage.productName = sortDirNum;
+    else if (sortBy === "quantity") sortStage.quantity = sortDirNum;
+    else if (sortBy === "amount") sortStage.amount = sortDirNum;
+    else if (sortBy === "date" || sortBy === "createdAt") sortStage.createdAt = sortDirNum;
+    else sortStage.createdAt = -1; // default: newest first
+
+    // Apply sorting and pagination
+    returnsAgg.push({ $sort: sortStage });
+    returnsAgg.push({ $skip: (pageNum - 1) * limitNum });
+    returnsAgg.push({ $limit: limitNum });
+
+    const returns = await Sale.aggregate(returnsAgg);
+
+    // Format amounts
+    returns.forEach((r) => {
+      r.amount = money(r.amount);
+    });
+
+    return res.json({
+      success: true,
+      range: isAllTime ? { from: null, to: null } : { from: start, to: end },
+      data: {
+        rows: returns,
+        total,
+        page: pageNum,
+        limit: limitNum,
+      },
+    });
+  } catch (err) {
+    console.error("getSalesReturns error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

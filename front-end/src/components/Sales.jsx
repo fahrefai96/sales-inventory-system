@@ -242,6 +242,10 @@ const Sales = () => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewSale, setViewSale] = useState(null);
 
+  // Return drawer state
+  const [returnDrawerOpen, setReturnDrawerOpen] = useState(false);
+  const [returnSale, setReturnSale] = useState(null);
+
   // Product dropdown
   const loadProductOptions = async (inputValue) => {
     try {
@@ -450,9 +454,12 @@ const Sales = () => {
         if (isViewOpen) {
           closeViewModal();
         }
+        if (returnDrawerOpen) {
+          closeReturnDrawer();
+        }
       }
     };
-    if (isModalOpen || isPaymentOpen || isAdjustOpen || isViewOpen) {
+    if (isModalOpen || isPaymentOpen || isAdjustOpen || isViewOpen || returnDrawerOpen) {
       document.addEventListener("keydown", handleEsc);
     }
     return () => {
@@ -735,6 +742,17 @@ const Sales = () => {
   const closeViewModal = () => {
     setIsViewOpen(false);
     setViewSale(null);
+  };
+
+  // Return drawer helpers
+  const openReturnDrawer = (sale) => {
+    setReturnSale(sale);
+    setReturnDrawerOpen(true);
+  };
+
+  const closeReturnDrawer = () => {
+    setReturnDrawerOpen(false);
+    setReturnSale(null);
   };
 
   /** ---------- Sorting (server-side) ---------- */
@@ -1801,13 +1819,24 @@ const Sales = () => {
                     : ""}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={closeViewModal}
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {!viewSale?.isDeleted && (
+                  <button
+                    type="button"
+                    onClick={() => openReturnDrawer(viewSale)}
+                    className="rounded-md border border-red-600 px-2 py-1 text-sm text-red-700 hover:bg-red-50"
+                  >
+                    Return
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={closeViewModal}
+                  className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             {/* Body */}
@@ -1900,6 +1929,54 @@ const Sales = () => {
                 </table>
               </div>
 
+              {/* Returns Section */}
+              {(viewSale?.returnTotal > 0 || (Array.isArray(viewSale?.returns) && viewSale.returns.length > 0)) && (
+                <div className="rounded border border-gray-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Returns
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Total returned: {fmtLKR(viewSale?.returnTotal || 0)}
+                    </div>
+                  </div>
+                  {Array.isArray(viewSale?.returns) && viewSale.returns.length > 0 ? (
+                    <div className="overflow-hidden rounded border border-gray-200">
+                      <table className="min-w-full table-auto">
+                        <thead className="bg-gray-50">
+                          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                            <th className="px-3 py-2">Date</th>
+                            <th className="px-3 py-2">Product</th>
+                            <th className="px-3 py-2">Quantity</th>
+                            <th className="px-3 py-2">Amount</th>
+                            <th className="px-3 py-2">Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+                          {viewSale.returns.map((ret, idx) => {
+                            const productName = ret?.product?.name || "-";
+                            const returnDate = ret?.createdAt ? formatDateTime(ret.createdAt) : "—";
+                            const quantity = ret?.quantity || 0;
+                            const amount = ret?.amount || 0;
+                            const reason = ret?.reason || "—";
+
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">{returnDate}</td>
+                                <td className="px-3 py-2">{productName}</td>
+                                <td className="px-3 py-2">{quantity}</td>
+                                <td className="px-3 py-2">{fmtLKR(amount)}</td>
+                                <td className="px-3 py-2">{reason}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
               {/* Totals */}
               <div className="flex items-center justify-end">
                 <div className="text-right space-y-1">
@@ -1921,7 +1998,286 @@ const Sales = () => {
           </div>
         </div>
       )}
+
+      {/* ====================== RETURN GOODS DRAWER ====================== */}
+      {returnDrawerOpen && returnSale && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={closeReturnDrawer}
+            aria-hidden
+          />
+          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">Return Goods</h3>
+              <button
+                onClick={closeReturnDrawer}
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Body */}
+            <ReturnDrawerContent
+              sale={returnSale}
+              onClose={closeReturnDrawer}
+              onSuccess={async () => {
+                closeReturnDrawer();
+                // Refresh sales list
+                await fetchSales(page, pageSize);
+                // Refresh view modal if open - find updated sale in the list
+                if (isViewOpen && viewSale) {
+                  try {
+                    const res = await axios.get(
+                      `http://localhost:3000/api/sales/${viewSale._id}`,
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    if (res.data?.success && res.data?.sale) {
+                      setViewSale(res.data.sale);
+                    }
+                  } catch (err) {
+                    console.error("Error refreshing sale:", err);
+                  }
+                }
+              }}
+              token={token}
+            />
+          </div>
+        </div>
+      )}
     </div>
+  );
+};
+
+/* ----------------------------- RETURN DRAWER COMPONENT ---------------------------- */
+const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
+  const [returnQuantities, setReturnQuantities] = useState({});
+  const [reason, setReason] = useState("");
+  const [refundMethod, setRefundMethod] = useState("none");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const fmtLKR = (n) => `Rs. ${Number(n || 0).toFixed(2)}`;
+
+  // Calculate already returned quantities per product
+  const alreadyReturned = useMemo(() => {
+    const returned = {};
+    if (Array.isArray(sale?.returns)) {
+      sale.returns.forEach((ret) => {
+        const productId = String(ret.product?._id || ret.product);
+        returned[productId] = (returned[productId] || 0) + (ret.quantity || 0);
+      });
+    }
+    return returned;
+  }, [sale?.returns]);
+
+  // Calculate total return amount
+  const totalReturnAmount = useMemo(() => {
+    let total = 0;
+    if (Array.isArray(sale?.products)) {
+      sale.products.forEach((item) => {
+        const productId = String(item.product?._id || item.product);
+        const returnQty = Number(returnQuantities[productId] || 0);
+        if (returnQty > 0) {
+          const unitPrice = item.unitPrice || 0;
+          total += unitPrice * returnQty;
+        }
+      });
+    }
+    return total;
+  }, [returnQuantities, sale?.products]);
+
+  const handleQuantityChange = (productId, value) => {
+    const num = Number(value) || 0;
+    setReturnQuantities((prev) => ({
+      ...prev,
+      [productId]: num,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    // Build items array with only products that have returnQty > 0
+    const items = [];
+    if (Array.isArray(sale?.products)) {
+      sale.products.forEach((item) => {
+        const productId = String(item.product?._id || item.product);
+        const returnQty = Number(returnQuantities[productId] || 0);
+        if (returnQty > 0) {
+          const soldQty = item.quantity || 0;
+          const alreadyRet = alreadyReturned[productId] || 0;
+          const maxReturnable = soldQty - alreadyRet;
+
+          if (returnQty > maxReturnable) {
+            setError(`Cannot return ${returnQty} units. Maximum returnable: ${maxReturnable}`);
+            return;
+          }
+
+          items.push({
+            productId,
+            quantity: returnQty,
+          });
+        }
+      });
+    }
+
+    if (items.length === 0) {
+      setError("Please select at least one item to return.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post(
+        `http://localhost:3000/api/sales/${sale._id}/return`,
+        {
+          items,
+          reason,
+          refundMethod: refundMethod !== "none" ? refundMethod : undefined,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Success
+      if (onSuccess) await onSuccess();
+    } catch (err) {
+      console.error("Error processing return:", err);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to process return."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      {/* Error message */}
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Products list */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-semibold text-gray-900">Select items to return:</h4>
+        {Array.isArray(sale?.products) && sale.products.length > 0 ? (
+          sale.products.map((item, idx) => {
+            const productId = String(item.product?._id || item.product);
+            const productName = item?.product?.name || "-";
+            const productCode = item?.product?.code || "";
+            const soldQty = item.quantity || 0;
+            const alreadyRet = alreadyReturned[productId] || 0;
+            const maxReturnable = soldQty - alreadyRet;
+            const unitPrice = item.unitPrice || 0;
+            const returnQty = Number(returnQuantities[productId] || 0);
+            const lineAmount = unitPrice * returnQty;
+
+            return (
+              <div key={idx} className="rounded border border-gray-200 p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">
+                      {productCode ? `${productCode} - ` : ""}
+                      {productName}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Sold: {soldQty} • Already returned: {alreadyRet} • Max returnable: {maxReturnable}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Unit price: {fmtLKR(unitPrice)}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-gray-700">
+                      Return Quantity
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={maxReturnable}
+                      value={returnQty || ""}
+                      onChange={(e) => handleQuantityChange(productId, e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="0"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                      <div className="text-xs text-gray-500">Line Amount</div>
+                      <div className="font-medium text-gray-900">{fmtLKR(lineAmount)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center text-gray-500 py-8">No products in this sale.</div>
+        )}
+      </div>
+
+      {/* Reason */}
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</span>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Enter reason for return..."
+        />
+      </label>
+
+      {/* Refund Method */}
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-gray-700">Refund Method</span>
+        <select
+          value={refundMethod}
+          onChange={(e) => setRefundMethod(e.target.value)}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="none">No refund</option>
+          <option value="cash">Cash</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </label>
+
+      {/* Total */}
+      <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Total Return Amount:</span>
+          <span className="text-lg font-semibold text-gray-900">{fmtLKR(totalReturnAmount)}</span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading || totalReturnAmount === 0}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Processing..." : "Process Return"}
+        </button>
+      </div>
+    </form>
   );
 };
 

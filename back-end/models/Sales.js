@@ -136,6 +136,23 @@ const saleSchema = new mongoose.Schema(
 
     // payment history (normal payments + admin adjustments)
     payments: [paymentEntrySchema],
+
+    // Return total amount
+    returnTotal: {
+      type: Number,
+      default: 0,
+    },
+
+    // Returned items
+    returns: [
+      {
+        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        quantity: { type: Number, required: true },
+        amount: { type: Number, required: true }, // value of this returned portion
+        reason: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     //  automatic updatedAt
@@ -146,6 +163,7 @@ const saleSchema = new mongoose.Schema(
 saleSchema.pre("save", function (next) {
   // Calculate baseTotal: prefer discountedAmount, else totalAmount, else 0
   const baseTotal = Number(this.discountedAmount ?? this.totalAmount ?? 0);
+  const returnTotal = Number(this.returnTotal || 0);
 
   // Initialize on create if not set
   if (this.isNew) {
@@ -160,8 +178,19 @@ saleSchema.pre("save", function (next) {
   this.amountDue = Math.max(0, baseTotal - paid);
 
   // Set paymentStatus based on amountPaid and amountDue
+  // Special case: If all goods are returned (baseTotal === 0 after returns) and no payments were ever made,
+  // don't mark as "paid" - keep as "unpaid"
+  // Check if there were any payments by looking at payments array length
+  const hasPayments = Array.isArray(this.payments) && this.payments.length > 0;
+  
   if (this.amountDue === 0) {
-    this.paymentStatus = "paid";
+    // If baseTotal is 0 due to returns and no payments were ever made, keep as unpaid
+    if (baseTotal === 0 && returnTotal > 0 && !hasPayments && paid === 0) {
+      this.paymentStatus = "unpaid";
+    } else {
+      // Otherwise, if amountDue is 0, it's paid (either fully paid or refunded after payment)
+      this.paymentStatus = "paid";
+    }
   } else if (paid > 0 && this.amountDue > 0) {
     this.paymentStatus = "partial";
   } else {

@@ -77,11 +77,7 @@ export const getForecastOverview = async (req, res) => {
     );
 
     const revenueExpr = {
-      $cond: [
-        { $gt: ["$discountedAmount", null] },
-        "$discountedAmount",
-        "$totalAmount",
-      ],
+      $ifNull: ["$discountedAmount", "$totalAmount"],
     };
 
     // Aggregate monthly revenue + orders
