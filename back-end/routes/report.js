@@ -13,6 +13,7 @@ import {
   getReceivables,
   getCustomerBalances,
   getReceivablesReport,
+  getCustomerPaymentsReport,
 
   // CSV exports
   exportSalesCsv,
@@ -21,6 +22,7 @@ import {
   exportPerformanceProductsCsv,
   exportCustomerBalancesCsv,
   exportReceivablesCsv,
+  exportCustomerPaymentsCsv,
 
   // PDF exports
   exportSalesPdf,
@@ -28,6 +30,7 @@ import {
   exportPerformanceUsersPdf,
   exportPerformanceProductsPdf,
   exportCustomerBalancesPdf,
+  exportCustomerPaymentsPdf,
 } from "../Controllers/reportController.js";
 
 const router = express.Router();
@@ -51,6 +54,7 @@ router.get("/performance/products", getProductTrends);
 router.get("/receivables", getReceivablesReport);
 router.get("/receivables/summary", getReceivables);
 router.get("/customer-balances", getCustomerBalances);
+router.get("/customer-payments", getCustomerPaymentsReport);
 
 /* -------- CSV exports -------- */
 
@@ -60,6 +64,7 @@ router.get("/performance/users/export/csv", exportPerformanceUsersCsv);
 router.get("/performance/products/export/csv", exportPerformanceProductsCsv);
 router.get("/customer-balances/export/csv", exportCustomerBalancesCsv);
 router.get("/receivables/export/csv", exportReceivablesCsv);
+router.get("/customer-payments/export/csv", exportCustomerPaymentsCsv);
 
 /* -------- PDF exports -------- */
 
@@ -68,6 +73,7 @@ router.get("/inventory/export/pdf", exportInventoryPdf);
 router.get("/performance/users/export/pdf", exportPerformanceUsersPdf);
 router.get("/performance/products/export/pdf", exportPerformanceProductsPdf);
 router.get("/customer-balances/export/pdf", exportCustomerBalancesPdf);
+router.get("/customer-payments/export/pdf", exportCustomerPaymentsPdf);
 
 /* -------- AI Customer Clusters -------- */
 router.get("/analytics/customer-clusters", getCustomerClusters);

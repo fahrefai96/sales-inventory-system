@@ -4,7 +4,6 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { FaDownload } from "react-icons/fa";
 import ReportPageHeader from "./ReportPageHeader.jsx";
-import FilterBar from "./FilterBar.jsx";
 import ExportButtons from "./ExportButtons.jsx";
 import KpiCards from "./KpiCards.jsx";
 import ChartCard from "./ChartCard.jsx";
@@ -20,6 +19,28 @@ import {
 } from "recharts";
 
 const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+// Sortable table header component
+const Th = ({ label, sortKey, sortBy, sortDir, setSort }) => {
+  const isActive = sortBy === sortKey;
+  return (
+    <th className="px-4 py-3 text-left">
+      <button
+        type="button"
+        className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
+          isActive ? "text-gray-900" : "text-gray-600"
+        }`}
+        onClick={() => setSort(sortKey)}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <span className="text-[10px]">
+          {isActive ? (sortDir === "asc" ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
+  );
+};
 
 // Combo component for searchable dropdowns
 const Combo = ({
@@ -372,6 +393,19 @@ export default function CustomerBalances({ density = "comfortable" }) {
     }
   };
 
+  // Sort handler
+  const setSort = (key) => {
+    if (sortBy === key) {
+      // Toggle direction if same column
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      // New column, start with asc
+      setSortBy(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
   // Initial mount: fetch both table and summary
   React.useEffect(() => {
     fetchData({ page: 1 });
@@ -397,11 +431,6 @@ export default function CustomerBalances({ density = "comfortable" }) {
     if (!search || !search.trim()) return rows;
     return fuzzySearch(rows, search, ["name", "email", "phone"], 0.4);
   }, [rows, search]);
-
-  const applyFilters = () => {
-    fetchData({ page: 1 });
-    fetchSummaryByAggregating();
-  };
 
   const resetFilters = () => {
     setSearch("");
@@ -472,11 +501,101 @@ export default function CustomerBalances({ density = "comfortable" }) {
         subtitle="Receivables snapshot, aging analysis, and top debtors."
       />
 
-      <FilterBar
-        mode="balances"
-        range={range}
-        setRange={setRange}
-        extras={
+      {/* Merged Filters Container */}
+      <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-3 sm:px-4">
+        {/* Date Range Row */}
+        <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap mb-3">
+          {/* From */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">From</label>
+            <input
+              type="date"
+              value={range.from || ""}
+              onChange={(e) => setRange({ ...range, from: e.target.value })}
+              className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* To */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">To</label>
+            <input
+              type="date"
+              value={range.to || ""}
+              onChange={(e) => setRange({ ...range, to: e.target.value })}
+              className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Presets */}
+          <div className="shrink-0">
+            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              {[
+                ["Today", "today"],
+                ["This Week", "week"],
+                ["This Month", "month"],
+                ["Last Month", "lastMonth"],
+                ["All Time", "all"],
+              ].map(([label, val], i) => {
+                const setPreset = (type) => {
+                  const now = new Date();
+                  const asISO = (d) => d.toISOString().slice(0, 10);
+                  let from, to;
+
+                  if (type === "today") {
+                    const t = asISO(now);
+                    from = t;
+                    to = t;
+                  } else if (type === "week") {
+                    const day = now.getDay() || 7;
+                    const mon = new Date(now);
+                    mon.setDate(now.getDate() - (day - 1));
+                    const sun = new Date(mon);
+                    sun.setDate(mon.getDate() + 6);
+                    from = asISO(mon);
+                    to = asISO(sun);
+                  } else if (type === "month") {
+                    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    from = asISO(first);
+                    to = asISO(last);
+                  } else if (type === "lastMonth") {
+                    const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const last = new Date(now.getFullYear(), now.getMonth(), 0);
+                    from = asISO(first);
+                    to = asISO(last);
+                  } else return;
+
+                  setRange({ ...range, from, to, type });
+                };
+
+                return (
+                  <button
+                    key={val}
+                    onClick={() => {
+                      if (val === "all") {
+                        setRange({ ...range, from: "", to: "", type: "all" });
+                      } else {
+                        setPreset(val);
+                      }
+                    }}
+                    className={`px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-50 ${
+                      (range.type === val || (val === "all" && !range.from && !range.to)) ? "bg-gray-100 text-gray-900" : "text-gray-700"
+                    } ${
+                      i ? "border-l border-gray-200" : ""
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Spacer */}
+          <div className="hidden lg:block flex-1 min-w-0" />
+
+          {/* Export Buttons */}
           <div className="shrink-0">
             <ExportButtons
               urls={{
@@ -517,96 +636,88 @@ export default function CustomerBalances({ density = "comfortable" }) {
               }}
             />
           </div>
-        }
-      />
+        </div>
 
-      {/* Filters & Actions (sizes matched to Sales/FilterBar feel) */}
-      <div
-        className={`rounded-xl border border-gray-200 bg-white ${dens.card}`}
-      >
-        <div className={`grid ${dens.gap} lg:grid-cols-6`}>
-          <div className="lg:col-span-2">
-            <label className={`block ${dens.label} mb-1 text-gray-700`}>
-              Search (name/email/phone)
-            </label>
+        {/* Search and Filters Row */}
+        <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
+          {/* Search */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Search</label>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`w-full sm:max-w-[220px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              placeholder="Type to search..."
+              className="w-36 sm:w-48 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Name/email/phone..."
             />
           </div>
 
-          <div>
-            <label className={`block ${dens.label} mb-1 text-gray-700`}>
-              Min Outstanding
-            </label>
+          {/* Min Outstanding */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Min</label>
             <input
               type="number"
               value={min}
               onChange={(e) => setMin(e.target.value)}
-              className={`w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className="w-28 sm:w-32 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0"
             />
           </div>
-          <div>
-            <label className={`block ${dens.label} mb-1 text-gray-700`}>
-              Max Outstanding
-            </label>
+
+          {/* Max Outstanding */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Max</label>
             <input
               type="number"
               value={max}
               onChange={(e) => setMax(e.target.value)}
-              className={`w-full sm:max-w-[180px] rounded-lg border border-gray-300 bg-white px-3 py-2 ${dens.input} shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className="w-28 sm:w-32 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="100000"
             />
           </div>
 
-          <div>
-            <label className={`block ${dens.label} mb-1 text-gray-700`}>
-              Sort By
-            </label>
-            <Combo
-              value={sortBy}
-              onChange={(val) => setSortBy(val)}
-              options={[
-                { value: "outstandingTotal", label: "Outstanding" },
-                { value: "pendingCount", label: "Pending Count" },
-                { value: "name", label: "Name" },
-                { value: "lastSale", label: "Last Sale" },
-              ]}
-              placeholder="Outstanding"
-            />
+          {/* Sort By */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Sort By</label>
+            <div className="w-36 sm:w-40">
+              <Combo
+                value={sortBy}
+                onChange={(val) => setSortBy(val)}
+                options={[
+                  { value: "outstandingTotal", label: "Outstanding" },
+                  { value: "pendingCount", label: "Pending Count" },
+                  { value: "name", label: "Name" },
+                  { value: "lastSale", label: "Last Sale" },
+                ]}
+                placeholder="Outstanding"
+              />
+            </div>
           </div>
-          <div>
-            <label className={`block ${dens.label} mb-1 text-gray-700`}>
-              Direction
-            </label>
-            <Combo
-              value={sortDir}
-              onChange={(val) => setSortDir(val)}
-              options={[
-                { value: "desc", label: "Desc" },
-                { value: "asc", label: "Asc" },
-              ]}
-              placeholder="Desc"
-            />
-          </div>
-        </div>
 
-        <div className={`mt-3 flex flex-wrap items-center ${dens.gap}`}>
-          <div className="ml-auto flex gap-2">
-            <button
-              onClick={applyFilters}
-              disabled={loading}
-              className={`rounded-lg bg-blue-600 px-4 py-2 ${dens.button} font-semibold text-white hover:bg-blue-700 disabled:opacity-50`}
-            >
-              {loading ? "Loading..." : "Apply"}
-            </button>
+          {/* Direction */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Direction</label>
+            <div className="w-28 sm:w-32">
+              <Combo
+                value={sortDir}
+                onChange={(val) => setSortDir(val)}
+                options={[
+                  { value: "desc", label: "Desc" },
+                  { value: "asc", label: "Asc" },
+                ]}
+                placeholder="Desc"
+              />
+            </div>
+          </div>
+
+          {/* Spacer */}
+          <div className="hidden lg:block flex-1 min-w-0" />
+
+          {/* Reset Button */}
+          <div className="shrink-0">
             <button
               onClick={resetFilters}
-              className={`rounded-lg border border-gray-300 px-4 py-2 ${dens.button} font-medium text-gray-700 hover:bg-gray-50`}
+              className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-white bg-white shadow-sm"
             >
               Reset
             </button>
@@ -618,8 +729,26 @@ export default function CustomerBalances({ density = "comfortable" }) {
       <KpiCards items={kpis} loading={sumLoading} density={density} />
 
       {/* All Customers (Balances) – added heading here */}
-      <div className={`${dens.heading} font-medium mb-2`}>
-        All Customers (Balances)
+      <div className="flex items-center justify-between mb-2">
+        <div className={`${dens.heading} font-medium`}>
+          All Customers (Balances)
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`${dens.text} text-gray-600`}>Rows per page:</span>
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+            {[25, 50, 100].map((n) => (
+              <button
+                key={n}
+                onClick={() => fetchData({ page: 1, limit: n })}
+                className={`px-3 py-1.5 ${dens.text} ${
+                  limit === n ? "bg-gray-100 font-medium" : "bg-white"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {error ? (
@@ -633,13 +762,37 @@ export default function CustomerBalances({ density = "comfortable" }) {
                 <tr
                   className={`text-left ${dens.tableHeader} font-semibold uppercase tracking-wide text-gray-800`}
                 >
-                  <th className={dens.cell}>Customer</th>
+                  <Th
+                    label="Customer"
+                    sortKey="name"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    setSort={setSort}
+                  />
                   <th className={dens.cell}>Email</th>
                   <th className={dens.cell}>Phone</th>
-                  <th className={dens.cell}>Pending</th>
-                  <th className={dens.cell}>Outstanding</th>
+                  <Th
+                    label="Pending"
+                    sortKey="pendingCount"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    setSort={setSort}
+                  />
+                  <Th
+                    label="Outstanding"
+                    sortKey="outstandingTotal"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    setSort={setSort}
+                  />
                   <th className={dens.cell}>Paid Total</th>
-                  <th className={dens.cell}>Last Sale</th>
+                  <Th
+                    label="Last Sale"
+                    sortKey="lastSale"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    setSort={setSort}
+                  />
                   <th className={dens.cell}>Action</th>
                 </tr>
               </thead>

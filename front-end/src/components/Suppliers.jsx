@@ -3,26 +3,17 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
-import { fuzzySearch } from "../utils/fuzzySearch";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
   compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
 };
 
-const SORTERS = {
-  name: (a, b) => (a.name || "").localeCompare(b.name || ""),
-  email: (a, b) => (a.email || "").localeCompare(b.email || ""),
-  phone: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
-  country: (a, b) => (a.country || "").localeCompare(b.country || ""),
-  createdAt: (a, b) =>
-    new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
-};
-
 const Suppliers = () => {
   // data
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
 
   // ui state
   const [query, setQuery] = useState("");
@@ -66,12 +57,22 @@ const Suppliers = () => {
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get("/supplier", {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("search", query.trim());
+      params.set("page", String(page));
+      params.set("limit", String(pageSize));
+      params.set("sortBy", sortBy.key);
+      params.set("sortDir", sortBy.dir);
+
+      const res = await axiosInstance.get(`/supplier?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
         },
       });
-      if (res.data?.success) setSuppliers(res.data.suppliers || []);
+      if (res.data?.success) {
+        setSuppliers(res.data.suppliers || []);
+        setTotal(res.data.total || 0);
+      }
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
     } finally {
@@ -81,7 +82,7 @@ const Suppliers = () => {
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [page, pageSize, sortBy, query]);
 
   // Close drawers/modals on ESC key press
   useEffect(() => {
@@ -114,42 +115,29 @@ const Suppliers = () => {
     const val = e.target.value;
     setQuery(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setQuery((prev) => prev), 250);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+    }, 500);
   };
 
-  // -------- Derived list (search + sort) --------
-  const filtered = useMemo(() => {
-    let list = [...suppliers];
-
-    // Apply fuzzy search if query exists
-    if (query && query.trim()) {
-      list = fuzzySearch(list, query, ["name", "email", "phone", "address", "country"], 0.4);
-    }
-
-    // Apply sorting
-    const sorter = SORTERS[sortBy.key] || SORTERS.createdAt;
-    list.sort((a, b) => {
-      const res = sorter(a, b);
-      return sortBy.dir === "asc" ? res : -res;
-    });
-
-    return list;
-  }, [suppliers, query, sortBy]);
+  // Sort handler
+  const handleSort = (key) => {
+    setSortBy((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" }
+    );
+    setPage(1);
+  };
 
   // pagination calc
-  const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, total);
-  const paged = filtered.slice(startIdx, endIdx);
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize;
+  const endIdx = Math.min(page * pageSize, total);
 
   // clamp page on deps change
   useEffect(() => {
-    setPage(1);
-  }, [query, sortBy, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
+    if (page > totalPages && totalPages > 0) setPage(totalPages);
   }, [page, totalPages]);
 
   // -------- Helpers --------
@@ -272,7 +260,7 @@ const Suppliers = () => {
         <body>
           <h1>Suppliers</h1>
           <div class="info">
-            <div><strong>Total Records:</strong> ${filtered.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
+            <div><strong>Total Records:</strong> ${total} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
             ${query ? `<div><strong>Search:</strong> ${query}</div>` : ""}
           </div>
           <table>
@@ -287,7 +275,7 @@ const Suppliers = () => {
               </tr>
             </thead>
             <tbody>
-              ${filtered.map((s) => `
+              ${suppliers.map((s) => `
                 <tr>
                   <td>${s.name || "—"}</td>
                   <td>${s.email || "—"}</td>
@@ -357,13 +345,6 @@ const Suppliers = () => {
     }, 500);
   };
 
-  const setSort = (key) => {
-    setSortBy((prev) =>
-      prev.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" }
-    );
-  };
   const formatDateTime = (d) => (d ? new Date(d).toLocaleString("en-LK") : "—");
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-LK") : "—");
   const formatMoney = (v) =>
@@ -454,10 +435,7 @@ const Suppliers = () => {
         },
       });
       if (res.data?.success) {
-        setSuppliers((prev) => prev.filter((s) => s._id !== id));
-        const newTotal = total - 1;
-        const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
-        if (page > newTotalPages) setPage(newTotalPages);
+        await fetchSuppliers();
       }
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
@@ -632,7 +610,7 @@ const Suppliers = () => {
             onClick={openDrawerForCreate}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Add Supplier
+            New Supplier
           </button>
         </div>
       </div>
@@ -642,7 +620,7 @@ const Suppliers = () => {
         <input
           type="text"
           placeholder="Search by name, email, phone, address, or country…"
-          defaultValue={query}
+          value={query}
           onChange={onSearchChange}
           className="flex-1 min-w-[250px] max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -708,19 +686,19 @@ const Suppliers = () => {
                   label="Name"
                   sortKey="name"
                   sortBy={sortBy}
-                  setSort={setSort}
+                  setSort={handleSort}
                 />
                 <Th
                   label="Email"
                   sortKey="email"
                   sortBy={sortBy}
-                  setSort={setSort}
+                  setSort={handleSort}
                 />
                 <Th
                   label="Phone"
                   sortKey="phone"
                   sortBy={sortBy}
-                  setSort={setSort}
+                  setSort={handleSort}
                 />
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                   Address
@@ -729,13 +707,13 @@ const Suppliers = () => {
                   label="Country"
                   sortKey="country"
                   sortBy={sortBy}
-                  setSort={setSort}
+                  setSort={handleSort}
                 />
                 <Th
                   label="Added"
                   sortKey="createdAt"
                   sortBy={sortBy}
-                  setSort={setSort}
+                  setSort={handleSort}
                 />
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                   Action
@@ -745,8 +723,8 @@ const Suppliers = () => {
             <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
               {loading ? (
                 <SkeletonRows rows={pageSize} dens={dens} cols={7} />
-              ) : paged.length > 0 ? (
-                paged.map((s) => (
+              ) : suppliers.length > 0 ? (
+                suppliers.map((s) => (
                   <tr key={s._id} className={`hover:bg-gray-50 ${dens.row}`}>
                     <td className={`${dens.cell} text-sm text-gray-700`}>
                       {s.name}
@@ -807,7 +785,7 @@ const Suppliers = () => {
                         onClick={openDrawerForCreate}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                       >
-                        Add Supplier
+                        New Supplier
                       </button>
                     </div>
                   </td>
@@ -1032,6 +1010,9 @@ const Suppliers = () => {
             <div className="p-5 space-y-4">
               {profileTab === "purchases" ? (
                 <>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Recent Purchase History
+                  </h3>
                   {profileLoading ? (
                     <div className="py-6 text-center text-gray-500">Loading…</div>
                   ) : supplierPurchases.length === 0 ? (

@@ -4,7 +4,6 @@ import api from "../../utils/api.jsx";
 import ReportPageHeader from "./ReportPageHeader.jsx";
 import FilterBar from "./FilterBar.jsx";
 import KpiCards from "./KpiCards.jsx";
-import ReportTable from "./ReportTable.jsx";
 import ExportButtons from "./ExportButtons.jsx";
 import ChartCard from "./ChartCard.jsx";
 import {
@@ -203,10 +202,22 @@ export default function Sales({ density = "comfortable" }) {
   const [data, setData] = useState({
     KPIs: { orders: 0, revenue: 0, avgOrderValue: 0 },
     series: [],
-    topProducts: [],
-    topCustomers: [],
+    topProducts: { rows: [], total: 0, page: 1, limit: 10 },
+    topCustomers: { rows: [], total: 0, page: 1, limit: 10 },
   });
   const [users, setUsers] = useState([]);
+
+  // Top Products pagination and sorting
+  const [topProductsPage, setTopProductsPage] = useState(1);
+  const [topProductsLimit, setTopProductsLimit] = useState(10);
+  const [topProductsSortBy, setTopProductsSortBy] = useState("qty");
+  const [topProductsSortDir, setTopProductsSortDir] = useState("desc");
+
+  // Top Customers pagination and sorting
+  const [topCustomersPage, setTopCustomersPage] = useState(1);
+  const [topCustomersLimit, setTopCustomersLimit] = useState(10);
+  const [topCustomersSortBy, setTopCustomersSortBy] = useState("revenue");
+  const [topCustomersSortDir, setTopCustomersSortDir] = useState("desc");
 
   // prev KPIs (for deltas)
   const [prevKpis, setPrevKpis] = useState({
@@ -231,6 +242,18 @@ export default function Sales({ density = "comfortable" }) {
       if (range.to) params.set("to", range.to);
       if (range.groupBy) params.set("groupBy", range.groupBy);
       if (range.user) params.set("user", range.user);
+      
+      // Top Products pagination/sorting
+      params.set("topProductsPage", String(topProductsPage));
+      params.set("topProductsLimit", String(topProductsLimit));
+      params.set("topProductsSortBy", topProductsSortBy);
+      params.set("topProductsSortDir", topProductsSortDir);
+      
+      // Top Customers pagination/sorting
+      params.set("topCustomersPage", String(topCustomersPage));
+      params.set("topCustomersLimit", String(topCustomersLimit));
+      params.set("topCustomersSortBy", topCustomersSortBy);
+      params.set("topCustomersSortDir", topCustomersSortDir);
 
       const r = await api.get(`/reports/sales?${params.toString()}`);
       const payload = r?.data || {};
@@ -241,12 +264,8 @@ export default function Sales({ density = "comfortable" }) {
           avgOrderValue: num(payload?.KPIs?.avgOrderValue),
         },
         series: Array.isArray(payload?.series) ? payload.series : [],
-        topProducts: Array.isArray(payload?.topProducts)
-          ? payload.topProducts
-          : [],
-        topCustomers: Array.isArray(payload?.topCustomers)
-          ? payload.topCustomers
-          : [],
+        topProducts: payload?.topProducts || { rows: [], total: 0, page: 1, limit: 10 },
+        topCustomers: payload?.topCustomers || { rows: [], total: 0, page: 1, limit: 10 },
       });
 
       // previous period (same length range)
@@ -273,7 +292,20 @@ export default function Sales({ density = "comfortable" }) {
 
   useEffect(() => {
     fetchData(); // eslint-disable-next-line
-  }, [range.from, range.to, range.groupBy, range.user]);
+  }, [
+    range.from,
+    range.to,
+    range.groupBy,
+    range.user,
+    topProductsPage,
+    topProductsLimit,
+    topProductsSortBy,
+    topProductsSortDir,
+    topCustomersPage,
+    topCustomersLimit,
+    topCustomersSortBy,
+    topCustomersSortDir,
+  ]);
 
   const kpis = useMemo(
     () => [
@@ -297,25 +329,70 @@ export default function Sales({ density = "comfortable" }) {
     [data, prevKpis]
   );
 
+  // Sort handlers
+  const handleTopProductsSort = (key) => {
+    if (topProductsSortBy === key) {
+      setTopProductsSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setTopProductsSortBy(key);
+      setTopProductsSortDir("asc");
+    }
+    setTopProductsPage(1);
+  };
+
+  const handleTopCustomersSort = (key) => {
+    if (topCustomersSortBy === key) {
+      setTopCustomersSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setTopCustomersSortBy(key);
+      setTopCustomersSortDir("asc");
+    }
+    setTopCustomersPage(1);
+  };
+
+  // Sortable table header component
+  const Th = ({ label, sortKey, sortBy, sortDir, setSort, align = "left" }) => {
+    const isActive = sortBy === sortKey;
+    return (
+      <th className={`px-4 py-3 ${align === "right" ? "text-right" : "text-left"}`}>
+        <button
+          type="button"
+          className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
+            isActive ? "text-gray-900" : "text-gray-600"
+          } ${align === "right" ? "ml-auto" : ""}`}
+          onClick={() => setSort(sortKey)}
+          title={`Sort by ${label}`}
+        >
+          {label}
+          <span className="text-[10px]">
+            {isActive ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
   const topProdCols = [
-    { key: "code", title: "Code" },
-    { key: "name", title: "Product" },
-    { key: "qty", title: "Qty", align: "right" },
+    { key: "code", title: "Code", sortable: true },
+    { key: "name", title: "Product", sortable: true },
+    { key: "qty", title: "Qty", align: "right", sortable: true },
     {
       key: "revenue",
       title: "Revenue",
       align: "right",
+      sortable: true,
       render: (v) => Number(v || 0).toFixed(2),
     },
   ];
 
   const topCustCols = [
-    { key: "name", title: "Customer" },
-    { key: "orders", title: "Orders", align: "right" },
+    { key: "name", title: "Customer", sortable: true },
+    { key: "orders", title: "Orders", align: "right", sortable: true },
     {
       key: "revenue",
       title: "Revenue",
       align: "right",
+      sortable: true,
       render: (v) => Number(v || 0).toFixed(2),
     },
   ];
@@ -379,21 +456,220 @@ export default function Sales({ density = "comfortable" }) {
       {loading && <div className={`${dens.text} text-gray-500`}>Loading…</div>}
 
       <div className={`grid lg:grid-cols-2 ${dens.gap} mb-6`}>
+        {/* Top Products Table */}
         <div>
-          <div className={`${dens.text} font-medium mb-2`}>Top Products</div>
-          <ReportTable density={density}
-            columns={topProdCols}
-            rows={data.topProducts}
-            empty="No top products"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <div className={`${dens.text} font-medium`}>Top Products</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Rows:</span>
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                {[10, 25, 50].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setTopProductsLimit(n);
+                      setTopProductsPage(1);
+                    }}
+                    className={`px-3 py-1.5 text-sm ${
+                      topProductsLimit === n ? "bg-gray-100 font-medium" : "bg-white"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div className="max-h-[50vh] overflow-auto">
+              <table className="min-w-full table-auto">
+                <thead className="sticky top-0 z-10 bg-gray-50">
+                  <tr className="text-gray-800">
+                    {topProdCols.map((col) =>
+                      col.sortable ? (
+                        <Th
+                          key={col.key}
+                          label={col.title}
+                          sortKey={col.key}
+                          sortBy={topProductsSortBy}
+                          sortDir={topProductsSortDir}
+                          setSort={handleTopProductsSort}
+                          align={col.align || "left"}
+                        />
+                      ) : (
+                        <th
+                          key={col.key}
+                          className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                            col.align === "right" ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {col.title}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={topProdCols.length} className="px-6 py-12 text-center">
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : data.topProducts.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={topProdCols.length} className="px-6 py-12 text-center">
+                        No top products
+                      </td>
+                    </tr>
+                  ) : (
+                    data.topProducts.rows.map((row, idx) => (
+                      <tr key={row.productId || idx} className="hover:bg-gray-50">
+                        {topProdCols.map((col) => (
+                          <td
+                            key={col.key}
+                            className={`px-4 py-3 ${dens.text} ${
+                              col.align === "right" ? "text-right tabular-nums" : "text-left"
+                            }`}
+                          >
+                            {col.render
+                              ? col.render(row[col.key], row)
+                              : row[col.key] ?? "—"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-gray-500">
+                Showing{" "}
+                {data.topProducts.total === 0
+                  ? 0
+                  : (topProductsPage - 1) * topProductsLimit + 1}
+                –
+                {Math.min(topProductsPage * topProductsLimit, data.topProducts.total)} of{" "}
+                {data.topProducts.total}
+              </span>
+              <Pagination
+                page={topProductsPage}
+                setPage={setTopProductsPage}
+                totalPages={Math.max(1, Math.ceil(data.topProducts.total / topProductsLimit))}
+              />
+            </div>
+          </div>
         </div>
+
+        {/* Top Customers Table */}
         <div>
-          <div className={`${dens.text} font-medium mb-2`}>Top Customers</div>
-          <ReportTable density={density}
-            columns={topCustCols}
-            rows={data.topCustomers}
-            empty="No top customers"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <div className={`${dens.text} font-medium`}>Top Customers</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Rows:</span>
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                {[10, 25, 50].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setTopCustomersLimit(n);
+                      setTopCustomersPage(1);
+                    }}
+                    className={`px-3 py-1.5 text-sm ${
+                      topCustomersLimit === n ? "bg-gray-100 font-medium" : "bg-white"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div className="max-h-[50vh] overflow-auto">
+              <table className="min-w-full table-auto">
+                <thead className="sticky top-0 z-10 bg-gray-50">
+                  <tr className="text-gray-800">
+                    {topCustCols.map((col) =>
+                      col.sortable ? (
+                        <Th
+                          key={col.key}
+                          label={col.title}
+                          sortKey={col.key}
+                          sortBy={topCustomersSortBy}
+                          sortDir={topCustomersSortDir}
+                          setSort={handleTopCustomersSort}
+                          align={col.align || "left"}
+                        />
+                      ) : (
+                        <th
+                          key={col.key}
+                          className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                            col.align === "right" ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {col.title}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={topCustCols.length} className="px-6 py-12 text-center">
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : data.topCustomers.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={topCustCols.length} className="px-6 py-12 text-center">
+                        No top customers
+                      </td>
+                    </tr>
+                  ) : (
+                    data.topCustomers.rows.map((row, idx) => (
+                      <tr key={row.customerId || idx} className="hover:bg-gray-50">
+                        {topCustCols.map((col) => (
+                          <td
+                            key={col.key}
+                            className={`px-4 py-3 ${dens.text} ${
+                              col.align === "right" ? "text-right tabular-nums" : "text-left"
+                            }`}
+                          >
+                            {col.render
+                              ? col.render(row[col.key], row)
+                              : row[col.key] ?? "—"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-gray-500">
+                Showing{" "}
+                {data.topCustomers.total === 0
+                  ? 0
+                  : (topCustomersPage - 1) * topCustomersLimit + 1}
+                –
+                {Math.min(topCustomersPage * topCustomersLimit, data.topCustomers.total)} of{" "}
+                {data.topCustomers.total}
+              </span>
+              <Pagination
+                page={topCustomersPage}
+                setPage={setTopCustomersPage}
+                totalPages={Math.max(1, Math.ceil(data.topCustomers.total / topCustomersLimit))}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -445,3 +721,99 @@ export default function Sales({ density = "comfortable" }) {
     </>
   );
 }
+
+// Pagination component
+const Pagination = ({ page, setPage, totalPages }) => {
+  const [jump, setJump] = React.useState(String(page));
+  React.useEffect(() => setJump(String(page)), [page, totalPages]);
+
+  const clamp = (p) => Math.max(1, Math.min(totalPages, p || 1));
+  const go = (p) => setPage(clamp(p));
+
+  const pages = [];
+  const add = (p) => pages.push(p);
+  const addEllipsis = () => pages.push("…");
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) add(i);
+  } else {
+    add(1);
+    if (page > 4) addEllipsis();
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+    for (let i = start; i <= end; i++) add(i);
+    if (page < totalPages - 3) addEllipsis();
+    add(totalPages);
+  }
+
+  const onSubmitJump = (e) => {
+    e.preventDefault();
+    go(Number(jump));
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => go(page - 1)}
+        disabled={page <= 1}
+        className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+        title="Previous"
+      >
+        Prev
+      </button>
+
+      {pages.map((p, idx) =>
+        p === "…" ? (
+          <span key={`e-${idx}`} className="px-2 text-sm text-gray-500">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => go(p)}
+            className={`rounded-md border px-2 py-1 text-sm ${
+              p === page
+                ? "border-blue-600 text-blue-600"
+                : "border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+            title={`Page ${p}`}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        type="button"
+        onClick={() => go(page + 1)}
+        disabled={page >= totalPages}
+        className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+        title="Next"
+      >
+        Next
+      </button>
+
+      <form onSubmit={onSubmitJump} className="flex items-center gap-2 ml-2">
+        <label className="text-sm text-gray-600">Jump to:</label>
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={jump}
+          onChange={(e) => setJump(e.target.value)}
+          className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Jump to page"
+        />
+        <button
+          type="submit"
+          className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Go
+        </button>
+        <span className="text-xs text-gray-500">/ {totalPages}</span>
+      </form>
+    </div>
+  );
+};

@@ -46,7 +46,22 @@ const pctDelta = (curr, prev) => {
  *  =========================== */
 export const getSalesReport = async (req, res) => {
   try {
-    const { groupBy = "day", from, to, user } = req.query;
+    const {
+      groupBy = "day",
+      from,
+      to,
+      user,
+      // Top Products pagination/sorting
+      topProductsPage = "1",
+      topProductsLimit = "10",
+      topProductsSortBy = "qty", // "qty" | "revenue" | "code" | "name"
+      topProductsSortDir = "desc",
+      // Top Customers pagination/sorting
+      topCustomersPage = "1",
+      topCustomersLimit = "10",
+      topCustomersSortBy = "revenue", // "revenue" | "orders" | "name"
+      topCustomersSortDir = "desc",
+    } = req.query;
     const { start, end } = clampRange(from, to);
 
     const match = { saleDate: { $gte: start, $lte: end } };
@@ -130,8 +145,19 @@ export const getSalesReport = async (req, res) => {
       },
     };
 
-    // Top products
-    const topProducts = await Sale.aggregate([
+    // Top products with pagination and sorting
+    const topProductsPageNum = Math.max(1, parseInt(topProductsPage, 10) || 1);
+    const topProductsLimitNum = Math.max(1, Math.min(200, parseInt(topProductsLimit, 10) || 10));
+    const topProductsSortDirNum = topProductsSortDir === "asc" ? 1 : -1;
+    
+    // Build sort stage for top products
+    const topProductsSortStage = {};
+    if (topProductsSortBy === "revenue") topProductsSortStage.revenue = topProductsSortDirNum;
+    else if (topProductsSortBy === "code") topProductsSortStage.code = topProductsSortDirNum;
+    else if (topProductsSortBy === "name") topProductsSortStage.name = topProductsSortDirNum;
+    else topProductsSortStage.qty = topProductsSortDirNum; // default: qty
+
+    const topProductsAgg = [
       { $match: match },
       { $unwind: "$products" },
       {
@@ -143,8 +169,6 @@ export const getSalesReport = async (req, res) => {
           },
         },
       },
-      { $sort: { qty: -1 } },
-      { $limit: 10 },
       {
         $lookup: {
           from: "products",
@@ -153,21 +177,46 @@ export const getSalesReport = async (req, res) => {
           as: "product",
         },
       },
-      { $unwind: "$product" },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 0,
           productId: "$product._id",
-          code: "$product.code",
-          name: "$product.name",
+          code: { $ifNull: ["$product.code", ""] },
+          name: { $ifNull: ["$product.name", "(no name)"] },
           qty: 1,
           revenue: 1,
         },
       },
-    ]);
+    ];
 
-    // Top customers
-    const topCustomers = await Sale.aggregate([
+    // Get total count before pagination
+    const topProductsCountAgg = [
+      ...topProductsAgg,
+      { $count: "total" },
+    ];
+    const topProductsCountResult = await Sale.aggregate(topProductsCountAgg);
+    const topProductsTotal = topProductsCountResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    topProductsAgg.push({ $sort: topProductsSortStage });
+    topProductsAgg.push({ $skip: (topProductsPageNum - 1) * topProductsLimitNum });
+    topProductsAgg.push({ $limit: topProductsLimitNum });
+
+    const topProducts = await Sale.aggregate(topProductsAgg);
+
+    // Top customers with pagination and sorting
+    const topCustomersPageNum = Math.max(1, parseInt(topCustomersPage, 10) || 1);
+    const topCustomersLimitNum = Math.max(1, Math.min(200, parseInt(topCustomersLimit, 10) || 10));
+    const topCustomersSortDirNum = topCustomersSortDir === "asc" ? 1 : -1;
+    
+    // Build sort stage for top customers
+    const topCustomersSortStage = {};
+    if (topCustomersSortBy === "orders") topCustomersSortStage.orders = topCustomersSortDirNum;
+    else if (topCustomersSortBy === "name") topCustomersSortStage.name = topCustomersSortDirNum;
+    else topCustomersSortStage.revenue = topCustomersSortDirNum; // default: revenue
+
+    const topCustomersAgg = [
       { $match: match },
       {
         $group: {
@@ -176,8 +225,6 @@ export const getSalesReport = async (req, res) => {
           revenue: { $sum: revenueExpr },
         },
       },
-      { $sort: { revenue: -1 } },
-      { $limit: 10 },
       {
         $lookup: {
           from: "customers",
@@ -196,7 +243,22 @@ export const getSalesReport = async (req, res) => {
           revenue: 1,
         },
       },
-    ]);
+    ];
+
+    // Get total count before pagination
+    const topCustomersCountAgg = [
+      ...topCustomersAgg,
+      { $count: "total" },
+    ];
+    const topCustomersCountResult = await Sale.aggregate(topCustomersCountAgg);
+    const topCustomersTotal = topCustomersCountResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    topCustomersAgg.push({ $sort: topCustomersSortStage });
+    topCustomersAgg.push({ $skip: (topCustomersPageNum - 1) * topCustomersLimitNum });
+    topCustomersAgg.push({ $limit: topCustomersLimitNum });
+
+    const topCustomers = await Sale.aggregate(topCustomersAgg);
 
     return res.json({
       success: true,
@@ -207,8 +269,24 @@ export const getSalesReport = async (req, res) => {
         orders: r.orders,
         revenue: money(r.revenue),
       })),
-      topProducts,
-      topCustomers,
+      topProducts: {
+        rows: topProducts.map((p) => ({
+          ...p,
+          revenue: money(p.revenue),
+        })),
+        total: topProductsTotal,
+        page: topProductsPageNum,
+        limit: topProductsLimitNum,
+      },
+      topCustomers: {
+        rows: topCustomers.map((c) => ({
+          ...c,
+          revenue: money(c.revenue),
+        })),
+        total: topCustomersTotal,
+        page: topCustomersPageNum,
+        limit: topCustomersLimitNum,
+      },
     });
   } catch (err) {
     console.error("getSalesReport error:", err);
@@ -222,7 +300,21 @@ export const getSalesReport = async (req, res) => {
  *  =========================== */
 export const getInventoryReport = async (req, res) => {
   try {
-    const { supplier, from, to } = req.query;
+    const {
+      supplier,
+      from,
+      to,
+      // Stock Status table pagination/sorting
+      stockStatusPage = "1",
+      stockStatusLimit = "25",
+      stockStatusSortBy = "code", // "code" | "name" | "supplier" | "stock" | "avgCost" | "stockValue"
+      stockStatusSortDir = "asc",
+      // Supplier Summary pagination/sorting
+      supplierSummaryPage = "1",
+      supplierSummaryLimit = "10",
+      supplierSummarySortBy = "totalSpent", // "supplier" | "purchases" | "totalSpent"
+      supplierSummarySortDir = "desc",
+    } = req.query;
 
     // If date range is provided, find products that were purchased in that range
     let productIdsInRange = null;
@@ -285,12 +377,27 @@ export const getInventoryReport = async (req, res) => {
       q._id = { $in: productIdsInRange };
     }
 
-    const products = await Product.find(q)
+    // Stock Status table with pagination and sorting
+    const stockStatusPageNum = Math.max(1, parseInt(stockStatusPage, 10) || 1);
+    const stockStatusLimitNum = Math.max(1, Math.min(200, parseInt(stockStatusLimit, 10) || 25));
+    const stockStatusSortDirNum = stockStatusSortDir === "asc" ? 1 : -1;
+
+    // Build sort for stock status
+    const stockStatusSort = {};
+    if (stockStatusSortBy === "name") stockStatusSort.name = stockStatusSortDirNum;
+    else if (stockStatusSortBy === "supplier") stockStatusSort.supplier = stockStatusSortDirNum;
+    else if (stockStatusSortBy === "stock") stockStatusSort.stock = stockStatusSortDirNum;
+    else if (stockStatusSortBy === "avgCost") stockStatusSort.avgCost = stockStatusSortDirNum;
+    else if (stockStatusSortBy === "stockValue") stockStatusSort.stockValue = stockStatusSortDirNum;
+    else stockStatusSort.code = stockStatusSortDirNum; // default: code
+
+    // Get all products first to calculate KPIs
+    const allProducts = await Product.find(q)
       .select("code name stock avgCost lastCost supplier minStock")
       .populate("supplier", "name")
       .lean();
 
-    const rows = products.map((p) => {
+    const allRows = allProducts.map((p) => {
       const stockValue = money((p.avgCost || 0) * (p.stock || 0));
       return {
         productId: p._id,
@@ -305,11 +412,28 @@ export const getInventoryReport = async (req, res) => {
       };
     });
 
+    // Calculate KPIs from all rows
     const KPIs = {
-      totalSkus: rows.length,
-      totalUnits: rows.reduce((s, r) => s + (r.stock || 0), 0),
-      stockValue: money(rows.reduce((s, r) => s + (r.stockValue || 0), 0)),
+      totalSkus: allRows.length,
+      totalUnits: allRows.reduce((s, r) => s + (r.stock || 0), 0),
+      stockValue: money(allRows.reduce((s, r) => s + (r.stockValue || 0), 0)),
     };
+
+    // Sort and paginate rows
+    allRows.sort((a, b) => {
+      const aVal = a[stockStatusSortBy] ?? "";
+      const bVal = b[stockStatusSortBy] ?? "";
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return stockStatusSortDirNum * (aVal - bVal);
+      }
+      return stockStatusSortDirNum * String(aVal).localeCompare(String(bVal));
+    });
+
+    const stockStatusTotal = allRows.length;
+    const rows = allRows.slice(
+      (stockStatusPageNum - 1) * stockStatusLimitNum,
+      stockStatusPageNum * stockStatusLimitNum
+    );
 
     // Build purchase match stage with date filtering for supplier summary
     const purchaseMatchForSummary = { status: "posted" };
@@ -341,7 +465,18 @@ export const getInventoryReport = async (req, res) => {
       ];
     }
 
-    const supplierSummary = await Purchase.aggregate([
+    // Supplier Summary with pagination and sorting
+    const supplierSummaryPageNum = Math.max(1, parseInt(supplierSummaryPage, 10) || 1);
+    const supplierSummaryLimitNum = Math.max(1, Math.min(200, parseInt(supplierSummaryLimit, 10) || 10));
+    const supplierSummarySortDirNum = supplierSummarySortDir === "asc" ? 1 : -1;
+
+    // Build sort stage for supplier summary
+    const supplierSummarySortStage = {};
+    if (supplierSummarySortBy === "supplier") supplierSummarySortStage.supplier = supplierSummarySortDirNum;
+    else if (supplierSummarySortBy === "purchases") supplierSummarySortStage.purchases = supplierSummarySortDirNum;
+    else supplierSummarySortStage.totalSpent = supplierSummarySortDirNum; // default: totalSpent
+
+    const supplierSummaryAgg = [
       { $match: purchaseMatchForSummary },
       {
         $group: {
@@ -368,11 +503,53 @@ export const getInventoryReport = async (req, res) => {
           totalSpent: 1,
         },
       },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 10 },
-    ]);
+    ];
 
-    return res.json({ success: true, KPIs, rows, supplierSummary });
+    // Get total count before pagination
+    const supplierSummaryCountAgg = [
+      ...supplierSummaryAgg,
+      { $count: "total" },
+    ];
+    const supplierSummaryCountResult = await Purchase.aggregate(supplierSummaryCountAgg);
+    const supplierSummaryTotal = supplierSummaryCountResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    supplierSummaryAgg.push({ $sort: supplierSummarySortStage });
+    supplierSummaryAgg.push({ $skip: (supplierSummaryPageNum - 1) * supplierSummaryLimitNum });
+    supplierSummaryAgg.push({ $limit: supplierSummaryLimitNum });
+
+    const supplierSummary = await Purchase.aggregate(supplierSummaryAgg);
+
+    // Calculate stock value by supplier (from all rows for KPIs)
+    const stockValueBySupplier = {};
+    for (const r of allRows) {
+      const key = r.supplier || "-";
+      stockValueBySupplier[key] = (stockValueBySupplier[key] || 0) + (r.stockValue || 0);
+    }
+    const stockValueBySupplierRows = Object.entries(stockValueBySupplier)
+      .map(([supplier, stockValue]) => ({ supplier, stockValue }))
+      .sort((a, b) => b.stockValue - a.stockValue);
+
+    return res.json({
+      success: true,
+      KPIs,
+      stockStatus: {
+        rows,
+        total: stockStatusTotal,
+        page: stockStatusPageNum,
+        limit: stockStatusLimitNum,
+      },
+      supplierSummary: {
+        rows: supplierSummary.map((s) => ({
+          ...s,
+          totalSpent: money(s.totalSpent),
+        })),
+        total: supplierSummaryTotal,
+        page: supplierSummaryPageNum,
+        limit: supplierSummaryLimitNum,
+      },
+      stockValueBySupplier: stockValueBySupplierRows,
+    });
   } catch (err) {
     console.error("getInventoryReport error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -385,7 +562,14 @@ export const getInventoryReport = async (req, res) => {
  *  =========================== */
 export const getUserPerformance = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const {
+      from,
+      to,
+      page = "1",
+      limit = "25",
+      sortBy = "revenue", // "name" | "orders" | "revenue" | "aov"
+      sortDir = "desc",
+    } = req.query;
     const { start, end } = clampRange(from, to);
 
     const revenueExpr = {
@@ -401,7 +585,18 @@ export const getUserPerformance = async (req, res) => {
       ],
     };
 
-    const data = await Sale.aggregate([
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const sortDirNum = sortDir === "asc" ? 1 : -1;
+
+    // Build sort stage
+    const sortStage = {};
+    if (sortBy === "name") sortStage.name = sortDirNum;
+    else if (sortBy === "orders") sortStage.orders = sortDirNum;
+    else if (sortBy === "aov") sortStage.aov = sortDirNum;
+    else sortStage.revenue = sortDirNum; // default: revenue
+
+    const userPerfAgg = [
       { $match: { saleDate: { $gte: start, $lte: end } } },
       {
         $group: {
@@ -410,7 +605,6 @@ export const getUserPerformance = async (req, res) => {
           revenue: { $sum: revenueExpr },
         },
       },
-      { $sort: { revenue: -1 } },
       {
         $lookup: {
           from: "users",
@@ -436,14 +630,38 @@ export const getUserPerformance = async (req, res) => {
           },
         },
       },
-    ]);
+    ];
+
+    // Get total count before pagination
+    const countAgg = [
+      ...userPerfAgg,
+      { $count: "total" },
+    ];
+    const countResult = await Sale.aggregate(countAgg);
+    const total = countResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    userPerfAgg.push({ $sort: sortStage });
+    userPerfAgg.push({ $skip: (pageNum - 1) * limitNum });
+    userPerfAgg.push({ $limit: limitNum });
+
+    const data = await Sale.aggregate(userPerfAgg);
 
     data.forEach((d) => {
       d.revenue = money(d.revenue);
       d.aov = money(d.aov);
     });
 
-    return res.json({ success: true, range: { from: start, to: end }, data });
+    return res.json({
+      success: true,
+      range: { from: start, to: end },
+      data: {
+        rows: data,
+        total,
+        page: pageNum,
+        limit: limitNum,
+      },
+    });
   } catch (err) {
     console.error("getUserPerformance error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -456,12 +674,35 @@ export const getUserPerformance = async (req, res) => {
  *  =========================== */
 export const getProductTrends = async (req, res) => {
   try {
-    const { from, to, limit = 10 } = req.query;
+    const {
+      from,
+      to,
+      // Top products pagination/sorting
+      topPage = "1",
+      topLimit = "10",
+      topSortBy = "qty", // "code" | "name" | "qty" | "revenue"
+      topSortDir = "desc",
+      // Slow movers pagination/sorting
+      slowPage = "1",
+      slowLimit = "10",
+      slowSortBy = "stock", // "code" | "name" | "stock"
+      slowSortDir = "asc",
+    } = req.query;
     const { start, end } = clampRange(from, to);
-    const lim = Math.min(Number(limit) || 10, 50);
 
-    // Top sellers
-    const top = await Sale.aggregate([
+    // Top products with pagination and sorting
+    const topPageNum = Math.max(1, parseInt(topPage, 10) || 1);
+    const topLimitNum = Math.max(1, Math.min(200, parseInt(topLimit, 10) || 10));
+    const topSortDirNum = topSortDir === "asc" ? 1 : -1;
+
+    // Build sort stage for top products
+    const topSortStage = {};
+    if (topSortBy === "code") topSortStage.code = topSortDirNum;
+    else if (topSortBy === "name") topSortStage.name = topSortDirNum;
+    else if (topSortBy === "revenue") topSortStage.revenue = topSortDirNum;
+    else topSortStage.qty = topSortDirNum; // default: qty
+
+    const topAgg = [
       { $match: { saleDate: { $gte: start, $lte: end } } },
       { $unwind: "$products" },
       {
@@ -473,8 +714,6 @@ export const getProductTrends = async (req, res) => {
           },
         },
       },
-      { $sort: { qty: -1 } },
-      { $limit: lim },
       {
         $lookup: {
           from: "products",
@@ -488,35 +727,86 @@ export const getProductTrends = async (req, res) => {
         $project: {
           _id: 0,
           productId: "$product._id",
-          code: "$product.code",
-          name: "$product.name",
+          code: { $ifNull: ["$product.code", ""] },
+          name: { $ifNull: ["$product.name", "(no name)"] },
           qty: 1,
           revenue: 1,
         },
       },
-    ]);
+    ];
 
-    // Slow movers (stock > 0 and sold qty == 0 in range)
+    // Get total count before pagination
+    const topCountAgg = [
+      ...topAgg,
+      { $count: "total" },
+    ];
+    const topCountResult = await Sale.aggregate(topCountAgg);
+    const topTotal = topCountResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    topAgg.push({ $sort: topSortStage });
+    topAgg.push({ $skip: (topPageNum - 1) * topLimitNum });
+    topAgg.push({ $limit: topLimitNum });
+
+    const top = await Sale.aggregate(topAgg);
+
+    // Slow movers with pagination and sorting
+    const slowPageNum = Math.max(1, parseInt(slowPage, 10) || 1);
+    const slowLimitNum = Math.max(1, Math.min(200, parseInt(slowLimit, 10) || 10));
+    const slowSortDirNum = slowSortDir === "asc" ? 1 : -1;
+
+    // Build sort for slow movers
+    const slowSort = {};
+    if (slowSortBy === "code") slowSort.code = slowSortDirNum;
+    else if (slowSortBy === "name") slowSort.name = slowSortDirNum;
+    else slowSort.stock = slowSortDirNum; // default: stock
+
     const soldIds = await Sale.aggregate([
       { $match: { saleDate: { $gte: start, $lte: end } } },
       { $unwind: "$products" },
       { $group: { _id: "$products.product" } },
     ]).then((r) => new Set(r.map((x) => String(x._id))));
-    const slow = await Product.find({
+
+    // Get all slow movers first for count
+    const allSlow = await Product.find({
       isDeleted: false,
       stock: { $gt: 0 },
       _id: { $nin: Array.from(soldIds) },
     })
       .select("_id code name stock")
-      .sort({ stock: 1 })
-      .limit(lim)
       .lean();
+
+    // Sort all slow movers
+    allSlow.sort((a, b) => {
+      const aVal = a[slowSortBy] ?? "";
+      const bVal = b[slowSortBy] ?? "";
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return slowSortDirNum * (aVal - bVal);
+      }
+      return slowSortDirNum * String(aVal).localeCompare(String(bVal));
+    });
+
+    const slowTotal = allSlow.length;
+    const slow = allSlow.slice(
+      (slowPageNum - 1) * slowLimitNum,
+      slowPageNum * slowLimitNum
+    );
 
     return res.json({
       success: true,
       range: { from: start, to: end },
-      top: top.map((t) => ({ ...t, revenue: money(t.revenue) })),
-      slow,
+      top: {
+        rows: top.map((t) => ({ ...t, revenue: money(t.revenue) })),
+        total: topTotal,
+        page: topPageNum,
+        limit: topLimitNum,
+      },
+      slow: {
+        rows: slow,
+        total: slowTotal,
+        page: slowPageNum,
+        limit: slowLimitNum,
+      },
     });
   } catch (err) {
     console.error("getProductTrends error:", err);
@@ -2188,5 +2478,632 @@ export const exportReceivablesCsv = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, error: "Failed to export receivables CSV." });
+  }
+};
+
+/** ===========================
+ *  CUSTOMER PAYMENTS REPORT
+ *  GET /api/reports/customer-payments?from&to&sortBy&sortDir&page&limit
+ *  =========================== */
+export const getCustomerPaymentsReport = async (req, res) => {
+  try {
+    const {
+      from = "",
+      to = "",
+      customerSearch = "",
+      min = "",
+      max = "",
+      sortBy = "date", // "date" | "customerName" | "method"
+      sortDir = "desc",
+      page = "1",
+      limit = "25",
+    } = req.query;
+
+    const qPage = Math.max(1, parseInt(page, 10) || 1);
+    const qLimit = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const qCustomerSearch = String(customerSearch || "").trim();
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+
+    // Build date filter for payment createdAt
+    const paymentDateMatch = {};
+    if (from) {
+      paymentDateMatch.$gte = new Date(from);
+    }
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      paymentDateMatch.$lte = end;
+    }
+
+    // Build customer search filter
+    const customerMatch = {};
+    if (qCustomerSearch) {
+      customerMatch.$or = [
+        { name: { $regex: qCustomerSearch, $options: "i" } },
+        { email: { $regex: qCustomerSearch, $options: "i" } },
+        { phone: { $regex: qCustomerSearch, $options: "i" } },
+      ];
+    }
+
+    // Get all sales with payments, optionally filtered by customer
+    const salesQuery = {};
+    if (qCustomerSearch) {
+      // First find matching customers
+      const matchingCustomers = await Customer.find(customerMatch)
+        .select("_id")
+        .lean();
+      const customerIds = matchingCustomers.map((c) => c._id);
+      if (customerIds.length === 0) {
+        // No matching customers, return empty result
+        return res.json({
+          success: true,
+          page: qPage,
+          limit: qLimit,
+          total: 0,
+          rows: [],
+          summary: {
+            totalOutstandingBalance: 0,
+            totalPayments: 0,
+            totalAdjustments: 0,
+          },
+        });
+      }
+      salesQuery.customer = { $in: customerIds };
+    }
+
+    const sales = await Sale.find(salesQuery)
+      .populate({ path: "customer", select: "name email phone" })
+      .select("saleId saleDate createdAt customer payments")
+      .lean();
+
+    // Flatten all payments from all sales
+    const rows = [];
+    for (const sale of sales) {
+      if (sale.payments && Array.isArray(sale.payments)) {
+        for (const payment of sale.payments) {
+          // Apply date filter if provided
+          if (from || to) {
+            const paymentDate = payment.createdAt
+              ? new Date(payment.createdAt)
+              : null;
+            if (paymentDate) {
+              if (from && paymentDate < paymentDateMatch.$gte) continue;
+              if (to && paymentDate > paymentDateMatch.$lte) continue;
+            }
+          }
+
+          rows.push({
+            customerId: sale.customer?._id || null,
+            customerName: sale.customer?.name || "—",
+            saleId: sale.saleId,
+            saleObjectId: sale._id,
+            saleDate: sale.saleDate || sale.createdAt,
+            amount: Number(payment.amount || 0),
+            type: payment.type || "payment",
+            note: payment.note || "",
+            method: payment.method || null,
+            chequeNumber: payment.chequeNumber || null,
+            chequeDate: payment.chequeDate || null,
+            chequeBank: payment.chequeBank || null,
+            chequeStatus: payment.chequeStatus || null,
+            createdAt: payment.createdAt,
+            createdBy: payment.createdBy,
+          });
+        }
+      }
+    }
+
+    // Filter by amount range
+    if (qMin !== null || qMax !== null) {
+      const filtered = rows.filter((r) => {
+        const amt = Number(r.amount || 0);
+        if (qMin !== null && amt < qMin) return false;
+        if (qMax !== null && amt > qMax) return false;
+        return true;
+      });
+      rows.length = 0;
+      rows.push(...filtered);
+    }
+
+    // Sort
+    const dir = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortBy === "customerName") {
+        return dir * String(a.customerName || "").localeCompare(String(b.customerName || ""));
+      } else if (sortBy === "method") {
+        return dir * String(a.method || "").localeCompare(String(b.method || ""));
+      } else {
+        // Default: date (createdAt)
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dir * (dateA - dateB);
+      }
+    });
+
+    // Pagination
+    const total = rows.length;
+    const paginatedRows = rows.slice((qPage - 1) * qLimit, qPage * qLimit);
+
+    // Calculate totals (all customers)
+    let totalOutstandingBalance = 0;
+    let totalPayments = 0;
+    let totalAdjustments = 0;
+
+    // Get all sales to calculate outstanding balance
+    const allSales = await Sale.find({})
+      .select("amountDue")
+      .lean();
+    totalOutstandingBalance = allSales.reduce(
+      (sum, s) => sum + Number(s.amountDue || 0),
+      0
+    );
+
+    // Calculate from payment rows
+    totalPayments = rows
+      .filter((p) => p.type === "payment")
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    totalAdjustments = rows
+      .filter((p) => p.type === "adjustment")
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    res.json({
+      success: true,
+      page: qPage,
+      limit: qLimit,
+      total,
+      rows: paginatedRows,
+      summary: {
+        totalOutstandingBalance,
+        totalPayments,
+        totalAdjustments,
+      },
+    });
+  } catch (err) {
+    console.error("getCustomerPaymentsReport error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to load customer payments report.",
+    });
+  }
+};
+
+export const exportCustomerPaymentsCsv = async (req, res) => {
+  try {
+    const {
+      from = "",
+      to = "",
+      customerSearch = "",
+      min = "",
+      max = "",
+      sortBy = "date",
+      sortDir = "desc",
+    } = req.query;
+
+    const qCustomerSearch = String(customerSearch || "").trim();
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+
+    // Build date filter
+    const paymentDateMatch = {};
+    if (from) {
+      paymentDateMatch.$gte = new Date(from);
+    }
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      paymentDateMatch.$lte = end;
+    }
+
+    // Build customer search filter
+    const salesQuery = {};
+    if (qCustomerSearch) {
+      const customerMatch = {
+        $or: [
+          { name: { $regex: qCustomerSearch, $options: "i" } },
+          { email: { $regex: qCustomerSearch, $options: "i" } },
+          { phone: { $regex: qCustomerSearch, $options: "i" } },
+        ],
+      };
+      const matchingCustomers = await Customer.find(customerMatch)
+        .select("_id")
+        .lean();
+      const customerIds = matchingCustomers.map((c) => c._id);
+      if (customerIds.length === 0) {
+        // No matching customers, return empty CSV
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="customer_payments_${(from || "").slice(0, 10)}_${(
+            to || ""
+          ).slice(0, 10)}.csv"`
+        );
+        return res.send("Customer Name,Sale ID,Date,Amount,Type,Method,Cheque Number,Cheque Bank,Cheque Status,Note\n");
+      }
+      salesQuery.customer = { $in: customerIds };
+    }
+
+    // Get all sales with payments
+    const sales = await Sale.find(salesQuery)
+      .populate({ path: "customer", select: "name email phone" })
+      .select("saleId saleDate createdAt customer payments")
+      .lean();
+
+    // Flatten all payments
+    const rows = [];
+    for (const sale of sales) {
+      if (sale.payments && Array.isArray(sale.payments)) {
+        for (const payment of sale.payments) {
+          if (from || to) {
+            const paymentDate = payment.createdAt
+              ? new Date(payment.createdAt)
+              : null;
+            if (paymentDate) {
+              if (from && paymentDate < paymentDateMatch.$gte) continue;
+              if (to && paymentDate > paymentDateMatch.$lte) continue;
+            }
+          }
+
+          rows.push({
+            customerName: sale.customer?.name || "—",
+            saleId: sale.saleId,
+            date: payment.createdAt
+              ? new Date(payment.createdAt).toLocaleString("en-LK")
+              : "—",
+            amount: Number(payment.amount || 0),
+            type: payment.type || "payment",
+            method: payment.method || "—",
+            chequeNumber: payment.chequeNumber || "—",
+            chequeBank: payment.chequeBank || "—",
+            chequeStatus: payment.chequeStatus || "—",
+            note: payment.note || "",
+          });
+        }
+      }
+    }
+
+    // Filter by amount range
+    if (qMin !== null || qMax !== null) {
+      const filtered = rows.filter((r) => {
+        const amt = Number(r.amount || 0);
+        if (qMin !== null && amt < qMin) return false;
+        if (qMax !== null && amt > qMax) return false;
+        return true;
+      });
+      rows.length = 0;
+      rows.push(...filtered);
+    }
+
+    // Sort
+    const dir = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortBy === "customerName") {
+        return dir * String(a.customerName || "").localeCompare(String(b.customerName || ""));
+      } else if (sortBy === "method") {
+        return dir * String(a.method || "").localeCompare(String(b.method || ""));
+      } else {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dir * (dateA - dateB);
+      }
+    });
+
+    // CSV headers
+    const headers = [
+      "Customer Name",
+      "Sale ID",
+      "Date",
+      "Amount",
+      "Type",
+      "Method",
+      "Cheque Number",
+      "Cheque Bank",
+      "Cheque Status",
+      "Note",
+    ];
+
+    // Build CSV
+    let csv = headers.join(",") + "\n";
+    for (const row of rows) {
+      const escape = (v) => {
+        const s = String(v || "");
+        if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+          return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+      };
+      csv += [
+        escape(row.customerName),
+        escape(row.saleId),
+        escape(row.date),
+        escape(row.amount),
+        escape(row.type),
+        escape(row.method),
+        escape(row.chequeNumber),
+        escape(row.chequeBank),
+        escape(row.chequeStatus),
+        escape(row.note),
+      ].join(",") + "\n";
+    }
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="customer_payments_${(from || "").slice(0, 10)}_${(
+        to || ""
+      ).slice(0, 10)}.csv"`
+    );
+    return res.send(csv);
+  } catch (err) {
+    console.error("exportCustomerPaymentsCsv error:", err);
+    return res
+      .status(500)
+      .json({ success: false, error: "Failed to export customer payments CSV." });
+  }
+};
+
+export const exportCustomerPaymentsPdf = async (req, res) => {
+  try {
+    const {
+      from = "",
+      to = "",
+      customerSearch = "",
+      min = "",
+      max = "",
+      sortBy = "date",
+      sortDir = "desc",
+    } = req.query;
+
+    const qCustomerSearch = String(customerSearch || "").trim();
+    const qMin = min !== "" ? Number(min) : null;
+    const qMax = max !== "" ? Number(max) : null;
+
+    // Get business info
+    const businessInfo = await getBusinessInfo();
+
+    // Build date filter
+    const paymentDateMatch = {};
+    if (from) {
+      paymentDateMatch.$gte = new Date(from);
+    }
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      paymentDateMatch.$lte = end;
+    }
+
+    // Build customer search filter
+    const salesQuery = {};
+    if (qCustomerSearch) {
+      const customerMatch = {
+        $or: [
+          { name: { $regex: qCustomerSearch, $options: "i" } },
+          { email: { $regex: qCustomerSearch, $options: "i" } },
+          { phone: { $regex: qCustomerSearch, $options: "i" } },
+        ],
+      };
+      const matchingCustomers = await Customer.find(customerMatch)
+        .select("_id")
+        .lean();
+      const customerIds = matchingCustomers.map((c) => c._id);
+      if (customerIds.length === 0) {
+        // No matching customers, return empty PDF
+        const doc = pipeDoc(
+          res,
+          `customer_payments_${new Date().toISOString().slice(0, 10)}.pdf`
+        );
+        addBusinessHeader(doc, businessInfo);
+        doc.fontSize(16).text("Customer Payments Report", { align: "left" }).moveDown(0.3);
+        doc.fontSize(10).text("No payment history found for the selected customer.");
+        doc.end();
+        return;
+      }
+      salesQuery.customer = { $in: customerIds };
+    }
+
+    // Get all sales with payments
+    const sales = await Sale.find(salesQuery)
+      .populate({ path: "customer", select: "name email phone" })
+      .select("saleId saleDate createdAt customer payments amountDue")
+      .lean();
+
+    // Flatten all payments
+    const rows = [];
+    let totalOutstandingBalance = 0;
+    for (const sale of sales) {
+      totalOutstandingBalance += Number(sale.amountDue || 0);
+      if (sale.payments && Array.isArray(sale.payments)) {
+        for (const payment of sale.payments) {
+          if (from || to) {
+            const paymentDate = payment.createdAt
+              ? new Date(payment.createdAt)
+              : null;
+            if (paymentDate) {
+              if (from && paymentDate < paymentDateMatch.$gte) continue;
+              if (to && paymentDate > paymentDateMatch.$lte) continue;
+            }
+          }
+
+          // Format date without time for PDF
+          const paymentDate = payment.createdAt ? new Date(payment.createdAt) : null;
+          const dateStr = paymentDate && !isNaN(paymentDate.getTime())
+            ? paymentDate.toLocaleDateString("en-LK", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                timeZone: "Asia/Colombo",
+              })
+            : "—";
+
+          rows.push({
+            customerName: sale.customer?.name || "—",
+            saleId: sale.saleId,
+            date: dateStr,
+            amount: Number(payment.amount || 0),
+            type: payment.type || "payment",
+            method: payment.method || "—",
+            chequeInfo:
+              payment.method === "cheque" && payment.chequeNumber
+                ? `${payment.chequeNumber}${payment.chequeBank ? ` / ${payment.chequeBank}` : ""}${payment.chequeStatus ? ` (${payment.chequeStatus})` : ""}`
+                : "—",
+            note: payment.note || "",
+          });
+        }
+      }
+    }
+
+    // Filter by amount range
+    if (qMin !== null || qMax !== null) {
+      const filtered = rows.filter((r) => {
+        const amt = Number(r.amount || 0);
+        if (qMin !== null && amt < qMin) return false;
+        if (qMax !== null && amt > qMax) return false;
+        return true;
+      });
+      rows.length = 0;
+      rows.push(...filtered);
+    }
+
+    // Sort
+    const dir = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortBy === "customerName") {
+        return dir * String(a.customerName || "").localeCompare(String(b.customerName || ""));
+      } else if (sortBy === "method") {
+        return dir * String(a.method || "").localeCompare(String(b.method || ""));
+      } else {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dir * (dateA - dateB);
+      }
+    });
+
+    // Calculate totals
+    const totalPayments = rows
+      .filter((p) => p.type === "payment")
+      .reduce((sum, p) => sum + p.amount, 0);
+    const totalAdjustments = rows
+      .filter((p) => p.type === "adjustment")
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    // PDF
+    const doc = pipeDoc(
+      res,
+      `customer_payments_${new Date().toISOString().slice(0, 10)}.pdf`
+    );
+
+    // Add business header
+    addBusinessHeader(doc, businessInfo);
+
+    doc.fontSize(16).text("Customer Payments Report", { align: "left" }).moveDown(0.3);
+    doc
+      .fontSize(10)
+      .text(
+        `Generated: ${new Date().toLocaleString("en-LK", {
+          timeZone: "Asia/Colombo",
+        })}`
+      );
+    if (from || to) {
+      doc.text(`Date Range: ${from || "—"} to ${to || "—"}`);
+    }
+    doc.moveDown(0.8);
+
+    // Summary
+    doc.fontSize(12).text("Summary", { underline: true }).moveDown(0.3);
+    doc.fontSize(10);
+    doc.text(`Total Outstanding Balance: Rs. ${totalOutstandingBalance.toFixed(2)}`);
+    doc.text(`Total Payments: Rs. ${totalPayments.toFixed(2)}`);
+    doc.text(`Total Adjustments: Rs. ${totalAdjustments.toFixed(2)}`);
+    doc.moveDown(0.8);
+
+    // Table
+    doc.fontSize(12).text("Payment History", { underline: true }).moveDown(0.3);
+    doc.fontSize(9);
+
+    if (rows.length === 0) {
+      doc.text("No payment history found.");
+    } else {
+      // Table headers (without Note column)
+      const headers = [
+        "Customer",
+        "Sale ID",
+        "Date",
+        "Amount",
+        "Type",
+        "Method",
+        "Cheque Info",
+      ];
+      // Adjusted column widths - increased Sale ID width to show fully
+      const colWidths = [85, 90, 75, 65, 45, 50, 90];
+      let y = doc.y;
+
+      // Header row
+      doc.font("Helvetica-Bold");
+      let x = 50;
+      headers.forEach((h, i) => {
+        doc.text(h, x, y, { width: colWidths[i], align: "left" });
+        x += colWidths[i];
+      });
+      y += 15;
+      doc.moveTo(50, y).lineTo(505, y).stroke();
+      y += 5;
+
+      // Data rows
+      doc.font("Helvetica");
+      doc.fontSize(8); // Slightly smaller font to fit better
+      for (const row of rows) {
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+          // Redraw header on new page
+          doc.font("Helvetica-Bold");
+          doc.fontSize(9);
+          x = 50;
+          headers.forEach((h, i) => {
+            doc.text(h, x, y, { width: colWidths[i], align: "left" });
+            x += colWidths[i];
+          });
+          y += 15;
+          doc.moveTo(50, y).lineTo(505, y).stroke();
+          y += 5;
+          doc.font("Helvetica");
+          doc.fontSize(8);
+        }
+        x = 50;
+        
+        // Truncate long values to prevent overflow (but not Sale ID - show fully)
+        const truncate = (str, maxLen) => {
+          if (!str || str === "—") return "—";
+          const s = String(str);
+          return s.length > maxLen ? s.substring(0, maxLen - 3) + "..." : s;
+        };
+        
+        const values = [
+          truncate(row.customerName, 18),
+          row.saleId || "—", // Show Sale ID fully without truncation
+          row.date || "—", // Date is already formatted without time
+          `Rs. ${row.amount.toFixed(2)}`,
+          row.type || "—",
+          row.method || "—",
+          truncate(row.chequeInfo, 18),
+        ];
+        values.forEach((v, i) => {
+          doc.text(String(v || "—"), x, y, { width: colWidths[i], align: "left" });
+          x += colWidths[i];
+        });
+        y += 12;
+      }
+    }
+
+    doc.end();
+  } catch (err) {
+    console.error("exportCustomerPaymentsPdf error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to export customer payments PDF.",
+      });
+    }
   }
 };

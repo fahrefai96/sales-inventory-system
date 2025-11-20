@@ -29,10 +29,50 @@ export const createBrand = async (req, res) => {
   }
 };
 
-export const listBrands = async (_req, res) => {
+export const listBrands = async (req, res) => {
   try {
-    const brands = await Brand.find().sort({ name: 1 });
-    return res.json({ success: true, brands });
+    const {
+      search = "",
+      page = "1",
+      limit = "25",
+      sortBy = "name", // "name" | "active" | "createdAt"
+      sortDir = "asc",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const sortDirNum = sortDir === "asc" ? 1 : -1;
+
+    // Build query
+    const q = {};
+    if (search && search.trim()) {
+      q.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    // Build sort
+    const sort = {};
+    if (sortBy === "active") sort.active = sortDirNum;
+    else if (sortBy === "createdAt") sort.createdAt = sortDirNum;
+    else sort.name = sortDirNum; // default: name
+
+    // Get total count
+    const total = await Brand.countDocuments(q);
+
+    // Get paginated results
+    const skip = (pageNum - 1) * limitNum;
+    const brands = await Brand.find(q)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    return res.json({
+      success: true,
+      brands,
+      total,
+      page: pageNum,
+      limit: limitNum,
+    });
   } catch (err) {
     console.error("listBrands error:", err);
     return res.status(500).json({ success: false, error: "Server error" });

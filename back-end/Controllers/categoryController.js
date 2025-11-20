@@ -58,8 +58,47 @@ const addCategory = async (req, res) => {
 
 const getCategorys = async (req, res) => {
   try {
-    const categories = await Category.find();
-    return res.status(200).json({ success: true, categories });
+    const {
+      search = "",
+      page = "1",
+      limit = "25",
+      sortBy = "name", // "name" | "createdAt"
+      sortDir = "asc",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const sortDirNum = sortDir === "asc" ? 1 : -1;
+
+    // Build query
+    const q = {};
+    if (search && search.trim()) {
+      q.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    // Build sort
+    const sort = {};
+    if (sortBy === "createdAt") sort.createdAt = sortDirNum;
+    else sort.name = sortDirNum; // default: name
+
+    // Get total count
+    const total = await Category.countDocuments(q);
+
+    // Get paginated results
+    const skip = (pageNum - 1) * limitNum;
+    const categories = await Category.find(q)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      categories,
+      total,
+      page: pageNum,
+      limit: limitNum,
+    });
   } catch (error) {
     return res
       .status(500)

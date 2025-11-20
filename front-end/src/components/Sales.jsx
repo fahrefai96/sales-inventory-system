@@ -1500,7 +1500,7 @@ const Sales = () => {
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {editingSaleId ? "Edit Sale" : "Add Sale"}
+                  {editingSaleId ? "Edit Sale" : "Add New Sale"}
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
                   Select customer, products, and quantities.

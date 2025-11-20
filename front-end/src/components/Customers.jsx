@@ -388,15 +388,15 @@ const Customers = () => {
       fetchReceivables(customerId),
       fetchCustomerSales({
         customerId,
-        status: "pending",
-        page: pendingPage,
-        limit: pendingLimit,
+          status: "pending",
+          page: pendingPage,
+          limit: pendingLimit,
       }),
       fetchCustomerSales({
         customerId,
-        status: "paid",
-        page: paidPage,
-        limit: paidLimit,
+          status: "paid",
+          page: paidPage,
+          limit: paidLimit,
       }),
       fetchCustomerPayments(customerId), // Refresh payment history if on Payments tab
     ]);
@@ -819,13 +819,13 @@ const Customers = () => {
                     </td>
                     <td className={`${dens.cell} text-sm text-gray-700`}>
                       <div className="flex flex-wrap gap-3">
-                        {/* Order: Purchases → Payments → Edit → Delete */}
+                        {/* Order: Orders → Payments → Edit → Delete */}
                         <button
                           onClick={() => fetchCustomerPurchases(c._id)}
                           className="text-emerald-700 hover:text-emerald-900 font-medium"
-                          title="View purchases"
+                          title="View orders"
                         >
-                          Purchases
+                          Orders
                         </button>
                         <button
                           onClick={() => openPaymentsTab(c._id)}
@@ -1128,7 +1128,7 @@ const Customers = () => {
                     }
                   }}
                 >
-                  Purchases
+                  Orders
                 </button>
                 <button
                   className={`px-4 py-2 text-sm font-medium ${
@@ -1149,7 +1149,7 @@ const Customers = () => {
               {profileTab === "purchases" ? (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Purchase History
+                    Recent Order History
                   </h3>
                   {profileLoading ? (
                     <div className="py-6 text-center text-gray-500">
@@ -1231,7 +1231,7 @@ const Customers = () => {
                     <div className="rounded bg-white border border-gray-200 p-3">
                       <div className="text-xs text-gray-500 uppercase">
                         Total Adjustments
-                      </div>
+                  </div>
                       <div className="text-xl font-semibold">
                         {paymentHistoryLoading
                           ? "…"
@@ -1245,7 +1245,7 @@ const Customers = () => {
 
                   {/* Payment History Table */}
                   <h3 className="text-base font-semibold text-gray-900 mt-4 mb-2">
-                    Payment History
+                    Recent Payment History
                   </h3>
                   <div className="overflow-hidden rounded border border-gray-200">
                     <div className="max-h-[60vh] overflow-auto">
@@ -1299,7 +1299,7 @@ const Customers = () => {
                                     >
                                       {p.type || "payment"}
                                     </span>
-                                  </td>
+                              </td>
                                   <td className="px-4 py-3 text-sm text-gray-700">
                                     {p.method ? (
                                       <span

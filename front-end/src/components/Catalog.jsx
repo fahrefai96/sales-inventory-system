@@ -167,9 +167,12 @@ export default function Catalog() {
   const [sizeOptionsInput, setSizeOptionsInput] = useState(""); // CSV for custom
   const [catDrawerOpen, setCatDrawerOpen] = useState(false);
 
-  // Pagination (categories)
+  // Pagination and sorting (categories)
   const [catPageSize, setCatPageSize] = useState(25);
   const [catPage, setCatPage] = useState(1);
+  const [catSortBy, setCatSortBy] = useState("name");
+  const [catSortDir, setCatSortDir] = useState("asc");
+  const [catTotal, setCatTotal] = useState(0);
 
   // ===== Brands state =====
   const [brands, setBrands] = useState([]);
@@ -181,9 +184,12 @@ export default function Catalog() {
   const [brandActive, setBrandActive] = useState(true);
   const [brandDrawerOpen, setBrandDrawerOpen] = useState(false);
 
-  // Pagination (brands)
+  // Pagination and sorting (brands)
   const [brandPageSize, setBrandPageSize] = useState(25);
   const [brandPage, setBrandPage] = useState(1);
+  const [brandSortBy, setBrandSortBy] = useState("name");
+  const [brandSortDir, setBrandSortDir] = useState("asc");
+  const [brandTotal, setBrandTotal] = useState(0);
 
   // ===== Role (admin vs staff) =====
   let isAdmin = false;
@@ -201,9 +207,17 @@ export default function Catalog() {
   const fetchCategories = async () => {
     setCatLoading(true);
     try {
-      const { data } = await api.get("/category");
+      const params = new URLSearchParams();
+      if (catSearch.trim()) params.set("search", catSearch.trim());
+      params.set("page", String(catPage));
+      params.set("limit", String(catPageSize));
+      params.set("sortBy", catSortBy);
+      params.set("sortDir", catSortDir);
+
+      const { data } = await api.get(`/category?${params.toString()}`);
       if (data.success) {
         setCategories(data.categories || []);
+        setCatTotal(data.total || 0);
       }
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
@@ -215,9 +229,17 @@ export default function Catalog() {
   const fetchBrands = async () => {
     setBrandLoading(true);
     try {
-      const { data } = await api.get("/brands");
+      const params = new URLSearchParams();
+      if (brandSearch.trim()) params.set("search", brandSearch.trim());
+      params.set("page", String(brandPage));
+      params.set("limit", String(brandPageSize));
+      params.set("sortBy", brandSortBy);
+      params.set("sortDir", brandSortDir);
+
+      const { data } = await api.get(`/brands?${params.toString()}`);
       if (data.success) {
         setBrands(data.brands || []);
+        setBrandTotal(data.total || 0);
       }
     } catch (err) {
       alert(err?.response?.data?.error || err.message);
@@ -228,8 +250,11 @@ export default function Catalog() {
 
   useEffect(() => {
     fetchCategories();
+  }, [catPage, catPageSize, catSortBy, catSortDir, catSearch]);
+
+  useEffect(() => {
     fetchBrands();
-  }, []);
+  }, [brandPage, brandPageSize, brandSortBy, brandSortDir, brandSearch]);
 
   // ===== search debounce per tab =====
   const catDebounceRef = useRef(null);
@@ -237,7 +262,10 @@ export default function Catalog() {
     const v = e.target.value;
     setCatSearch(v);
     if (catDebounceRef.current) clearTimeout(catDebounceRef.current);
-    catDebounceRef.current = setTimeout(() => setCatSearch((p) => p), 250);
+    catDebounceRef.current = setTimeout(() => {
+      setCatPage(1);
+      setCatSearch(v);
+    }, 500);
   };
 
   const brandDebounceRef = useRef(null);
@@ -245,40 +273,63 @@ export default function Catalog() {
     const v = e.target.value;
     setBrandSearch(v);
     if (brandDebounceRef.current) clearTimeout(brandDebounceRef.current);
-    brandDebounceRef.current = setTimeout(() => setBrandSearch((p) => p), 250);
+    brandDebounceRef.current = setTimeout(() => {
+      setBrandPage(1);
+      setBrandSearch(v);
+    }, 500);
   };
 
-  // ===== derived lists + pagination =====
-  const catFiltered = useMemo(() => {
-    const q = (catSearch || "").toLowerCase().trim();
-    let list = [...categories];
-    if (q) list = list.filter((c) => (c.name || "").toLowerCase().includes(q));
-    return list;
-  }, [categories, catSearch]);
+  // Sort handlers
+  const handleCatSort = (key) => {
+    if (catSortBy === key) {
+      setCatSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setCatSortBy(key);
+      setCatSortDir("asc");
+    }
+    setCatPage(1);
+  };
 
-  const brandFiltered = useMemo(() => {
-    const q = (brandSearch || "").toLowerCase().trim();
-    let list = [...brands];
-    if (q) list = list.filter((b) => (b.name || "").toLowerCase().includes(q));
-    return list;
-  }, [brands, brandSearch]);
+  const handleBrandSort = (key) => {
+    if (brandSortBy === key) {
+      setBrandSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setBrandSortBy(key);
+      setBrandSortDir("asc");
+    }
+    setBrandPage(1);
+  };
 
-  // reset page on dependencies
-  useEffect(() => setCatPage(1), [catSearch, catPageSize, categories.length]);
-  useEffect(() => setBrandPage(1), [brandSearch, brandPageSize, brands.length]);
+  // Sortable table header component
+  const Th = ({ label, sortKey, sortBy, sortDir, setSort, align = "left" }) => {
+    const isActive = sortBy === sortKey;
+    return (
+      <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800 ${align === "right" ? "text-right" : "text-left"}`}>
+        <button
+          type="button"
+          className={`flex items-center gap-1 ${
+            isActive ? "text-gray-900" : "text-gray-600"
+          } ${align === "right" ? "ml-auto" : ""}`}
+          onClick={() => setSort(sortKey)}
+          title={`Sort by ${label}`}
+        >
+          {label}
+          <span className="text-[10px]">
+            {isActive ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
 
-  // page slices
-  const catTotal = catFiltered.length;
+  // Pagination calculations
   const catTotalPages = Math.max(1, Math.ceil(catTotal / catPageSize));
-  const catStart = (catPage - 1) * catPageSize;
-  const catEnd = Math.min(catStart + catPageSize, catTotal);
-  const catPaged = catFiltered.slice(catStart, catEnd);
+  const catStart = catTotal === 0 ? 0 : (catPage - 1) * catPageSize + 1;
+  const catEnd = Math.min(catPage * catPageSize, catTotal);
 
-  const brandTotal = brandFiltered.length;
   const brandTotalPages = Math.max(1, Math.ceil(brandTotal / brandPageSize));
-  const brandStart = (brandPage - 1) * brandPageSize;
-  const brandEnd = Math.min(brandStart + brandPageSize, brandTotal);
-  const brandPaged = brandFiltered.slice(brandStart, brandEnd);
+  const brandStart = brandTotal === 0 ? 0 : (brandPage - 1) * brandPageSize + 1;
+  const brandEnd = Math.min(brandPage * brandPageSize, brandTotal);
 
   // ===== helpers =====
   const sizePreview = useMemo(() => {
@@ -460,7 +511,7 @@ export default function Catalog() {
 
   // ===== Export & Print handlers =====
   const handleExportCsv = () => {
-    const data = tab === "categories" ? catFiltered : brandFiltered;
+    const data = tab === "categories" ? categories : brands;
     const headers = tab === "categories" 
       ? ["Name", "Sizes"]
       : ["Name", "Active"];
@@ -518,7 +569,7 @@ export default function Catalog() {
   };
 
   const handlePrint = () => {
-    const data = tab === "categories" ? catFiltered : brandFiltered;
+    const data = tab === "categories" ? categories : brands;
     const title = tab === "categories" ? "Categories" : "Brands";
     const searchQuery = tab === "categories" ? catSearch : brandSearch;
 
@@ -769,7 +820,7 @@ export default function Catalog() {
             <input
               type="text"
               placeholder="Search categories…"
-              defaultValue={catSearch}
+              value={catSearch}
               onChange={onCatSearchChange}
               className="flex-1 sm:max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -818,7 +869,7 @@ export default function Catalog() {
             <input
               type="text"
               placeholder="Search brands…"
-              defaultValue={brandSearch}
+              value={brandSearch}
               onChange={onBrandSearchChange}
               className="flex-1 sm:max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -870,9 +921,13 @@ export default function Catalog() {
             <table className="min-w-full table-auto">
               <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr className="text-left">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                    Name
-                  </th>
+                  <Th
+                    label="Name"
+                    sortKey="name"
+                    sortBy={catSortBy}
+                    sortDir={catSortDir}
+                    setSort={handleCatSort}
+                  />
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                     Sizes
                   </th>
@@ -884,8 +939,8 @@ export default function Catalog() {
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {catLoading ? (
                   <SkeletonRows rows={catPageSize} dens={dens} cols={3} />
-                ) : catPaged.length > 0 ? (
-                  catPaged.map((c) => (
+                ) : categories.length > 0 ? (
+                  categories.map((c) => (
                     <tr key={c._id} className={`hover:bg-gray-50 ${dens.row}`}>
                       <td className={`${dens.cell} text-sm text-gray-700`}>
                         {c.name}
@@ -940,12 +995,20 @@ export default function Catalog() {
             <table className="min-w-full table-auto">
               <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr className="text-left">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                    Active
-                  </th>
+                  <Th
+                    label="Name"
+                    sortKey="name"
+                    sortBy={brandSortBy}
+                    sortDir={brandSortDir}
+                    setSort={handleBrandSort}
+                  />
+                  <Th
+                    label="Active"
+                    sortKey="active"
+                    sortBy={brandSortBy}
+                    sortDir={brandSortDir}
+                    setSort={handleBrandSort}
+                  />
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                     Action
                   </th>
@@ -954,8 +1017,8 @@ export default function Catalog() {
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {brandLoading ? (
                   <SkeletonRows rows={brandPageSize} dens={dens} cols={3} />
-                ) : brandPaged.length > 0 ? (
-                  brandPaged.map((b) => (
+                ) : brands.length > 0 ? (
+                  brands.map((b) => (
                     <tr key={b._id} className={`hover:bg-gray-50 ${dens.row}`}>
                       <td className={`${dens.cell} text-sm text-gray-700`}>
                         {b.name}
@@ -1023,22 +1086,28 @@ export default function Catalog() {
             page={catPage}
             setPage={setCatPage}
             totalPages={catTotalPages}
-            start={catStart}
+            start={catStart - 1}
             end={catEnd}
             total={catTotal}
             pageSize={catPageSize}
-            setPageSize={setCatPageSize}
+            setPageSize={(n) => {
+              setCatPageSize(n);
+              setCatPage(1);
+            }}
           />
         ) : (
           <FooterPager
             page={brandPage}
             setPage={setBrandPage}
             totalPages={brandTotalPages}
-            start={brandStart}
+            start={brandStart - 1}
             end={brandEnd}
             total={brandTotal}
             pageSize={brandPageSize}
-            setPageSize={setBrandPageSize}
+            setPageSize={(n) => {
+              setBrandPageSize(n);
+              setBrandPage(1);
+            }}
           />
         )}
       </div>

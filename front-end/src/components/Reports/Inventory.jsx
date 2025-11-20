@@ -163,10 +163,23 @@ export default function Inventory({ density = "comfortable" }) {
   });
   const [data, setData] = useState({
     KPIs: { totalSkus: 0, totalUnits: 0, stockValue: 0 },
-    rows: [],
-    supplierSummary: [],
+    stockStatus: { rows: [], total: 0, page: 1, limit: 25 },
+    supplierSummary: { rows: [], total: 0, page: 1, limit: 10 },
+    stockValueBySupplier: [],
   });
   const [loading, setLoading] = useState(false);
+
+  // Stock Status table pagination and sorting
+  const [stockStatusPage, setStockStatusPage] = useState(1);
+  const [stockStatusLimit, setStockStatusLimit] = useState(25);
+  const [stockStatusSortBy, setStockStatusSortBy] = useState("code");
+  const [stockStatusSortDir, setStockStatusSortDir] = useState("asc");
+
+  // Supplier Summary pagination and sorting
+  const [supplierSummaryPage, setSupplierSummaryPage] = useState(1);
+  const [supplierSummaryLimit, setSupplierSummaryLimit] = useState(10);
+  const [supplierSummarySortBy, setSupplierSummarySortBy] = useState("totalSpent");
+  const [supplierSummarySortDir, setSupplierSummarySortDir] = useState("desc");
 
   useEffect(() => {
     api
@@ -187,6 +200,19 @@ export default function Inventory({ density = "comfortable" }) {
       if (supplier) params.set("supplier", supplier);
       if (range.from) params.set("from", range.from);
       if (range.to) params.set("to", range.to);
+      
+      // Stock Status pagination/sorting
+      params.set("stockStatusPage", String(stockStatusPage));
+      params.set("stockStatusLimit", String(stockStatusLimit));
+      params.set("stockStatusSortBy", stockStatusSortBy);
+      params.set("stockStatusSortDir", stockStatusSortDir);
+      
+      // Supplier Summary pagination/sorting
+      params.set("supplierSummaryPage", String(supplierSummaryPage));
+      params.set("supplierSummaryLimit", String(supplierSummaryLimit));
+      params.set("supplierSummarySortBy", supplierSummarySortBy);
+      params.set("supplierSummarySortDir", supplierSummarySortDir);
+      
       const queryString = params.toString();
       const r = await api.get(
         `/reports/inventory${queryString ? `?${queryString}` : ""}`
@@ -200,18 +226,18 @@ export default function Inventory({ density = "comfortable" }) {
           totalUnits: num(data?.KPIs?.totalUnits),
           stockValue: num(data?.KPIs?.stockValue),
         },
-        rows: Array.isArray(data?.rows) ? data.rows : [],
-        supplierSummary: Array.isArray(data?.supplierSummary)
-          ? data.supplierSummary
-          : [],
+        stockStatus: data?.stockStatus || { rows: [], total: 0, page: 1, limit: 25 },
+        supplierSummary: data?.supplierSummary || { rows: [], total: 0, page: 1, limit: 10 },
+        stockValueBySupplier: Array.isArray(data?.stockValueBySupplier) ? data.stockValueBySupplier : [],
       });
     } catch (err) {
       console.error("Error fetching inventory report:", err);
       // Reset data on error
       setData({
         KPIs: { totalSkus: 0, totalUnits: 0, stockValue: 0 },
-        rows: [],
-        supplierSummary: [],
+        stockStatus: { rows: [], total: 0, page: 1, limit: 25 },
+        supplierSummary: { rows: [], total: 0, page: 1, limit: 10 },
+        stockValueBySupplier: [],
       });
     } finally {
       setLoading(false);
@@ -220,18 +246,30 @@ export default function Inventory({ density = "comfortable" }) {
 
   useEffect(() => {
     fetchData(); // eslint-disable-next-line
-  }, [supplier, range.from, range.to]);
+  }, [
+    supplier,
+    range.from,
+    range.to,
+    stockStatusPage,
+    stockStatusLimit,
+    stockStatusSortBy,
+    stockStatusSortDir,
+    supplierSummaryPage,
+    supplierSummaryLimit,
+    supplierSummarySortBy,
+    supplierSummarySortDir,
+  ]);
 
   // count items at/below reorder threshold (if minStock provided by backend)
   const belowReorder = useMemo(() => {
-    return (data.rows || []).reduce((n, r) => {
+    return (data.stockStatus?.rows || []).reduce((n, r) => {
       const ms = Number.isFinite(Number(r?.minStock))
         ? Number(r.minStock)
         : null;
       const st = Number.isFinite(Number(r?.stock)) ? Number(r.stock) : null;
       return ms != null && st != null && st <= ms ? n + 1 : n;
     }, 0);
-  }, [data.rows]);
+  }, [data.stockStatus?.rows]);
 
   const kpis = useMemo(
     () => [
@@ -243,21 +281,66 @@ export default function Inventory({ density = "comfortable" }) {
     [data, belowReorder]
   );
 
+  // Sort handlers
+  const handleStockStatusSort = (key) => {
+    if (stockStatusSortBy === key) {
+      setStockStatusSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setStockStatusSortBy(key);
+      setStockStatusSortDir("asc");
+    }
+    setStockStatusPage(1);
+  };
+
+  const handleSupplierSummarySort = (key) => {
+    if (supplierSummarySortBy === key) {
+      setSupplierSummarySortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSupplierSummarySortBy(key);
+      setSupplierSummarySortDir("asc");
+    }
+    setSupplierSummaryPage(1);
+  };
+
+  // Sortable table header component
+  const Th = ({ label, sortKey, sortBy, sortDir, setSort, align = "left" }) => {
+    const isActive = sortBy === sortKey;
+    return (
+      <th className={`px-4 py-3 ${align === "right" ? "text-right" : "text-left"}`}>
+        <button
+          type="button"
+          className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
+            isActive ? "text-gray-900" : "text-gray-600"
+          } ${align === "right" ? "ml-auto" : ""}`}
+          onClick={() => setSort(sortKey)}
+          title={`Sort by ${label}`}
+        >
+          {label}
+          <span className="text-[10px]">
+            {isActive ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
   const cols = [
-    { key: "code", title: "Code" },
-    { key: "name", title: "Product" },
-    { key: "supplier", title: "Supplier" },
-    { key: "stock", title: "Stock", align: "right" },
+    { key: "code", title: "Code", sortable: true },
+    { key: "name", title: "Product", sortable: true },
+    { key: "supplier", title: "Supplier", sortable: true },
+    { key: "stock", title: "Stock", align: "right", sortable: true },
     {
       key: "avgCost",
       title: "Avg Cost",
       align: "right",
+      sortable: true,
       render: (v) => Number(v || 0).toFixed(2),
     },
     {
       key: "stockValue",
       title: "Value",
       align: "right",
+      sortable: true,
       render: (v) => Number(v || 0).toFixed(2),
     },
     {
@@ -287,31 +370,20 @@ export default function Inventory({ density = "comfortable" }) {
   ];
 
   const supplierCols = [
-    { key: "supplier", title: "Supplier" },
-    { key: "purchases", title: "Purchases", align: "right", width: "w-28" },
+    { key: "supplier", title: "Supplier", sortable: true },
+    { key: "purchases", title: "Purchases", align: "right", width: "w-28", sortable: true },
     {
       key: "totalSpent",
       title: "Total Spent",
       align: "right",
       width: "w-40",
+      sortable: true,
       render: (v) => Number(v || 0).toFixed(2),
     },
   ];
 
-  // Table data: sum stockValue by supplier
-  const supplierStockTable = useMemo(() => {
-    const map = new Map();
-    for (const r of data.rows) {
-      const key = r.supplier || "-";
-      const val = num(r.stockValue);
-      map.set(key, (map.get(key) || 0) + val);
-    }
-    return Array.from(map, ([supplier, stockValue]) => ({
-      supplier,
-      stockValue,
-    }))
-      .sort((a, b) => b.stockValue - a.stockValue);
-  }, [data.rows]);
+  // Stock Value by Supplier - now comes from backend
+  const supplierStockTable = data.stockValueBySupplier || [];
 
   const supplierStockCols = [
     { key: "supplier", title: "Supplier" },
@@ -375,20 +447,222 @@ export default function Inventory({ density = "comfortable" }) {
 
       {loading && <div className={`${dens.text} text-gray-500`}>Loading…</div>}
 
+      {/* Stock Status Table */}
       <div className="mb-6">
-        <div className={`${dens.text} font-medium mb-2`}>Stock Status</div>
-        <ReportTable density={density} columns={cols} rows={data.rows} empty="No products" />
+        <div className="flex items-center justify-between mb-2">
+          <div className={`${dens.text} font-medium`}>Stock Status</div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Rows:</span>
+            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+              {[25, 50, 100].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setStockStatusLimit(n);
+                    setStockStatusPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm ${
+                    stockStatusLimit === n ? "bg-gray-100 font-medium" : "bg-white"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="max-h-[50vh] overflow-auto">
+            <table className="min-w-full table-auto">
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr className="text-gray-800">
+                  {cols.map((col) =>
+                    col.sortable ? (
+                      <Th
+                        key={col.key}
+                        label={col.title}
+                        sortKey={col.key}
+                        sortBy={stockStatusSortBy}
+                        sortDir={stockStatusSortDir}
+                        setSort={handleStockStatusSort}
+                        align={col.align || "left"}
+                      />
+                    ) : (
+                      <th
+                        key={col.key}
+                        className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                          col.align === "right" ? "text-right" : "text-left"
+                        }`}
+                      >
+                        {col.title}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+                {loading ? (
+                  <tr>
+                    <td colSpan={cols.length} className="px-6 py-12 text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : data.stockStatus.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={cols.length} className="px-6 py-12 text-center">
+                      No products
+                    </td>
+                  </tr>
+                ) : (
+                  data.stockStatus.rows.map((row, idx) => (
+                    <tr key={row.productId || idx} className="hover:bg-gray-50">
+                      {cols.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`px-4 py-3 ${dens.text} ${
+                            col.align === "right" ? "text-right tabular-nums" : "text-left"
+                          }`}
+                        >
+                          {col.render
+                            ? col.render(row[col.key], row)
+                            : row[col.key] ?? "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm text-gray-500">
+              Showing{" "}
+              {data.stockStatus.total === 0
+                ? 0
+                : (stockStatusPage - 1) * stockStatusLimit + 1}
+              –
+              {Math.min(stockStatusPage * stockStatusLimit, data.stockStatus.total)} of{" "}
+              {data.stockStatus.total}
+            </span>
+            <Pagination
+              page={stockStatusPage}
+              setPage={setStockStatusPage}
+              totalPages={Math.max(1, Math.ceil(data.stockStatus.total / stockStatusLimit))}
+            />
+          </div>
+        </div>
       </div>
 
+      {/* Purchases by Supplier Table */}
       <div className="mb-6">
-        <div className={`${dens.text} font-medium mb-2`}>
-          Purchases by Supplier (Top 10)
+        <div className="flex items-center justify-between mb-2">
+          <div className={`${dens.text} font-medium`}>
+            Purchases by Supplier
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Rows:</span>
+            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+              {[10, 25, 50].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setSupplierSummaryLimit(n);
+                    setSupplierSummaryPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm ${
+                    supplierSummaryLimit === n ? "bg-gray-100 font-medium" : "bg-white"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <ReportTable density={density}
-          columns={supplierCols}
-          rows={data.supplierSummary}
-          empty="No purchase data"
-        />
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="max-h-[50vh] overflow-auto">
+            <table className="min-w-full table-auto">
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr className="text-gray-800">
+                  {supplierCols.map((col) =>
+                    col.sortable ? (
+                      <Th
+                        key={col.key}
+                        label={col.title}
+                        sortKey={col.key}
+                        sortBy={supplierSummarySortBy}
+                        sortDir={supplierSummarySortDir}
+                        setSort={handleSupplierSummarySort}
+                        align={col.align || "left"}
+                      />
+                    ) : (
+                      <th
+                        key={col.key}
+                        className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                          col.align === "right" ? "text-right" : "text-left"
+                        }`}
+                      >
+                        {col.title}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
+                {loading ? (
+                  <tr>
+                    <td colSpan={supplierCols.length} className="px-6 py-12 text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : data.supplierSummary.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={supplierCols.length} className="px-6 py-12 text-center">
+                      No purchase data
+                    </td>
+                  </tr>
+                ) : (
+                  data.supplierSummary.rows.map((row, idx) => (
+                    <tr key={row.supplierId || idx} className="hover:bg-gray-50">
+                      {supplierCols.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`px-4 py-3 ${dens.text} ${
+                            col.align === "right" ? "text-right tabular-nums" : "text-left"
+                          }`}
+                        >
+                          {col.render
+                            ? col.render(row[col.key], row)
+                            : row[col.key] ?? "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm text-gray-500">
+              Showing{" "}
+              {data.supplierSummary.total === 0
+                ? 0
+                : (supplierSummaryPage - 1) * supplierSummaryLimit + 1}
+              –
+              {Math.min(supplierSummaryPage * supplierSummaryLimit, data.supplierSummary.total)} of{" "}
+              {data.supplierSummary.total}
+            </span>
+            <Pagination
+              page={supplierSummaryPage}
+              setPage={setSupplierSummaryPage}
+              totalPages={Math.max(1, Math.ceil(data.supplierSummary.total / supplierSummaryLimit))}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Stock Value by Supplier Table */}
@@ -405,3 +679,99 @@ export default function Inventory({ density = "comfortable" }) {
     </>
   );
 }
+
+// Pagination component
+const Pagination = ({ page, setPage, totalPages }) => {
+  const [jump, setJump] = React.useState(String(page));
+  React.useEffect(() => setJump(String(page)), [page, totalPages]);
+
+  const clamp = (p) => Math.max(1, Math.min(totalPages, p || 1));
+  const go = (p) => setPage(clamp(p));
+
+  const pages = [];
+  const add = (p) => pages.push(p);
+  const addEllipsis = () => pages.push("…");
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) add(i);
+  } else {
+    add(1);
+    if (page > 4) addEllipsis();
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+    for (let i = start; i <= end; i++) add(i);
+    if (page < totalPages - 3) addEllipsis();
+    add(totalPages);
+  }
+
+  const onSubmitJump = (e) => {
+    e.preventDefault();
+    go(Number(jump));
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => go(page - 1)}
+        disabled={page <= 1}
+        className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+        title="Previous"
+      >
+        Prev
+      </button>
+
+      {pages.map((p, idx) =>
+        p === "…" ? (
+          <span key={`e-${idx}`} className="px-2 text-sm text-gray-500">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => go(p)}
+            className={`rounded-md border px-2 py-1 text-sm ${
+              p === page
+                ? "border-blue-600 text-blue-600"
+                : "border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+            title={`Page ${p}`}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        type="button"
+        onClick={() => go(page + 1)}
+        disabled={page >= totalPages}
+        className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+        title="Next"
+      >
+        Next
+      </button>
+
+      <form onSubmit={onSubmitJump} className="flex items-center gap-2 ml-2">
+        <label className="text-sm text-gray-600">Jump to:</label>
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={jump}
+          onChange={(e) => setJump(e.target.value)}
+          className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Jump to page"
+        />
+        <button
+          type="submit"
+          className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Go
+        </button>
+        <span className="text-xs text-gray-500">/ {totalPages}</span>
+      </form>
+    </div>
+  );
+};

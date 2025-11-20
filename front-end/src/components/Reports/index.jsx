@@ -5,14 +5,16 @@ import {
   FiPackage,
   FiTrendingUp,
   FiUsers,
+  FiCreditCard,
 } from "react-icons/fi";
 import Sales from "./Sales.jsx";
 import Inventory from "./Inventory.jsx";
 import Performance from "./Performance.jsx";
 import CustomerBalances from "./CustomerBalances.jsx";
+import CustomerPayments from "./CustomerPayments.jsx";
 
 export default function ReportsIndex() {
-  const [tab, setTab] = React.useState("sales"); // "sales" | "inventory" | "performance" | "balances"
+  const [tab, setTab] = React.useState("sales"); // "sales" | "inventory" | "performance" | "balances" | "payments"
   const [density, setDensity] = React.useState("comfortable");
 
   const baseTab =
@@ -88,12 +90,22 @@ export default function ReportsIndex() {
           <FiUsers className="text-[15px]" />
           <span>Customer Balances</span>
         </button>
+        <button
+          className={`${baseTab} ${
+            tab === "payments" ? activeTab : inactiveTab
+          }`}
+          onClick={() => setTab("payments")}
+        >
+          <FiCreditCard className="text-[15px]" />
+          <span>Customer Payments</span>
+        </button>
       </div>
 
       {tab === "sales" && <Sales density={density} />}
       {tab === "inventory" && <Inventory density={density} />}
       {tab === "performance" && <Performance density={density} />}
       {tab === "balances" && <CustomerBalances density={density} />}
+      {tab === "payments" && <CustomerPayments density={density} />}
     </div>
   );
 }

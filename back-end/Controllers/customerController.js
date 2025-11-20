@@ -148,10 +148,11 @@ export const getCustomerPurchases = async (req, res) => {
         .json({ success: false, error: "Customer not found" });
     }
 
-    // find sales linked to this customer, newest first
+    // find sales linked to this customer, newest first (limit to 10 most recent)
     const purchases = await Sale.find({ customer: id })
       .populate("products.product", "name code price") // product details for each line item
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(10);
 
     return res.json({
       success: true,
@@ -393,7 +394,10 @@ export const getCustomerPayments = async (req, res) => {
     // Sort by createdAt descending (most recent first)
     rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // Compute totals
+    // Limit to 10 most recent payments
+    const recentRows = rows.slice(0, 10);
+
+    // Compute totals (from all payments, not just recent 10)
     const totalPayments = rows
       .filter(p => p.type === "payment")
       .reduce((sum, p) => sum + Number(p.amount || 0), 0);
@@ -405,7 +409,7 @@ export const getCustomerPayments = async (req, res) => {
     return res.json({
       success: true,
       customerId: id,
-      rows,
+      rows: recentRows, // Return only last 10
       totalPayments,
       totalAdjustments,
     });

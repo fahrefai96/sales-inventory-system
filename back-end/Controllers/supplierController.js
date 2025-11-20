@@ -42,8 +42,56 @@ const addSupplier = async (req, res) => {
 // GET /api/supplier
 const getSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find().sort({ createdAt: -1 });
-    return res.status(200).json({ success: true, suppliers });
+    const {
+      search = "",
+      page = "1",
+      limit = "25",
+      sortBy = "createdAt", // "name" | "email" | "phone" | "country" | "createdAt"
+      sortDir = "desc",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
+    const sortDirNum = sortDir === "asc" ? 1 : -1;
+
+    // Build query
+    const q = {};
+    if (search && search.trim()) {
+      q.$or = [
+        { name: { $regex: search.trim(), $options: "i" } },
+        { email: { $regex: search.trim(), $options: "i" } },
+        { phone: { $regex: search.trim(), $options: "i" } },
+        { address: { $regex: search.trim(), $options: "i" } },
+        { country: { $regex: search.trim(), $options: "i" } },
+      ];
+    }
+
+    // Build sort
+    const sort = {};
+    if (sortBy === "name") sort.name = sortDirNum;
+    else if (sortBy === "email") sort.email = sortDirNum;
+    else if (sortBy === "phone") sort.phone = sortDirNum;
+    else if (sortBy === "country") sort.country = sortDirNum;
+    else sort.createdAt = sortDirNum; // default: createdAt
+
+    // Get total count
+    const total = await Supplier.countDocuments(q);
+
+    // Get paginated results
+    const skip = (pageNum - 1) * limitNum;
+    const suppliers = await Supplier.find(q)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      suppliers,
+      total,
+      page: pageNum,
+      limit: limitNum,
+    });
   } catch (error) {
     return res
       .status(500)
@@ -173,6 +221,7 @@ const getSupplierPurchases = async (req, res) => {
 
     const purchases = await Purchase.find({ supplier: id })
       .sort({ invoiceDate: -1, createdAt: -1 })
+      .limit(10)
       .select("invoiceNo invoiceDate status grandTotal items createdAt");
 
     return res.json({
