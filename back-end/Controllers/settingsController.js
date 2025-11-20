@@ -163,3 +163,77 @@ export const updateInventorySettings = async (req, res) => {
   }
 };
 
+// Get sales settings
+export const getSalesSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+
+    // If no settings document exists, create one with defaults including sales section
+    if (!settings) {
+      settings = new Settings({
+        general: {},
+        sales: {
+          defaultPaymentMethod: "choose",
+        },
+      });
+      await settings.save();
+    }
+
+    return res.json({
+      success: true,
+      sales: settings.sales || {
+        defaultPaymentMethod: "choose",
+      },
+    });
+  } catch (error) {
+    console.error("getSalesSettings error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load sales settings.",
+    });
+  }
+};
+
+// Update sales settings
+export const updateSalesSettings = async (req, res) => {
+  try {
+    const { defaultPaymentMethod } = req.body;
+
+    // Find the single settings document, or create if it doesn't exist
+    let settings = await Settings.findOne();
+
+    if (!settings) {
+      settings = new Settings({
+        general: {},
+        sales: {
+          defaultPaymentMethod: "choose",
+        },
+      });
+    }
+
+    // Update only the sales section
+    if (!settings.sales) {
+      settings.sales = {
+        defaultPaymentMethod: "choose",
+      };
+    }
+
+    if (defaultPaymentMethod !== undefined && ["choose", "cash", "cheque"].includes(defaultPaymentMethod)) {
+      settings.sales.defaultPaymentMethod = defaultPaymentMethod;
+    }
+
+    await settings.save();
+
+    return res.json({
+      success: true,
+      sales: settings.sales,
+    });
+  } catch (error) {
+    console.error("updateSalesSettings error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update sales settings.",
+    });
+  }
+};
+

@@ -139,6 +139,7 @@ const getSales = async (req, res) => {
       page = 1, // page number (1-based)
       limit = 25, // page size
       search, // unified search (saleId / customerName)
+      status, // payment status filter: 'paid' | 'partial' | 'unpaid'
     } = req.query || {};
 
     const q = {};
@@ -252,6 +253,11 @@ const getSales = async (req, res) => {
       if (!Number.isNaN(minNum)) amt.$gte = minNum;
       if (!Number.isNaN(maxNum)) amt.$lte = maxNum;
       q.discountedAmount = amt;
+    }
+
+    // payment status filter
+    if (status && ["paid", "partial", "unpaid"].includes(status)) {
+      q.paymentStatus = status;
     }
 
     // sorting (whitelist)
@@ -661,7 +667,7 @@ const getSaleInvoicePdf = async (req, res) => {
 const recordPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amount, note } = req.body || {};
+    const { amount, note, paymentMethod, chequeNumber, chequeDate, chequeBank, chequeStatus } = req.body || {};
 
     const payment = Number(amount);
     if (!id) return res.status(400).json({ message: "Sale ID is required." });
@@ -690,13 +696,42 @@ const recordPayment = async (req, res) => {
       sale.payments = [];
     }
 
-    sale.payments.push({
+    // Build payment entry with optional payment method and cheque fields
+    const paymentEntry = {
       amount: applied,
       note: note || "",
       type: "payment",
       createdBy: req.user?._id,
       createdAt: new Date(),
-    });
+    };
+
+    // Add payment method if provided (cash or cheque)
+    if (paymentMethod === "cash" || paymentMethod === "cheque") {
+      paymentEntry.method = paymentMethod;
+      
+      // Add cheque fields if payment method is cheque
+      if (paymentMethod === "cheque") {
+        if (chequeNumber !== undefined) paymentEntry.chequeNumber = chequeNumber;
+        if (chequeDate !== undefined) paymentEntry.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
+        if (chequeBank !== undefined) paymentEntry.chequeBank = chequeBank;
+        if (chequeStatus !== undefined && ["pending", "cleared", "bounced"].includes(chequeStatus)) {
+          paymentEntry.chequeStatus = chequeStatus;
+        }
+      }
+      
+      // Optionally update sale-level paymentMethod to reflect most recent payment (backward compatible)
+      sale.paymentMethod = paymentMethod;
+      if (paymentMethod === "cheque") {
+        if (chequeNumber !== undefined) sale.chequeNumber = chequeNumber;
+        if (chequeDate !== undefined) sale.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
+        if (chequeBank !== undefined) sale.chequeBank = chequeBank;
+        if (chequeStatus !== undefined && ["pending", "cleared", "bounced"].includes(chequeStatus)) {
+          sale.chequeStatus = chequeStatus;
+        }
+      }
+    }
+
+    sale.payments.push(paymentEntry);
 
     await sale.save();
 

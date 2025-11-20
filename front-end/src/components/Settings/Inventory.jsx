@@ -116,7 +116,7 @@ export default function InventorySettings() {
       )}
 
       {/* Settings Form Card */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="w-1/2 max-w-2xl rounded-lg border border-gray-200 bg-white p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Low Stock Threshold */}
           <Field label="Low stock warning level">

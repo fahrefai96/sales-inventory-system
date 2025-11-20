@@ -42,7 +42,7 @@ router.patch(
 );
 
 // Adjust payment (admin only)
-router.post("/:id/payment-adjust", requireRole(["admin"]), adjustPayment);
+router.post("/:id/payment-adjust", authMiddleware, requireRole(["admin"]), adjustPayment);
 
 // Export endpoints
 router.get("/export/csv", authMiddleware, exportSalesListCsv);

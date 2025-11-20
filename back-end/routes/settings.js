@@ -5,6 +5,8 @@ import {
   updateGeneralSettings,
   getInventorySettings,
   updateInventorySettings,
+  getSalesSettings,
+  updateSalesSettings,
 } from "../Controllers/settingsController.js";
 
 const router = express.Router();
@@ -44,6 +46,22 @@ router.put(
   authMiddleware,
   requireRole(["admin"]),
   updateInventorySettings
+);
+
+// Get sales settings (admin only)
+router.get(
+  "/sales",
+  authMiddleware,
+  requireRole(["admin"]),
+  getSalesSettings
+);
+
+// Update sales settings (admin only)
+router.put(
+  "/sales",
+  authMiddleware,
+  requireRole(["admin"]),
+  updateSalesSettings
 );
 
 export default router;

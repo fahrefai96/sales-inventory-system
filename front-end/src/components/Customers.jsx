@@ -4,6 +4,7 @@ import api from "../utils/api";
 import { fuzzySearchCustomers } from "../utils/fuzzySearch";
 import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
+import PaymentModal from "./PaymentModal";
 
 const DENSITIES = {
   comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
@@ -64,6 +65,24 @@ const Customers = () => {
   const [pendingLimit, setPendingLimit] = useState(10);
   const [paidLimit, setPaidLimit] = useState(10);
 
+  // Payment modal state
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paySale, setPaySale] = useState(null);
+
+  // Sales settings state
+  const [salesSettings, setSalesSettings] = useState({
+    defaultPaymentMethod: "choose", // "choose", "cash", or "cheque"
+  });
+
+  // Payment history tab state (new endpoint)
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [paymentHistoryError, setPaymentHistoryError] = useState("");
+  const [paymentTotals, setPaymentTotals] = useState({
+    totalPayments: 0,
+    totalAdjustments: 0,
+  });
+
   const token = localStorage.getItem("pos-token");
 
   // -------- Fetch customers --------
@@ -111,6 +130,48 @@ const Customers = () => {
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+
+  // Fetch sales settings on mount and listen for updates
+  useEffect(() => {
+    const fetchSalesSettings = async () => {
+      try {
+        const response = await api.get("/settings/sales");
+        if (response.data?.success) {
+          setSalesSettings({
+            defaultPaymentMethod: response.data.sales?.defaultPaymentMethod || "choose",
+          });
+        }
+      } catch (err) {
+        console.error("Error loading sales settings:", err);
+        // Default to "choose" if settings can't be loaded
+        setSalesSettings({ defaultPaymentMethod: "choose" });
+      }
+    };
+
+    fetchSalesSettings();
+
+    // Listen for sales settings updates
+    const handleSalesSettingsUpdate = (event) => {
+      if (event.detail?.defaultPaymentMethod) {
+        setSalesSettings({
+          defaultPaymentMethod: event.detail.defaultPaymentMethod,
+        });
+      }
+    };
+
+    window.addEventListener("salesSettingsUpdated", handleSalesSettingsUpdate);
+    return () => {
+      window.removeEventListener("salesSettingsUpdated", handleSalesSettingsUpdate);
+    };
+  }, []);
+
+  // Calculate allowed payment methods based on settings
+  const getAllowedPaymentMethods = () => {
+    const setting = salesSettings.defaultPaymentMethod;
+    if (setting === "cash") return ["cash"];
+    if (setting === "cheque") return ["cheque"];
+    return ["cash", "cheque"]; // "choose" allows both
+  };
 
   // -------- Global ESC to close (only when a panel is open) --------
   useEffect(() => {
@@ -312,68 +373,68 @@ const Customers = () => {
         page: paidPage,
         limit: paidLimit,
       }),
+      fetchCustomerPayments(customerId), // Load payment history
     ]);
   };
 
-  const recordPayment = async (sale) => {
-    const due = Math.max(0, Number(sale.amountDue || 0));
-    const base = Number(sale.discountedAmount ?? sale.totalAmount ?? 0);
-    const paid = Number(sale.amountPaid || 0);
+  const openPaymentModal = (sale) => {
+    setPaySale(sale);
+    setIsPaymentOpen(true);
+  };
 
-    const input = prompt(
-      `Record payment for ${sale.saleId || sale._id}\n` +
-        `Total: Rs. ${fmt(base)} | Paid: Rs. ${fmt(paid)} | Due: Rs. ${fmt(
-          due
-        )}\n\n` +
-        `Enter amount to pay now:`
-    );
-    if (!input) return;
+  const reloadCustomerData = async (customerId) => {
+    if (!customerId) return;
+    await Promise.all([
+      fetchReceivables(customerId),
+      fetchCustomerSales({
+        customerId,
+        status: "pending",
+        page: pendingPage,
+        limit: pendingLimit,
+      }),
+      fetchCustomerSales({
+        customerId,
+        status: "paid",
+        page: paidPage,
+        limit: paidLimit,
+      }),
+      fetchCustomerPayments(customerId), // Refresh payment history if on Payments tab
+    ]);
+  };
 
-    const amount = Number(input);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      alert("Enter a valid amount greater than 0.");
-      return;
+  const handlePaymentSuccess = async (updatedSale) => {
+    if (profileCustomer?._id) {
+      await reloadCustomerData(profileCustomer._id);
     }
-    if (amount > due) {
-      if (
-        !confirm(
-          `Amount exceeds due (Rs. ${fmt(due)}). Apply Rs. ${fmt(due)} instead?`
-        )
-      )
-        return;
-    }
+  };
 
+  // Fetch payment history from new endpoint
+  const fetchCustomerPayments = async (customerId) => {
+    if (!customerId) return;
+    setPaymentHistoryLoading(true);
+    setPaymentHistoryError("");
     try {
-      const apply = Math.min(amount, due);
-      await api.patch(
-        `/sales/${sale._id}/payment`,
-        { amount: apply },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (profileCustomer?._id) {
-        await fetchReceivables(profileCustomer._id);
-        await fetchCustomerSales({
-          customerId: profileCustomer._id,
-          status: "pending",
-          page: pendingPage,
-          limit: pendingLimit,
+      const res = await api.get(`/customers/${customerId}/payments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data?.success) {
+        setPaymentHistory(res.data.rows || []);
+        setPaymentTotals({
+          totalPayments: res.data.totalPayments || 0,
+          totalAdjustments: res.data.totalAdjustments || 0,
         });
-        await fetchCustomerSales({
-          customerId: profileCustomer._id,
-          status: "paid",
-          page: paidPage,
-          limit: paidLimit,
-        });
+      } else {
+        setPaymentHistoryError("Failed to load payment history");
+        setPaymentHistory([]);
       }
-      alert("Payment recorded.");
     } catch (err) {
-      console.error(err);
-      alert(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Failed to record payment."
+      console.error("Error fetching payment history:", err);
+      setPaymentHistoryError(
+        err?.response?.data?.error || "Failed to load payment history"
       );
+      setPaymentHistory([]);
+    } finally {
+      setPaymentHistoryLoading(false);
     }
   };
 
@@ -1145,11 +1206,11 @@ const Customers = () => {
                 </div>
               ) : (
                 <div>
-                  {/* Payments Summary */}
-                  <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Payment History Summary */}
+                  <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="rounded bg-white border border-gray-200 p-3">
                       <div className="text-xs text-gray-500 uppercase">
-                        Outstanding
+                        Outstanding Balance
                       </div>
                       <div className="text-xl font-semibold">
                         {recvLoading
@@ -1159,212 +1220,106 @@ const Customers = () => {
                     </div>
                     <div className="rounded bg-white border border-gray-200 p-3">
                       <div className="text-xs text-gray-500 uppercase">
-                        Pending Invoices
+                        Total Payments
                       </div>
                       <div className="text-xl font-semibold">
-                        {recvLoading
+                        {paymentHistoryLoading
                           ? "…"
-                          : recvablesSafe(
-                              recvLoading,
-                              receivables.pendingCount
-                            )}
+                          : `Rs. ${fmt(paymentTotals.totalPayments)}`}
+                      </div>
+                    </div>
+                    <div className="rounded bg-white border border-gray-200 p-3">
+                      <div className="text-xs text-gray-500 uppercase">
+                        Total Adjustments
+                      </div>
+                      <div className="text-xl font-semibold">
+                        {paymentHistoryLoading
+                          ? "…"
+                          : `Rs. ${fmt(paymentTotals.totalAdjustments)}`}
                       </div>
                     </div>
                   </div>
-                  {recvError && (
-                    <div className="text-sm text-red-600">{recvError}</div>
+                  {paymentHistoryError && (
+                    <div className="text-sm text-red-600 mb-3">{paymentHistoryError}</div>
                   )}
 
-                  {/* Pending table */}
+                  {/* Payment History Table */}
                   <h3 className="text-base font-semibold text-gray-900 mt-4 mb-2">
-                    Pending
-                  </h3>
-                  <div className="overflow-hidden rounded border border-gray-200 mb-4">
-                    <div className="max-h-[35vh] overflow-auto">
-                      <table className="min-w-full table-auto">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                            <th className="px-4 py-3">Invoice</th>
-                            <th className="px-4 py-3">Date</th>
-                            <th className="px-4 py-3">Total</th>
-                            <th className="px-4 py-3">Paid</th>
-                            <th className="px-4 py-3">Due</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Payment Method</th>
-                            <th className="px-4 py-3">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                          {pendingLoading ? (
-                            <SkeletonRows rows={5} dens={dens} cols={8} />
-                          ) : pendingRows.length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan="8"
-                                className="px-4 py-6 text-center text-gray-500"
-                              >
-                                No pending invoices.
-                              </td>
-                            </tr>
-                          ) : (
-                            pendingRows.map((s) => {
-                              const base = Number(
-                                s.discountedAmount ?? s.totalAmount ?? 0
-                              );
-                              const paid = Number(s.amountPaid || 0);
-                              const due = Math.max(
-                                0,
-                                Number(s.amountDue ?? base - paid)
-                              );
-                              return (
-                                <tr key={s._id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3 text-sm text-gray-700">
-                                    {s.saleId || s._id}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">
-                                    {formatDateTime(s.saleDate || s.createdAt)}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(base)}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(paid)}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(due)}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700 capitalize">
-                                    {s.paymentStatus || "unpaid"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">
-                                    <span
-                                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                                        (s.paymentMethod || "cash") === "cash"
-                                          ? "bg-blue-50 text-blue-700"
-                                          : "bg-purple-50 text-purple-700"
-                                      }`}
-                                    >
-                                      {(s.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">
-                                    <button
-                                      onClick={() => recordPayment(s)}
-                                      className="text-blue-600 hover:text-blue-800 font-medium"
-                                    >
-                                      Record Payment
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Pending pager */}
-                    <div className="border-t border-gray-200 p-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Rows:</span>
-                        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-                          {[10, 20, 50].map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() => {
-                                setPendingLimit(n);
-                                setPendingPage(1);
-                                if (profileCustomer?._id)
-                                  fetchCustomerSales({
-                                    customerId: profileCustomer._id,
-                                    status: "pending",
-                                    page: 1,
-                                    limit: n,
-                                  });
-                              }}
-                              className={`px-3 py-1.5 text-sm ${
-                                pendingLimit === n
-                                  ? "bg-gray-100 font-medium"
-                                  : "bg-white"
-                              }`}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <SmallPager
-                        page={pendingPage}
-                        setPage={(p) => {
-                          setPendingPage(p);
-                          if (profileCustomer?._id)
-                            fetchCustomerSales({
-                              customerId: profileCustomer._id,
-                              status: "pending",
-                              page: p,
-                              limit: pendingLimit,
-                            });
-                        }}
-                        total={pendingTotal}
-                        limit={pendingLimit}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Paid table */}
-                  <h3 className="text-base font-semibold text-gray-900 mt-6 mb-2">
-                    Paid
+                    Payment History
                   </h3>
                   <div className="overflow-hidden rounded border border-gray-200">
-                    <div className="max-h-[35vh] overflow-auto">
+                    <div className="max-h-[60vh] overflow-auto">
                       <table className="min-w-full table-auto">
                         <thead className="bg-gray-50 sticky top-0">
                           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                            <th className="px-4 py-3">Invoice</th>
                             <th className="px-4 py-3">Date</th>
-                            <th className="px-4 py-3">Total</th>
-                            <th className="px-4 py-3">Paid</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Payment Method</th>
+                            <th className="px-4 py-3">Sale ID</th>
+                            <th className="px-4 py-3">Amount</th>
+                            <th className="px-4 py-3">Type</th>
+                            <th className="px-4 py-3">Method</th>
+                            <th className="px-4 py-3">Cheque Info</th>
+                            <th className="px-4 py-3">Note</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                          {paidLoading ? (
-                            <SkeletonRows rows={5} dens={dens} cols={6} />
-                          ) : paidRows.length === 0 ? (
+                          {paymentHistoryLoading ? (
+                            <SkeletonRows rows={5} dens={dens} cols={7} />
+                          ) : paymentHistory.length === 0 ? (
                             <tr>
                               <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="px-4 py-6 text-center text-gray-500"
                               >
-                                No paid invoices yet.
+                                No payment history yet.
                               </td>
                             </tr>
                           ) : (
-                            paidRows.map((s) => {
-                              const base = Number(
-                                s.discountedAmount ?? s.totalAmount ?? 0
-                              );
-                              const paid = Number(s.amountPaid || base);
+                            paymentHistory.map((p, idx) => {
+                              const chequeInfo = p.method === "cheque" && (p.chequeNumber || p.chequeBank || p.chequeStatus)
+                                ? `${p.chequeNumber || "—"}${p.chequeBank ? ` / ${p.chequeBank}` : ""}${p.chequeStatus ? ` (${p.chequeStatus})` : ""}`
+                                : "—";
                               return (
-                                <tr key={s._id} className="hover:bg-gray-50">
+                                <tr key={`${p.saleObjectId}-${p.createdAt}-${idx}`} className="hover:bg-gray-50">
                                   <td className="px-4 py-3 text-sm text-gray-700">
-                                    {s.saleId || s._id}
+                                    {formatDateTime(p.createdAt)}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-gray-700">
-                                    {formatDateTime(s.saleDate || s.createdAt)}
+                                    {p.saleId || p.saleObjectId || "—"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(base)}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">Rs. {fmt(paid)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    Rs. {fmt(p.amount || 0)}
+                                  </td>
                                   <td className="px-4 py-3 text-sm text-gray-700 capitalize">
-                                    {s.paymentStatus || "paid"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     <span
                                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                                        (s.paymentMethod || "cash") === "cash"
-                                          ? "bg-blue-50 text-blue-700"
-                                          : "bg-purple-50 text-purple-700"
+                                        p.type === "payment"
+                                          ? "bg-green-50 text-green-700"
+                                          : "bg-amber-50 text-amber-700"
                                       }`}
                                     >
-                                      {(s.paymentMethod || "cash") === "cash" ? "Cash" : "Cheque"}
+                                      {p.type || "payment"}
                                     </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    {p.method ? (
+                                      <span
+                                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                          p.method === "cash"
+                                            ? "bg-blue-50 text-blue-700"
+                                            : "bg-purple-50 text-purple-700"
+                                        }`}
+                                      >
+                                        {p.method === "cash" ? "Cash" : "Cheque"}
+                                      </span>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    {chequeInfo}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    {p.note || "—"}
                                   </td>
                                 </tr>
                               );
@@ -1372,55 +1327,6 @@ const Customers = () => {
                           )}
                         </tbody>
                       </table>
-                    </div>
-
-                    {/* Paid pager */}
-                    <div className="border-t border-gray-200 p-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Rows:</span>
-                        <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-                          {[10, 20, 50].map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() => {
-                                setPaidLimit(n);
-                                setPaidPage(1);
-                                if (profileCustomer?._id)
-                                  fetchCustomerSales({
-                                    customerId: profileCustomer._id,
-                                    status: "paid",
-                                    page: 1,
-                                    limit: n,
-                                  });
-                              }}
-                              className={`px-3 py-1.5 text-sm ${
-                                paidLimit === n
-                                  ? "bg-gray-100 font-medium"
-                                  : "bg-white"
-                              }`}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <SmallPager
-                        page={paidPage}
-                        setPage={(p) => {
-                          setPaidPage(p);
-                          if (profileCustomer?._id)
-                            fetchCustomerSales({
-                              customerId: profileCustomer._id,
-                              status: "paid",
-                              page: p,
-                              limit: paidLimit,
-                            });
-                        }}
-                        total={paidTotal}
-                        limit={paidLimit}
-                      />
                     </div>
                   </div>
                 </div>
@@ -1429,6 +1335,21 @@ const Customers = () => {
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => {
+          setIsPaymentOpen(false);
+          setPaySale(null);
+        }}
+        saleId={paySale?._id}
+        sale={paySale}
+        customerName={profileCustomer?.name}
+        defaultPaymentMethod="cash"
+        allowedPaymentMethods={getAllowedPaymentMethods()}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 };

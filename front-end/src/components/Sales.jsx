@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import AsyncSelect from "react-select/async";
 import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
+import PaymentModal from "./PaymentModal";
+import api from "../utils/api";
 
 // Density options to match other screens
 const DENSITIES = {
@@ -222,10 +224,11 @@ const Sales = () => {
   // Payment modal state
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paySale, setPaySale] = useState(null);
-  const [payAmount, setPayAmount] = useState("");
-  const [payNote, setPayNote] = useState("");
-  const [payError, setPayError] = useState("");
-  const [payLoading, setPayLoading] = useState(false);
+
+  // Sales settings state
+  const [salesSettings, setSalesSettings] = useState({
+    defaultPaymentMethod: "choose", // "choose", "cash", or "cheque"
+  });
 
   // Admin adjustment modal state
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
@@ -373,6 +376,48 @@ const Sales = () => {
     fetchSales();
   }, [fetchSales]);
 
+  // Fetch sales settings on mount and listen for updates
+  useEffect(() => {
+    const fetchSalesSettings = async () => {
+      try {
+        const response = await api.get("/settings/sales");
+        if (response.data?.success) {
+          setSalesSettings({
+            defaultPaymentMethod: response.data.sales?.defaultPaymentMethod || "choose",
+          });
+        }
+      } catch (err) {
+        console.error("Error loading sales settings:", err);
+        // Default to "choose" if settings can't be loaded
+        setSalesSettings({ defaultPaymentMethod: "choose" });
+      }
+    };
+
+    fetchSalesSettings();
+
+    // Listen for sales settings updates
+    const handleSalesSettingsUpdate = (event) => {
+      if (event.detail?.defaultPaymentMethod) {
+        setSalesSettings({
+          defaultPaymentMethod: event.detail.defaultPaymentMethod,
+        });
+      }
+    };
+
+    window.addEventListener("salesSettingsUpdated", handleSalesSettingsUpdate);
+    return () => {
+      window.removeEventListener("salesSettingsUpdated", handleSalesSettingsUpdate);
+    };
+  }, []);
+
+  // Calculate allowed payment methods based on settings
+  const getAllowedPaymentMethods = () => {
+    const setting = salesSettings.defaultPaymentMethod;
+    if (setting === "cash") return ["cash"];
+    if (setting === "cheque") return ["cheque"];
+    return ["cash", "cheque"]; // "choose" allows both
+  };
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
@@ -394,9 +439,6 @@ const Sales = () => {
         if (isPaymentOpen) {
           setIsPaymentOpen(false);
           setPaySale(null);
-          setPayAmount("");
-          setPayNote("");
-          setPayError("");
         }
         if (isAdjustOpen) {
           setIsAdjustOpen(false);
@@ -451,48 +493,13 @@ const Sales = () => {
   };
 
   const openPaymentModal = (sale) => {
-    setPayError("");
     setPaySale(sale);
-    const due = getDue(sale);
-    setPayAmount(due > 0 ? String(due) : "");
-    setPayNote("");
     setIsPaymentOpen(true);
   };
 
-  const submitPayment = async (e) => {
-    e.preventDefault();
-    if (!paySale) return;
-
-    const amt = Number(payAmount);
-    if (isNaN(amt) || amt <= 0) {
-      setPayError("Enter a valid amount greater than 0.");
-      return;
-    }
-
-    setPayLoading(true);
-    setPayError("");
-
-    try {
-      await axios.patch(
-        `http://localhost:3000/api/sales/${paySale._id}/payment`,
-        { amount: amt, note: payNote },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setIsPaymentOpen(false);
-      setPaySale(null);
-      setPayAmount("");
-      setPayNote("");
-      fetchSales(page, pageSize); // refresh
-    } catch (err) {
-      console.error("Error recording payment:", err);
-      setPayError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Failed to record payment."
-      );
-    } finally {
-      setPayLoading(false);
-    }
+  const handlePaymentSuccess = (updatedSale) => {
+    // Refresh the sales table
+    fetchSales();
   };
 
   // ===== Admin Payment Adjustment helpers =====
@@ -653,7 +660,6 @@ const Sales = () => {
         saleDate,
         discount,
         discountedAmount,
-        paymentMethod,
       };
 
       if (editingSaleId) {
@@ -1362,40 +1368,17 @@ const Sales = () => {
 
                       {/* Payment Column */}
                       <td className={`${dens.cell} text-sm text-gray-700`}>
-                        <div className="flex flex-col gap-1">
-                          {/* Payment Method badge */}
-                          {sale.paymentMethod && (
-                            <span
-                              className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-medium ${
-                                sale.paymentMethod === "cash"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : "bg-purple-50 text-purple-700"
-                              }`}
-                            >
-                              {sale.paymentMethod === "cash" ? "Cash" : "Cheque"}
-                            </span>
-                          )}
-                          
-                          {/* Status badge */}
-                          <span
-                            className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
-                              status === "paid"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : status === "partial"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {status}
-                          </span>
-
-                          <div className="text-xs text-gray-600">
-                            Paid: Rs. {paid.toFixed(2)}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            Due: Rs. {due.toFixed(2)}
-                          </div>
-                        </div>
+                        <span
+                          className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
+                            status === "paid"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : status === "partial"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {status}
+                        </span>
                       </td>
 
                       {/* ACTIONS */}
@@ -1633,39 +1616,6 @@ const Sales = () => {
                   />
                 </Field>
 
-                {/* Payment Method */}
-                <Field label="Payment Method">
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="cash"
-                        checked={paymentMethod === "cash"}
-                        onChange={(e) => {
-                          setPaymentMethod(e.target.value);
-                          setModalError("");
-                        }}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Cash</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="cheque"
-                        checked={paymentMethod === "cheque"}
-                        onChange={(e) => {
-                          setPaymentMethod(e.target.value);
-                          setModalError("");
-                        }}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Cheque</span>
-                    </label>
-                  </div>
-                </Field>
               </div>
 
               {/* FOOTER */}
@@ -1706,83 +1656,19 @@ const Sales = () => {
       )}
 
       {/* ====================== RECORD PAYMENT MODAL ====================== */}
-      {isPaymentOpen && paySale && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setIsPaymentOpen(false)}
-          />
-          <div className="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl">
-            <form onSubmit={submitPayment}>
-              <div className="border-b border-gray-200 px-5 py-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Record Payment
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Sale <span className="font-medium">{paySale.saleId}</span>
-                </p>
-              </div>
-
-              {/* Body */}
-              <div className="px-5 py-4 space-y-3">
-                {payError && (
-                  <div className="rounded border border-red-200 bg-red-50 text-red-700 p-2">
-                    {payError}
-                  </div>
-                )}
-
-                <div className="text-sm text-gray-600">
-                  <div>
-                    Base total: Rs. {getBaseTotal(paySale).toFixed(2)} | Paid: Rs. {getPaid(paySale).toFixed(2)}
-                  </div>
-                  <div>Due now: Rs. {getDue(paySale).toFixed(2)}</div>
-                </div>
-
-                <Field label="Amount" required>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                    placeholder="e.g. 2500"
-                  />
-                </Field>
-
-                <Field label="Note (optional)">
-                  <input
-                    type="text"
-                    value={payNote}
-                    onChange={(e) => setPayNote(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                    placeholder="cash / bank / reference"
-                  />
-                </Field>
-              </div>
-
-              {/* Footer */}
-              <div className="border-t border-gray-200 bg-gray-50 px-5 py-4 rounded-b-xl flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentOpen(false)}
-                  className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={payLoading}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {payLoading ? "Recording..." : "Record Payment"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => {
+          setIsPaymentOpen(false);
+          setPaySale(null);
+        }}
+        saleId={paySale?._id}
+        sale={paySale}
+        customerName={paySale?.customer?.name}
+        defaultPaymentMethod="cash"
+        allowedPaymentMethods={getAllowedPaymentMethods()}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
 
       {/* ====================== ADMIN PAYMENT ADJUSTMENT ====================== */}
       {isAdjustOpen && adjustSale && (

@@ -338,6 +338,86 @@ export const exportCustomersCsv = async (req, res) => {
 };
 
 // Export customers PDF
+// Get flat payment history for a customer
+// Returns all payments from all sales for the customer in a flat list
+export const getCustomerPayments = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: "Customer ID is required",
+      });
+    }
+
+    // Verify customer exists (similar to getCustomerReceivables)
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        error: "Customer not found",
+      });
+    }
+
+    // Get all sales for this customer
+    const sales = await Sale.find({ customer: id })
+      .select("saleId saleDate createdAt _id payments")
+      .lean();
+
+    // Flatten all payments from all sales
+    const rows = [];
+    
+    for (const sale of sales) {
+      if (sale.payments && Array.isArray(sale.payments)) {
+        for (const payment of sale.payments) {
+          rows.push({
+            saleId: sale.saleId,
+            saleObjectId: sale._id,
+            saleDate: sale.saleDate || sale.createdAt,
+            amount: payment.amount,
+            type: payment.type || "payment",
+            note: payment.note || "",
+            method: payment.method,
+            chequeNumber: payment.chequeNumber,
+            chequeDate: payment.chequeDate,
+            chequeBank: payment.chequeBank,
+            chequeStatus: payment.chequeStatus,
+            createdAt: payment.createdAt,
+            createdBy: payment.createdBy,
+          });
+        }
+      }
+    }
+
+    // Sort by createdAt descending (most recent first)
+    rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Compute totals
+    const totalPayments = rows
+      .filter(p => p.type === "payment")
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    
+    const totalAdjustments = rows
+      .filter(p => p.type === "adjustment")
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+    return res.json({
+      success: true,
+      customerId: id,
+      rows,
+      totalPayments,
+      totalAdjustments,
+    });
+  } catch (error) {
+    console.error("Error fetching customer payment history:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch payment history",
+    });
+  }
+};
+
 export const exportCustomersPdf = async (req, res) => {
   try {
     const { search = "", sortBy = "createdAt", sortDir = "desc" } = req.query;

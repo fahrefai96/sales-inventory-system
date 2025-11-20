@@ -65,19 +65,19 @@ export default function Settings() {
         )}
         <button
           className={`${baseTab} ${
-            activeTab === "sales" ? activeTabStyle : inactiveTabStyle
-          }`}
-          onClick={() => setActiveTab("sales")}
-        >
-          <span>Sales</span>
-        </button>
-        <button
-          className={`${baseTab} ${
             activeTab === "inventory" ? activeTabStyle : inactiveTabStyle
           }`}
           onClick={() => setActiveTab("inventory")}
         >
           <span>Inventory</span>
+        </button>
+        <button
+          className={`${baseTab} ${
+            activeTab === "sales" ? activeTabStyle : inactiveTabStyle
+          }`}
+          onClick={() => setActiveTab("sales")}
+        >
+          <span>Sales</span>
         </button>
         <button
           className={`${baseTab} ${

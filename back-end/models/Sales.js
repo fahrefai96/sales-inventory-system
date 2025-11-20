@@ -16,6 +16,27 @@ const paymentEntrySchema = new mongoose.Schema(
       enum: ["payment", "adjustment"],
       default: "payment",
     },
+    // Payment method for individual payments (optional)
+    method: {
+      type: String,
+      enum: ["cash", "cheque"],
+      default: undefined,
+    },
+    // Optional cheque fields for individual payments
+    chequeNumber: {
+      type: String,
+    },
+    chequeDate: {
+      type: Date,
+    },
+    chequeBank: {
+      type: String,
+    },
+    chequeStatus: {
+      type: String,
+      enum: ["pending", "cleared", "bounced"],
+      default: "pending",
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -93,7 +114,7 @@ const saleSchema = new mongoose.Schema(
     paymentStatus: {
       type: String,
       enum: ["paid", "unpaid", "partial"],
-      default: "paid",
+      default: "unpaid",
     },
     amountPaid: { type: Number, default: 0 },
     amountDue: { type: Number, default: 0 },
@@ -123,26 +144,29 @@ const saleSchema = new mongoose.Schema(
 );
 
 saleSchema.pre("save", function (next) {
-  // prefer discountedAmount if present, else grandTotal
-  const baseTotal = Number(
-    this.discountedAmount != null ? this.discountedAmount : this.grandTotal || 0
-  );
+  // Calculate baseTotal: prefer discountedAmount, else totalAmount, else 0
+  const baseTotal = Number(this.discountedAmount ?? this.totalAmount ?? 0);
 
-  // initialize on create if not set
+  // Initialize on create if not set
   if (this.isNew) {
+    // For new sales, explicitly set amountPaid to 0
     if (this.amountPaid == null) {
-      // default: fully paid if paymentStatus is "paid", else 0
-      this.amountPaid = this.paymentStatus === "paid" ? baseTotal : 0;
+      this.amountPaid = 0;
     }
   }
 
-  // recompute amountDue and status every save
+  // Recompute amountDue and status every save
   const paid = Number(this.amountPaid || 0);
   this.amountDue = Math.max(0, baseTotal - paid);
 
-  if (this.amountDue === 0) this.paymentStatus = "paid";
-  else if (paid > 0) this.paymentStatus = "partial";
-  else this.paymentStatus = "unpaid";
+  // Set paymentStatus based on amountPaid and amountDue
+  if (this.amountDue === 0) {
+    this.paymentStatus = "paid";
+  } else if (paid > 0 && this.amountDue > 0) {
+    this.paymentStatus = "partial";
+  } else {
+    this.paymentStatus = "unpaid";
+  }
 
   next();
 });

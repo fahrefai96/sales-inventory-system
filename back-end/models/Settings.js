@@ -20,6 +20,13 @@ const settingsSchema = new mongoose.Schema(
         default: false,
       },
     },
+    sales: {
+      defaultPaymentMethod: {
+        type: String,
+        enum: ["choose", "cash", "cheque"],
+        default: "choose",
+      },
+    },
   },
   {
     timestamps: true,
