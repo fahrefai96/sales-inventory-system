@@ -75,6 +75,7 @@ export function parseDateRange(dateRange) {
   
   const lower = dateRange.toLowerCase().trim();
   
+  // Check for keyword-based ranges first
   if (lower === "today") {
     return getTodayRange();
   } else if (lower === "yesterday") {
@@ -85,9 +86,9 @@ export function parseDateRange(dateRange) {
     return getMonthRange();
   } else if (lower === "last month") {
     return getLastMonthRange();
-  } else if (lower.includes(" to ") || lower.includes("-")) {
-    // Try to parse specific date range
-    const parts = lower.split(/\s+to\s+|-/);
+  } else if (lower.includes(" to ")) {
+    // Try to parse date range with " to " separator (e.g., "2025-11-19 to 2025-11-25")
+    const parts = lower.split(/\s+to\s+/);
     if (parts.length === 2) {
       const startDate = new Date(parts[0].trim());
       const endDate = new Date(parts[1].trim());
@@ -100,14 +101,19 @@ export function parseDateRange(dateRange) {
       }
     }
   } else {
-    // Try to parse single date
+    // Try to parse as single date first (handles YYYY-MM-DD, MM/DD/YYYY, etc.)
     const singleDate = new Date(lower);
     if (!isNaN(singleDate.getTime())) {
-      const start = new Date(singleDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(singleDate);
-      end.setHours(23, 59, 59, 999);
-      return { start, end };
+      // Verify it's a valid date (not just a number)
+      const dateStr = singleDate.toISOString().split('T')[0];
+      // Check if the input looks like a date format
+      if (/\d{4}-\d{2}-\d{2}/.test(lower) || /\d{1,2}\/\d{1,2}\/\d{4}/.test(lower) || /\d{1,2}-\d{1,2}-\d{4}/.test(lower)) {
+        const start = new Date(singleDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(singleDate);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      }
     }
   }
   

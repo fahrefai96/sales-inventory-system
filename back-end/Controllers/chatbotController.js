@@ -155,11 +155,23 @@ export const askChatbot = async (req, res) => {
           // Extract date range from text for RULE_ONLY mode
           let dateRangeRule = null;
           const textLowerRule = text.toLowerCase();
-          if (/\b(yesterday)\b/i.test(text)) dateRangeRule = "yesterday";
-          else if (/\b(this week|week)\b/i.test(text)) dateRangeRule = "this week";
-          else if (/\b(this month|month)\b/i.test(text)) dateRangeRule = "this month";
-          else if (/\b(last month)\b/i.test(text)) dateRangeRule = "last month";
-          else if (/\b(today|todays)\b/i.test(text)) dateRangeRule = "today";
+          // Try to extract specific date first (YYYY-MM-DD, MM/DD/YYYY, etc.)
+          const dateMatchRule = text.match(/\b(\d{4}-\d{2}-\d{2})\b/) || 
+                               text.match(/\b(\d{1,2}\/\d{1,2}\/\d{4})\b/) ||
+                               text.match(/\b(\d{1,2}-\d{1,2}-\d{4})\b/);
+          if (dateMatchRule) {
+            dateRangeRule = dateMatchRule[1];
+          } else if (/\b(yesterday)\b/i.test(text)) {
+            dateRangeRule = "yesterday";
+          } else if (/\b(this week|week)\b/i.test(text)) {
+            dateRangeRule = "this week";
+          } else if (/\b(this month|month)\b/i.test(text)) {
+            dateRangeRule = "this month";
+          } else if (/\b(last month)\b/i.test(text)) {
+            dateRangeRule = "last month";
+          } else if (/\b(today|todays)\b/i.test(text)) {
+            dateRangeRule = "today";
+          }
           result = await handleTodaySales(dateRangeRule);
           break;
         case "WEEK_SALES":
@@ -308,11 +320,23 @@ export const askChatbot = async (req, res) => {
                 let dateRangeToday = plan.params?.dateRange;
                 if (!dateRangeToday) {
                   const textLowerToday = text.toLowerCase();
-                  if (/\b(yesterday)\b/i.test(text)) dateRangeToday = "yesterday";
-                  else if (/\b(this week|week)\b/i.test(text)) dateRangeToday = "this week";
-                  else if (/\b(this month|month)\b/i.test(text)) dateRangeToday = "this month";
-                  else if (/\b(last month)\b/i.test(text)) dateRangeToday = "last month";
-                  else if (/\b(today|todays)\b/i.test(text)) dateRangeToday = "today";
+                  // Try to extract specific date first (YYYY-MM-DD, MM/DD/YYYY, etc.)
+                  const dateMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/) || 
+                                   text.match(/\b(\d{1,2}\/\d{1,2}\/\d{4})\b/) ||
+                                   text.match(/\b(\d{1,2}-\d{1,2}-\d{4})\b/);
+                  if (dateMatch) {
+                    dateRangeToday = dateMatch[1];
+                  } else if (/\b(yesterday)\b/i.test(text)) {
+                    dateRangeToday = "yesterday";
+                  } else if (/\b(this week|week)\b/i.test(text)) {
+                    dateRangeToday = "this week";
+                  } else if (/\b(this month|month)\b/i.test(text)) {
+                    dateRangeToday = "this month";
+                  } else if (/\b(last month)\b/i.test(text)) {
+                    dateRangeToday = "last month";
+                  } else if (/\b(today|todays)\b/i.test(text)) {
+                    dateRangeToday = "today";
+                  }
                 }
                 result = await handleTodaySales(dateRangeToday || null);
                 break;
@@ -496,11 +520,11 @@ export const askChatbot = async (req, res) => {
         });
       }
 
-      switch (intent) {
-        case "LOW_STOCK_STATUS":
-          result = await handleLowStockStatus();
-          break;
-        case "TODAY_SALES":
+    switch (intent) {
+      case "LOW_STOCK_STATUS":
+        result = await handleLowStockStatus();
+        break;
+      case "TODAY_SALES":
           // Extract date range from text for RULE_ONLY mode
           let dateRangeRule = null;
           const textLowerRule = text.toLowerCase();
@@ -510,8 +534,8 @@ export const askChatbot = async (req, res) => {
           else if (/\b(last month)\b/i.test(text)) dateRangeRule = "last month";
           else if (/\b(today|todays)\b/i.test(text)) dateRangeRule = "today";
           result = await handleTodaySales(dateRangeRule);
-          break;
-        case "WEEK_SALES":
+        break;
+      case "WEEK_SALES":
           // Extract date range from text for RULE_ONLY mode
           let dateRangeWeek = null;
           const textLowerWeek = text.toLowerCase();
@@ -520,8 +544,8 @@ export const askChatbot = async (req, res) => {
           else if (/\b(this month|month)\b/i.test(text)) dateRangeWeek = "this month";
           else if (/\b(last month)\b/i.test(text)) dateRangeWeek = "last month";
           result = await handleWeekSales(dateRangeWeek);
-          break;
-        case "MONTH_SALES":
+        break;
+      case "MONTH_SALES":
           // Extract date range from text for RULE_ONLY mode
           let dateRangeMonth = null;
           const textLowerMonth = text.toLowerCase();
@@ -530,52 +554,52 @@ export const askChatbot = async (req, res) => {
           else if (/\b(this month|month)\b/i.test(text)) dateRangeMonth = "this month";
           else if (/\b(last month)\b/i.test(text)) dateRangeMonth = "last month";
           result = await handleMonthSales(dateRangeMonth);
-          break;
-        case "RECEIVABLES":
-          result = await handleReceivables();
-          break;
-        case "TOP_PRODUCTS":
-          result = await handleTopProducts();
-          break;
-        case "TOP_CUSTOMERS":
-          result = await handleTopCustomers();
-          break;
-        case "STOCK_VALUE":
-          result = await handleStockValue();
-          break;
-        case "TOTAL_PRODUCTS":
-          result = await handleTotalProducts();
-          break;
-        case "TOTAL_CUSTOMERS":
-          result = await handleTotalCustomers();
-          break;
-        case "TOTAL_SUPPLIERS":
-          result = await handleTotalSuppliers();
-          break;
-        case "RECENT_PURCHASES":
-          result = await handleRecentPurchases();
-          break;
-        case "SEARCH_PRODUCT":
-          result = await handleSearchProduct(text);
-          break;
-        case "SEARCH_CUSTOMER":
-          result = await handleSearchCustomer(text);
-          break;
-        case "HOW_ADD_PRODUCT":
-          result = answerHowAddProduct();
-          break;
-        case "HOW_CREATE_SALE":
-          result = answerHowCreateSale();
-          break;
-        case "HOW_RECORD_PAYMENT":
-          result = answerHowRecordPayment();
-          break;
-        case "HOW_POST_PURCHASE":
-          result = answerHowPostPurchase();
-          break;
-        case "HOW_VIEW_LOGS":
-          result = answerHowViewLogs();
-          break;
+        break;
+      case "RECEIVABLES":
+        result = await handleReceivables();
+        break;
+      case "TOP_PRODUCTS":
+        result = await handleTopProducts();
+        break;
+      case "TOP_CUSTOMERS":
+        result = await handleTopCustomers();
+        break;
+      case "STOCK_VALUE":
+        result = await handleStockValue();
+        break;
+      case "TOTAL_PRODUCTS":
+        result = await handleTotalProducts();
+        break;
+      case "TOTAL_CUSTOMERS":
+        result = await handleTotalCustomers();
+        break;
+      case "TOTAL_SUPPLIERS":
+        result = await handleTotalSuppliers();
+        break;
+      case "RECENT_PURCHASES":
+        result = await handleRecentPurchases();
+        break;
+      case "SEARCH_PRODUCT":
+        result = await handleSearchProduct(text);
+        break;
+      case "SEARCH_CUSTOMER":
+        result = await handleSearchCustomer(text);
+        break;
+      case "HOW_ADD_PRODUCT":
+        result = answerHowAddProduct();
+        break;
+      case "HOW_CREATE_SALE":
+        result = answerHowCreateSale();
+        break;
+      case "HOW_RECORD_PAYMENT":
+        result = answerHowRecordPayment();
+        break;
+      case "HOW_POST_PURCHASE":
+        result = answerHowPostPurchase();
+        break;
+      case "HOW_VIEW_LOGS":
+        result = answerHowViewLogs();
+        break;
         case "HOW_MANAGE_USERS":
           result = answerHowManageUsers(userRole);
           break;
@@ -588,10 +612,10 @@ export const askChatbot = async (req, res) => {
         case "HOW_ACCESS_ANALYTICS":
           result = answerHowAccessAnalytics(userRole);
           break;
-        case "HELPDESK":
-          result = answerHelpdesk();
-          break;
-        default:
+      case "HELPDESK":
+        result = answerHelpdesk();
+        break;
+      default:
           result = answerFallback(userRole);
       }
       source = "RULE_ENGINE";
@@ -636,11 +660,23 @@ export const askChatbot = async (req, res) => {
                 let dateRangeToday = plan.params?.dateRange;
                 if (!dateRangeToday) {
                   const textLowerToday = text.toLowerCase();
-                  if (/\b(yesterday)\b/i.test(text)) dateRangeToday = "yesterday";
-                  else if (/\b(this week|week)\b/i.test(text)) dateRangeToday = "this week";
-                  else if (/\b(this month|month)\b/i.test(text)) dateRangeToday = "this month";
-                  else if (/\b(last month)\b/i.test(text)) dateRangeToday = "last month";
-                  else if (/\b(today|todays)\b/i.test(text)) dateRangeToday = "today";
+                  // Try to extract specific date first (YYYY-MM-DD, MM/DD/YYYY, etc.)
+                  const dateMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/) || 
+                                   text.match(/\b(\d{1,2}\/\d{1,2}\/\d{4})\b/) ||
+                                   text.match(/\b(\d{1,2}-\d{1,2}-\d{4})\b/);
+                  if (dateMatch) {
+                    dateRangeToday = dateMatch[1];
+                  } else if (/\b(yesterday)\b/i.test(text)) {
+                    dateRangeToday = "yesterday";
+                  } else if (/\b(this week|week)\b/i.test(text)) {
+                    dateRangeToday = "this week";
+                  } else if (/\b(this month|month)\b/i.test(text)) {
+                    dateRangeToday = "this month";
+                  } else if (/\b(last month)\b/i.test(text)) {
+                    dateRangeToday = "last month";
+                  } else if (/\b(today|todays)\b/i.test(text)) {
+                    dateRangeToday = "today";
+                  }
                 }
                 result = await handleTodaySales(dateRangeToday || null);
                 break;
