@@ -7,6 +7,8 @@ import {
   updateInventorySettings,
   getSalesSettings,
   updateSalesSettings,
+  getChatbotSettings,
+  updateChatbotSettings,
 } from "../Controllers/settingsController.js";
 
 const router = express.Router();
@@ -62,6 +64,21 @@ router.put(
   authMiddleware,
   requireRole(["admin"]),
   updateSalesSettings
+);
+
+// Get chatbot settings (any authenticated user, no admin requirement)
+router.get(
+  "/chatbot",
+  authMiddleware,
+  getChatbotSettings
+);
+
+// Update chatbot settings (admin only)
+router.put(
+  "/chatbot",
+  authMiddleware,
+  requireRole(["admin"]),
+  updateChatbotSettings
 );
 
 export default router;

@@ -27,6 +27,13 @@ const settingsSchema = new mongoose.Schema(
         default: "choose",
       },
     },
+    chatbot: {
+      mode: {
+        type: String,
+        enum: ["RULE_ONLY", "OPENAI_ONLY", "HYBRID", "DISABLED"],
+        default: "HYBRID",
+      },
+    },
   },
   {
     timestamps: true,

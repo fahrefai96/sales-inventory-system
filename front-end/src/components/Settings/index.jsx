@@ -3,6 +3,7 @@ import GeneralSettings from "./General.jsx";
 import UserSettings from "./Users.jsx";
 import SalesSettings from "./Sales.jsx";
 import InventorySettings from "./Inventory.jsx";
+import ChatbotSettings from "./Chatbot.jsx";
 
 export default function Settings() {
   // Get user role from localStorage
@@ -15,11 +16,11 @@ export default function Settings() {
     }
   })();
 
-  const [activeTab, setActiveTab] = useState("general"); // "general" | "users" | "sales" | "inventory"
+  const [activeTab, setActiveTab] = useState("general"); // "general" | "users" | "sales" | "inventory" | "chatbot"
 
-  // Redirect to general tab if non-admin tries to access users tab
+  // Redirect to general tab if non-admin tries to access users or chatbot tab
   useEffect(() => {
-    if (activeTab === "users" && role !== "admin") {
+    if ((activeTab === "users" || activeTab === "chatbot") && role !== "admin") {
       setActiveTab("general");
     }
   }, [activeTab, role]);
@@ -78,6 +79,16 @@ export default function Settings() {
         >
           <span>Sales</span>
         </button>
+        {role === "admin" && (
+          <button
+            className={`${baseTab} ${
+              activeTab === "chatbot" ? activeTabStyle : inactiveTabStyle
+            }`}
+            onClick={() => setActiveTab("chatbot")}
+          >
+            <span>Chatbot</span>
+          </button>
+        )}
       </div>
 
       {/* Content Area */}
@@ -86,6 +97,7 @@ export default function Settings() {
         {activeTab === "users" && <UserSettings />}
         {activeTab === "sales" && <SalesSettings />}
         {activeTab === "inventory" && <InventorySettings />}
+        {activeTab === "chatbot" && <ChatbotSettings />}
       </div>
     </div>
   );

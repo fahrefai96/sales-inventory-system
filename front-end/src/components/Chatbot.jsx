@@ -25,15 +25,44 @@ const Chatbot = () => {
       text: "Hi! I'm your SIMS assistant. I can help you with:\n\n📊 Sales & Revenue (today, this week, this month)\n📦 Inventory (low stock, stock value, product search)\n💰 Financials (outstanding receivables)\n🏆 Analytics (top products, top customers)\n📝 How-to guides (add products, create sales, record payments)\n🔍 Search (find products, find customers)\n\nJust ask me anything!",
       intent: "WELCOME",
       at: new Date().toISOString(),
+      source: "RULE_ENGINE",
+      fallbackReason: null,
     },
   ]);
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [density, setDensity] = React.useState("comfortable");
+  const [chatbotMode, setChatbotMode] = React.useState("HYBRID");
 
   const containerRef = React.useRef(null);
   const dens = DENSITIES[density];
+
+  // Get user role from localStorage
+  const userRole = React.useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.role || "staff";
+    } catch {
+      return "staff";
+    }
+  }, []);
+
+  // Fetch chatbot mode on mount
+  React.useEffect(() => {
+    const fetchChatbotMode = async () => {
+      try {
+        const res = await api.get("/settings/chatbot");
+        if (res.data?.success && res.data?.chatbot?.mode) {
+          setChatbotMode(res.data.chatbot.mode);
+        }
+      } catch (err) {
+        console.error("Error fetching chatbot mode:", err);
+        // Leave mode as default "HYBRID" so UI still works
+      }
+    };
+    fetchChatbotMode();
+  }, []);
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
@@ -70,6 +99,8 @@ const Chatbot = () => {
         text: botText,
         intent: data.intent || null,
         at: new Date().toISOString(),
+        source: data.source || "RULE_ENGINE",
+        fallbackReason: data.fallbackReason || null,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -85,6 +116,8 @@ const Chatbot = () => {
         text: "Sorry, something went wrong while contacting the chatbot service. Please try again.",
         intent: "ERROR",
         at: new Date().toISOString(),
+        source: "RULE_ENGINE",
+        fallbackReason: null,
       };
       setMessages((prev) => [...prev, botMsg]);
     } finally {
@@ -121,6 +154,8 @@ const Chatbot = () => {
           text: "Hi! I'm your SIMS assistant. I can help you with:\n\n📊 Sales & Revenue (today, this week, this month)\n📦 Inventory (low stock, stock value, product search)\n💰 Financials (outstanding receivables)\n🏆 Analytics (top products, top customers)\n📝 How-to guides (add products, create sales, record payments)\n🔍 Search (find products, find customers)\n\nJust ask me anything!",
           intent: "WELCOME",
           at: new Date().toISOString(),
+          source: "RULE_ENGINE",
+          fallbackReason: null,
         },
       ]);
       setError("");
@@ -226,9 +261,42 @@ const Chatbot = () => {
                   }`}
                 >
                   <div className="whitespace-pre-line leading-relaxed">{m.text}</div>
+                  
+                  {/* Source label (only show in HYBRID mode) */}
+                  {m.from === "bot" && chatbotMode === "HYBRID" && m.source && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {m.source === "OPENAI" && (
+                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
+                          {userRole === "staff" ? "AI (staff restricted)" : "AI"}
+                        </span>
+                      )}
+                      {m.source === "RULE_ENGINE" && (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                          System
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Unauthorized action message */}
+                  {m.from === "bot" && m.fallbackReason === "unauthorized_action" && (
+                    <div className="mt-2 text-[10px] text-red-600 font-medium">
+                      You don't have permission to view this.
+                    </div>
+                  )}
+                  
+                  {/* Fallback reason message */}
+                  {m.from === "bot" && m.fallbackReason === "openai_error" && (
+                    <div className="mt-2 text-[10px] text-gray-500 italic">
+                      AI unavailable → showing basic system help instead.
+                    </div>
+                  )}
+                  
                   {m.intent &&
                     m.intent !== "WELCOME" &&
-                    m.intent !== "ERROR" && (
+                    m.intent !== "ERROR" &&
+                    m.intent !== "FALLBACK" &&
+                    m.intent !== "GENERAL" && (
                       <div
                         className={`mt-2 text-[10px] uppercase tracking-wide ${
                           m.from === "user" ? "text-blue-100" : "text-gray-400"

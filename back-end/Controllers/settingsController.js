@@ -237,3 +237,93 @@ export const updateSalesSettings = async (req, res) => {
   }
 };
 
+// Get chatbot settings
+export const getChatbotSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+
+    // If no settings document exists, create one with defaults including chatbot section
+    if (!settings) {
+      settings = new Settings({
+        general: {},
+        chatbot: {
+          mode: "HYBRID",
+        },
+      });
+      await settings.save();
+    }
+
+    // If settings.chatbot is missing, initialise it
+    if (!settings.chatbot) {
+      settings.chatbot = {
+        mode: "HYBRID",
+      };
+      await settings.save();
+    }
+
+    return res.json({
+      success: true,
+      chatbot: settings.chatbot || { mode: "HYBRID" },
+    });
+  } catch (error) {
+    console.error("getChatbotSettings error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load chatbot settings.",
+    });
+  }
+};
+
+// Update chatbot settings
+export const updateChatbotSettings = async (req, res) => {
+  try {
+    const { mode } = req.body;
+
+    // Validate mode
+    const validModes = ["RULE_ONLY", "OPENAI_ONLY", "HYBRID", "DISABLED"];
+    if (mode !== undefined && !validModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid mode. Must be one of: RULE_ONLY, OPENAI_ONLY, HYBRID, DISABLED",
+      });
+    }
+
+    // Find the single settings document, or create if it doesn't exist
+    let settings = await Settings.findOne();
+
+    if (!settings) {
+      settings = new Settings({
+        general: {},
+        chatbot: {
+          mode: "HYBRID",
+        },
+      });
+    }
+
+    // Ensure settings.chatbot exists
+    if (!settings.chatbot) {
+      settings.chatbot = {
+        mode: "HYBRID",
+      };
+    }
+
+    // Update mode if provided
+    if (mode !== undefined) {
+      settings.chatbot.mode = mode;
+    }
+
+    await settings.save();
+
+    return res.json({
+      success: true,
+      chatbot: settings.chatbot,
+    });
+  } catch (error) {
+    console.error("updateChatbotSettings error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update chatbot settings.",
+    });
+  }
+};
+

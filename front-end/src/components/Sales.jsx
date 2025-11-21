@@ -1386,17 +1386,17 @@ const Sales = () => {
 
                       {/* Payment Column */}
                       <td className={`${dens.cell} text-sm text-gray-700`}>
-                        <span
-                          className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
-                            status === "paid"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : status === "partial"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {status}
-                        </span>
+                          <span
+                            className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ${
+                              status === "paid"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : status === "partial"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {status}
+                          </span>
                       </td>
 
                       {/* ACTIONS */}
@@ -2017,9 +2017,9 @@ const Sales = () => {
               >
                 Close
               </button>
-            </div>
+              </div>
 
-            {/* Body */}
+              {/* Body */}
             <ReturnDrawerContent
               sale={returnSale}
               onClose={closeReturnDrawer}
@@ -2045,8 +2045,8 @@ const Sales = () => {
               token={token}
             />
           </div>
-        </div>
-      )}
+                  </div>
+                )}
     </div>
   );
 };
@@ -2162,7 +2162,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
-        </div>
+                  </div>
       )}
 
       {/* Products list */}
@@ -2201,8 +2201,8 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
                     <span className="mb-1 block text-xs font-medium text-gray-700">
                       Return Quantity
                     </span>
-                    <input
-                      type="number"
+                  <input
+                    type="number"
                       min="0"
                       max={maxReturnable}
                       value={returnQty || ""}
@@ -2258,26 +2258,26 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
           <span className="text-sm font-medium text-gray-700">Total Return Amount:</span>
           <span className="text-lg font-semibold text-gray-900">{fmtLKR(totalReturnAmount)}</span>
         </div>
-      </div>
+              </div>
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
-        <button
-          type="button"
+                <button
+                  type="button"
           onClick={onClose}
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
           disabled={loading || totalReturnAmount === 0}
           className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+                >
           {loading ? "Processing..." : "Process Return"}
-        </button>
-      </div>
-    </form>
+                </button>
+              </div>
+            </form>
   );
 };
 
