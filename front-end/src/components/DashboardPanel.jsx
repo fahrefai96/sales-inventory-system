@@ -92,6 +92,12 @@ export default function DashboardPanel() {
   const [aiHeadline, setAiHeadline] = useState("");
   const [aiHeadlineError, setAiHeadlineError] = useState("");
 
+  // --- Smart query (admin only) ---
+  const [smartQuestion, setSmartQuestion] = useState("");
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartError, setSmartError] = useState("");
+  const [smartAnswer, setSmartAnswer] = useState(null);
+
   // role-based visibility
   const role = (() => {
     try {
@@ -405,6 +411,57 @@ export default function DashboardPanel() {
     }
   };
 
+  // Smart query handler
+  const handleSmartQuery = async (e) => {
+    e?.preventDefault();
+    const question = smartQuestion.trim();
+    if (!question) return;
+
+    setSmartError("");
+    setSmartLoading(true);
+
+    try {
+      const res = await api.post("/dashboard/smart-query", {
+        question,
+        range: {
+          from: toISODate(range.from),
+          to: toISODate(range.to),
+        },
+      });
+
+      if (res.data?.success) {
+        setSmartAnswer({
+          answer: res.data.answer,
+          category: res.data.category || "general",
+          suggestedLinks: res.data.suggestedLinks || [],
+        });
+      } else {
+        setSmartError("Smart query failed. Please try again.");
+        setSmartAnswer(null);
+      }
+    } catch (error) {
+      console.error("Smart query error:", error);
+      setSmartError("Smart query failed. Please try again.");
+      setSmartAnswer(null);
+    } finally {
+      setSmartLoading(false);
+    }
+  };
+
+  // Category badge colors
+  const getCategoryColor = (category) => {
+    const colors = {
+      sales: "bg-blue-100 text-blue-700",
+      inventory: "bg-purple-100 text-purple-700",
+      customers: "bg-green-100 text-green-700",
+      payments: "bg-yellow-100 text-yellow-700",
+      alerts: "bg-red-100 text-red-700",
+      forecast: "bg-indigo-100 text-indigo-700",
+      general: "bg-gray-100 text-gray-700",
+    };
+    return colors[category] || colors.general;
+  };
+
   // ---- skeletons ----
   const SkeletonCard = () => (
     <div className={`rounded shadow bg-white ${densityCls.card} animate-pulse`}>
@@ -525,6 +582,102 @@ export default function DashboardPanel() {
           </div>
         </div>
       </StickyHeader>
+
+      {/* Smart Query Card (admin only) */}
+      {role === "admin" && (
+        <div className={`rounded shadow bg-white ${densityCls.card} mb-6`}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Smart Query</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Ask questions about your business data in natural language
+              </p>
+            </div>
+          </div>
+          <form onSubmit={handleSmartQuery} className="space-y-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={smartQuestion}
+                onChange={(e) => setSmartQuestion(e.target.value)}
+                placeholder="Ask about your business… e.g. 'What were sales this week?'"
+                disabled={smartLoading}
+                className="flex-1 px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              />
+              <button
+                type="submit"
+                disabled={smartLoading || !smartQuestion.trim()}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+              >
+                {smartLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Thinking…</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span>Ask</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {smartError && (
+              <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                {smartError}
+              </div>
+            )}
+
+            {smartAnswer && (
+              <div className="mt-4 p-5 border border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-white relative shadow-sm">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900 leading-relaxed pr-4">
+                      {smartAnswer.answer}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full whitespace-nowrap ${getCategoryColor(
+                      smartAnswer.category
+                    )}`}
+                  >
+                    {smartAnswer.category}
+                  </span>
+                </div>
+                {smartAnswer.suggestedLinks &&
+                  smartAnswer.suggestedLinks.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                        Quick Actions
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {smartAnswer.suggestedLinks.map((link, idx) => (
+                          <Link
+                            key={idx}
+                            to={link.route}
+                            state={link.params || {}}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
+                          >
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            {link.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            )}
+          </form>
+        </div>
+      )}
 
       {/* KPI row */}
       <div

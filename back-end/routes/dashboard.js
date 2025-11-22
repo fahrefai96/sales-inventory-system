@@ -7,6 +7,7 @@ import {
   getCombinedTrend,
   exportLowStockCsv,
 } from "../Controllers/dashboardController.js";
+import { getSmartQuery } from "../Controllers/aiDashboardSmartQueryController.js";
 
 const router = express.Router();
 
@@ -40,6 +41,14 @@ router.get(
   authMiddleware,
   requireRole(["admin"]),
   exportLowStockCsv
+);
+
+// Smart query endpoint (admin-only)
+router.post(
+  "/smart-query",
+  authMiddleware,
+  requireRole(["admin"]),
+  getSmartQuery
 );
 
 export default router;
