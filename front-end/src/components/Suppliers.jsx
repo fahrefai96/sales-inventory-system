@@ -5,8 +5,24 @@ import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 
 const DENSITIES = {
-  comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
-  compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
+  comfortable: { 
+    row: "py-3", 
+    cell: "px-4 py-3", 
+    headerCell: "px-4 py-3",
+    filterBar: "space-y-3",
+    filterGap: "gap-3",
+    exportBar: "gap-2",
+    pagination: "mb-4",
+  },
+  compact: { 
+    row: "py-1.5", 
+    cell: "px-3 py-1.5", 
+    headerCell: "px-3 py-2",
+    filterBar: "space-y-2",
+    filterGap: "gap-2",
+    exportBar: "gap-1.5",
+    pagination: "mb-3",
+  },
 };
 
 const Suppliers = () => {
@@ -578,8 +594,8 @@ const Suppliers = () => {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Suppliers</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Suppliers</h1>
+          <p className="text-gray-600 text-lg">
             Manage supplier records and view their purchase history.
           </p>
         </div>
@@ -616,7 +632,7 @@ const Suppliers = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3 justify-between">
+      <div className={`mb-4 flex flex-wrap items-center ${dens.filterGap} justify-between`}>
         <input
           type="text"
           placeholder="Search by name, email, phone, address, or country…"
@@ -624,7 +640,7 @@ const Suppliers = () => {
           onChange={onSearchChange}
           className="flex-1 min-w-[250px] max-w-lg rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <div className="flex items-center ml-auto">
+        <div className={`flex items-center ml-auto ${dens.exportBar}`}>
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
               onClick={handlePrint}
@@ -655,7 +671,7 @@ const Suppliers = () => {
       </div>
 
       {/* Rows per page selector */}
-      <div className="mb-4 flex items-center justify-end gap-2">
+      <div className={`${dens.pagination} flex items-center justify-end gap-2`}>
         <span className="text-sm text-gray-600">Rows:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
           {[25, 50, 100].map((n) => (
@@ -687,20 +703,23 @@ const Suppliers = () => {
                   sortKey="name"
                   sortBy={sortBy}
                   setSort={handleSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Email"
                   sortKey="email"
                   sortBy={sortBy}
                   setSort={handleSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Phone"
                   sortKey="phone"
                   sortBy={sortBy}
                   setSort={handleSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Address
                 </th>
                 <Th
@@ -708,14 +727,16 @@ const Suppliers = () => {
                   sortKey="country"
                   sortBy={sortBy}
                   setSort={handleSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Added"
                   sortKey="createdAt"
                   sortBy={sortBy}
                   setSort={handleSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Action
                 </th>
               </tr>
@@ -796,7 +817,7 @@ const Suppliers = () => {
         </div>
 
         {/* Pagination footer */}
-        <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`flex flex-col ${density === "comfortable" ? "gap-3 p-3" : "gap-2 p-2"} border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between`}>
           {/* Rows per page */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Rows per page:</span>
@@ -1267,10 +1288,10 @@ const Field = ({ label, required, children }) => (
   </label>
 );
 
-const Th = ({ label, sortKey, sortBy, setSort }) => {
+const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   const isActive = sortBy.key === sortKey;
   return (
-    <th className="px-4 py-3 text-left">
+    <th className={`${headerCell} text-left`}>
       <button
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
           isActive ? "text-gray-900" : "text-gray-600"
@@ -1440,7 +1461,7 @@ const Combo = ({
 };
 
 /* Pagination with Jump to page */
-const Pagination = ({ page, setPage, totalPages }) => {
+const Pagination = ({ page, setPage, totalPages, density = "comfortable" }) => {
   const [jump, setJump] = React.useState(String(page));
 
   React.useEffect(() => {
@@ -1474,7 +1495,7 @@ const Pagination = ({ page, setPage, totalPages }) => {
   };
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+    <div className={`flex flex-col ${density === "comfortable" ? "gap-2" : "gap-1.5"} sm:flex-row sm:items-center sm:justify-end`}>
       <div className="flex items-center gap-1">
         {singlePage && (
           <span className="text-xs text-gray-500 mr-2">Page 1 of 1</span>

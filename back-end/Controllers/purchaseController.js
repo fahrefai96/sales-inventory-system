@@ -264,8 +264,16 @@ export const listPurchases = async (req, res, next) => {
 
     if (from || to) {
       filter.invoiceDate = {};
-      if (from) filter.invoiceDate.$gte = new Date(from);
-      if (to) filter.invoiceDate.$lte = new Date(to);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        filter.invoiceDate.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        filter.invoiceDate.$lte = d;
+      }
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -422,11 +430,33 @@ export const getPurchases = async (req, res) => {
     // supplier filter
     if (supplier !== "all") filter.supplier = supplier;
 
-    // date range
+    // date range - filter by invoiceDate (with fallback to createdAt if invoiceDate is missing)
+    let dateFilter = {};
     if (from || to) {
-      filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) filter.createdAt.$lte = new Date(to);
+      const dateRange = {};
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        dateRange.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        dateRange.$lte = d;
+      }
+      
+      // Match by invoiceDate if present, otherwise fallback to createdAt
+      dateFilter = {
+        $or: [
+          { invoiceDate: dateRange },
+          {
+            $and: [
+              { $or: [{ invoiceDate: { $exists: false } }, { invoiceDate: null }] },
+              { createdAt: dateRange }
+            ]
+          }
+        ]
+      };
     }
 
     // total amount range
@@ -437,6 +467,7 @@ export const getPurchases = async (req, res) => {
     }
 
     // keyword search – invoiceNo, supplier name, note
+    let searchFilter = {};
     if (search.trim() !== "") {
       const s = search.trim();
 
@@ -457,7 +488,16 @@ export const getPurchases = async (req, res) => {
         orConditions.push({ supplier: { $in: supplierIds } });
       }
 
-      filter.$or = orConditions;
+      searchFilter.$or = orConditions;
+    }
+
+    // Combine date filter and search filter using $and if both exist
+    if (Object.keys(dateFilter).length > 0 && Object.keys(searchFilter).length > 0) {
+      filter.$and = [dateFilter, searchFilter];
+    } else if (Object.keys(dateFilter).length > 0) {
+      Object.assign(filter, dateFilter);
+    } else if (Object.keys(searchFilter).length > 0) {
+      Object.assign(filter, searchFilter);
     }
 
     // ---------- SORTING ----------
@@ -550,10 +590,14 @@ export const exportPurchasesCsv = async (req, res) => {
     }
     if (from || to) {
       query.invoiceDate = {};
-      if (from) query.invoiceDate.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        query.invoiceDate.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         query.invoiceDate.$lte = end;
       }
     }
@@ -605,10 +649,14 @@ export const exportPurchasesPdf = async (req, res) => {
     }
     if (from || to) {
       query.invoiceDate = {};
-      if (from) query.invoiceDate.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        query.invoiceDate.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         query.invoiceDate.$lte = end;
       }
     }

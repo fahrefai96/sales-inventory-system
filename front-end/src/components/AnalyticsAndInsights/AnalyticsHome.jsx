@@ -27,8 +27,8 @@ export default function AnalyticsHome() {
     <div className="p-6 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-gray-600">
+          <h1 className="text-4xl font-bold">Analytics</h1>
+          <p className="text-gray-600 text-lg">
             AI-powered forecasting, customer intelligence, smart alerts, anomaly
             detection, and monthly summaries for your shop.
           </p>

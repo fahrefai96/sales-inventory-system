@@ -236,11 +236,19 @@ const getSales = async (req, res) => {
       const range = {};
       if (from) {
         const d = new Date(from);
-        if (!isNaN(d)) range.$gte = d;
+        if (!isNaN(d)) {
+          // Set to start of day (00:00:00.000)
+          d.setHours(0, 0, 0, 0);
+          range.$gte = d;
+        }
       }
       if (to) {
         const d = new Date(to);
-        if (!isNaN(d)) range.$lte = d;
+        if (!isNaN(d)) {
+          // Set to end of day (23:59:59.999) to include the entire day
+          d.setHours(23, 59, 59, 999);
+          range.$lte = d;
+        }
       }
       if (Object.keys(range).length) q.saleDate = range;
     }
@@ -1083,10 +1091,14 @@ export const exportSalesListCsv = async (req, res) => {
     }
     if (from || to) {
       query.saleDate = {};
-      if (from) query.saleDate.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        query.saleDate.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         query.saleDate.$lte = end;
       }
     }
@@ -1158,10 +1170,14 @@ export const exportSalesListPdf = async (req, res) => {
     }
     if (from || to) {
       query.saleDate = {};
-      if (from) query.saleDate.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        query.saleDate.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         query.saleDate.$lte = end;
       }
     }

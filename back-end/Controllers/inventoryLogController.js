@@ -208,8 +208,16 @@ export const getInventoryLogs = async (req, res) => {
     // ----- DATE RANGE -----
     if (from || to) {
       q.createdAt = {};
-      if (from) q.createdAt.$gte = new Date(from);
-      if (to) q.createdAt.$lte = new Date(to);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        q.createdAt.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        q.createdAt.$lte = d;
+      }
     }
 
     // ----- SORTING -----
@@ -378,8 +386,16 @@ export const exportInventoryLogsPdf = async (req, res) => {
     // Date range
     if (from || to) {
       q.createdAt = {};
-      if (from) q.createdAt.$gte = new Date(from);
-      if (to) q.createdAt.$lte = new Date(to);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        q.createdAt.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        q.createdAt.$lte = d;
+      }
     }
 
     // Sorting

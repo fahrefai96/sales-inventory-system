@@ -108,6 +108,16 @@ export default function DashboardPanel() {
     }
   })();
 
+  // Get user name for welcome message
+  const userName = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.name || null;
+    } catch {
+      return null;
+    }
+  })();
+
   // preset range helper
   const setPreset = (key) => {
     const today = new Date();
@@ -262,7 +272,7 @@ export default function DashboardPanel() {
         setAiSummaryError("");
         const [monthlyRes, smartRes, anomalyRes] = await Promise.all([
           api.get("/ai-monthly-summary").catch(() => null),
-          api.get("/ai-smart-alerts").catch(() => null),
+          api.get("/smart-alerts").catch(() => null),
           api.get("/ai-anomaly").catch(() => null),
         ]);
 
@@ -477,16 +487,16 @@ export default function DashboardPanel() {
   return (
     <div className="p-6">
       <StickyHeader>
-        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 text-base">
+        <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 text-lg">
               Monitor sales, inventory health, and recent activity
             </p>
-
+            
             {/* AI summary strip (admin only) */}
             {role === "admin" && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-gray-500">
                 <span className="font-semibold">AI Insight: </span>
                 {aiHeadline || aiHeadlineError || "Generating..."}{" "}
                 <Link
@@ -499,7 +509,7 @@ export default function DashboardPanel() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 pt-1">
             <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
               <button
                 className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${

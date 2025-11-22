@@ -27,8 +27,8 @@ export default function ReportsIndex() {
     <div className="p-6 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold">Reports</h1>
-        <p className="text-gray-600">
+        <h1 className="text-4xl font-bold">Reports</h1>
+        <p className="text-gray-600 text-lg">
         View structured sales, inventory, performance, and customer balance reports.
         </p>
         </div>

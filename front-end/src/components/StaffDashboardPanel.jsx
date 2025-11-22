@@ -123,8 +123,8 @@ export default function StaffDashboardPanel() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Staff Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className="text-4xl font-bold">Staff Dashboard</h1>
+          <p className="text-gray-600 text-lg">
             Quick view of today&apos;s sales and stock alerts
           </p>
         </div>

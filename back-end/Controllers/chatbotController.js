@@ -611,7 +611,7 @@ export const askChatbot = async (req, res) => {
           break;
         case "HOW_ACCESS_ANALYTICS":
           result = answerHowAccessAnalytics(userRole);
-          break;
+        break;
       case "HELPDESK":
         result = answerHelpdesk();
         break;

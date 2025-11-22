@@ -739,10 +739,10 @@ export default function Catalog() {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-4xl font-bold text-gray-900">
             Categories &amp; Brands
           </h1>
-          <p className="text-gray-600 text-base">
+          <p className="text-gray-600 text-lg">
             Manage catalog taxonomy used across products.
           </p>
         </div>
@@ -773,16 +773,14 @@ export default function Catalog() {
           {tab === "categories" ? (
             <button
               onClick={openCatDrawerForCreate}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#8E31FC" }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               New Category
             </button>
           ) : (
             <button
               onClick={openBrandDrawerForCreate}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#8E31FC" }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               New Brand
             </button>
@@ -983,8 +981,7 @@ export default function Catalog() {
                         </p>
                         <button
                           onClick={openCatDrawerForCreate}
-                          className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                          style={{ backgroundColor: "#8E31FC" }}
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                         >
                           New Category
                         </button>
@@ -1070,8 +1067,7 @@ export default function Catalog() {
                         </p>
                         <button
                           onClick={openBrandDrawerForCreate}
-                          className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                          style={{ backgroundColor: "#8E31FC" }}
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                         >
                           New Brand
                         </button>

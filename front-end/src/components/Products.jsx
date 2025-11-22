@@ -6,8 +6,24 @@ import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import { fuzzySearchProducts } from "../utils/fuzzySearch";
 
 const DENSITIES = {
-  comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
-  compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
+  comfortable: { 
+    row: "py-3", 
+    cell: "px-4 py-3", 
+    headerCell: "px-4 py-3",
+    filterBar: "space-y-3",
+    filterGap: "gap-3",
+    exportBar: "gap-2",
+    pagination: "mb-4",
+  },
+  compact: { 
+    row: "py-1.5", 
+    cell: "px-3 py-1.5", 
+    headerCell: "px-3 py-2",
+    filterBar: "space-y-2",
+    filterGap: "gap-2",
+    exportBar: "gap-1.5",
+    pagination: "mb-3",
+  },
 };
 
 const Products = () => {
@@ -603,8 +619,8 @@ const Products = () => {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Products</h1>
+          <p className="text-gray-600 text-lg">
             Manage your catalog, pricing, and stock levels.
           </p>
         </div>
@@ -639,8 +655,8 @@ const Products = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-4 space-y-3">
-        <div className="grid grid-cols-4 gap-3">
+      <div className={`mb-4 ${dens.filterBar}`}>
+        <div className={`grid grid-cols-4 ${dens.filterGap}`}>
           <div>
             <input
               type="text"
@@ -685,7 +701,7 @@ const Products = () => {
         </div>
 
         {/* Clear Button and Export Buttons */}
-        <div className="flex justify-end items-center gap-2">
+        <div className={`flex justify-end items-center ${dens.exportBar}`}>
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
               onClick={handlePrint}
@@ -731,7 +747,7 @@ const Products = () => {
       </div>
 
       {/* Rows per page selector */}
-      <div className="mb-4 flex items-center justify-end gap-2">
+      <div className={`${dens.pagination} flex items-center justify-end gap-2`}>
         <span className="text-sm text-gray-600">Rows:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
           {[25, 50, 100].map((n) => (
@@ -763,23 +779,25 @@ const Products = () => {
                   sortKey="code"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Name"
                   sortKey="name"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Brand
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Category
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Size
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Supplier
                 </th>
                 <Th
@@ -787,20 +805,23 @@ const Products = () => {
                   sortKey="price"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Stock"
                   sortKey="stock"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Updated"
                   sortKey="lastUpdated"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Action
                 </th>
               </tr>
@@ -883,7 +904,7 @@ const Products = () => {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`flex flex-col ${density === "comfortable" ? "gap-3 p-3" : "gap-2 p-2"} border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between`}>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Rows per page:</span>
             <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
@@ -1127,10 +1148,10 @@ const Field = ({ label, required, children }) => (
   </label>
 );
 
-const Th = ({ label, sortKey, sortBy, setSort }) => {
+const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   const isActive = sortBy.key === sortKey;
   return (
-    <th className="px-4 py-3 text-left">
+    <th className={`${headerCell} text-left`}>
       <button
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
           isActive ? "text-gray-900" : "text-gray-600"

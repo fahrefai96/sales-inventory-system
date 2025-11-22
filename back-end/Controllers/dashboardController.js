@@ -231,8 +231,16 @@ const getTopProducts = async (req, res) => {
     const limit = Math.max(1, Math.min(Number(req.query.limit) || 5, 10));
 
     const rangeMatch = {};
-    if (from) rangeMatch.$gte = from;
-    if (to) rangeMatch.$lt = to;
+    if (from) {
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      rangeMatch.$gte = d;
+    }
+    if (to) {
+      const d = new Date(to);
+      d.setHours(23, 59, 59, 999); // Set to end of day
+      rangeMatch.$lte = d;
+    }
 
     const dateFilter = Object.keys(rangeMatch).length
       ? { saleDate: rangeMatch }
@@ -348,12 +356,28 @@ const getCombinedTrend = async (req, res) => {
     const tz = "Asia/Colombo";
 
     const rangeMatchSales = {};
-    if (from) rangeMatchSales.$gte = from;
-    if (to) rangeMatchSales.$lt = to;
+    if (from) {
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      rangeMatchSales.$gte = d;
+    }
+    if (to) {
+      const d = new Date(to);
+      d.setHours(23, 59, 59, 999); // Set to end of day
+      rangeMatchSales.$lte = d;
+    }
 
     const rangeMatchPurch = {};
-    if (from) rangeMatchPurch.$gte = from;
-    if (to) rangeMatchPurch.$lt = to;
+    if (from) {
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      rangeMatchPurch.$gte = d;
+    }
+    if (to) {
+      const d = new Date(to);
+      d.setHours(23, 59, 59, 999); // Set to end of day
+      rangeMatchPurch.$lte = d;
+    }
 
     // SALES
     const salesAgg = Sale.aggregate([

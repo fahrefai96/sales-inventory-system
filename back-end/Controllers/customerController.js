@@ -225,8 +225,16 @@ export const getCustomerSalesByPaymentStatus = async (req, res) => {
 
     if (from || to) {
       match.saleDate = {};
-      if (from) match.saleDate.$gte = new Date(from);
-      if (to) match.saleDate.$lte = new Date(to);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        match.saleDate.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        match.saleDate.$lte = d;
+      }
     }
 
     const skip = (Number(page) - 1) * Number(limit);

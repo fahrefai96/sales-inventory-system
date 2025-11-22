@@ -758,8 +758,8 @@ const InventoryLogs = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventory Logs</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Inventory Logs</h1>
+          <p className="text-gray-600 text-lg">
             Review all stock movements from sales, purchases, and product
             changes.
           </p>

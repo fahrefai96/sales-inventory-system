@@ -8,15 +8,31 @@ import api from "../utils/api";
 
 // Density options to match other screens
 const DENSITIES = {
-  comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
-  compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
+  comfortable: { 
+    row: "py-3", 
+    cell: "px-4 py-3", 
+    headerCell: "px-4 py-3",
+    filterBar: "space-y-3",
+    filterGap: "gap-3",
+    exportBar: "gap-2",
+    pagination: "mb-4",
+  },
+  compact: { 
+    row: "py-1.5", 
+    cell: "px-3 py-1.5", 
+    headerCell: "px-3 py-2",
+    filterBar: "space-y-2",
+    filterGap: "gap-2",
+    exportBar: "gap-1.5",
+    pagination: "mb-3",
+  },
 };
 
 // Sortable table header component
-const Th = ({ label, sortKey, sortBy, setSort }) => {
+const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   const isActive = sortBy.key === sortKey;
   return (
-    <th className="px-4 py-3 text-left">
+    <th className={`${headerCell} text-left`}>
       <button
         type="button"
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
@@ -295,10 +311,14 @@ const Sales = () => {
       if (customerFilter && customerFilter !== "all") params.set("customer", customerFilter);
       if (paymentStatus) params.set("status", paymentStatus);
 
-      if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
+      if (dateFrom) {
+        const start = new Date(dateFrom);
+        start.setHours(0, 0, 0, 0); // Set to start of day
+        params.set("from", start.toISOString());
+      }
       if (dateTo) {
         const end = new Date(dateTo);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         params.set("to", end.toISOString());
       }
 
@@ -782,8 +802,16 @@ const Sales = () => {
       const params = new URLSearchParams();
       if (unifiedSearch.trim()) params.set("search", unifiedSearch.trim());
       if (paymentStatus) params.set("status", paymentStatus);
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
+      if (dateFrom) {
+        const start = new Date(dateFrom);
+        start.setHours(0, 0, 0, 0); // Set to start of day
+        params.set("from", start.toISOString());
+      }
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999); // Set to end of day
+        params.set("to", end.toISOString());
+      }
       if (minAmount !== "") params.set("min", minAmount);
       if (maxAmount !== "") params.set("max", maxAmount);
 
@@ -1053,8 +1081,8 @@ const Sales = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Sales</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Sales</h1>
+          <p className="text-gray-600 text-lg">
             Create, filter, and manage sales & invoices.
           </p>
         </div>
@@ -1120,9 +1148,9 @@ const Sales = () => {
       ) : null}
 
       {/* FILTER BAR */}
-      <div className="mb-4 space-y-3">
+      <div className={`mb-4 ${dens.filterBar}`}>
         {/* First row: Search, Customer, Payment Status */}
-        <div className="grid gap-3 lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-2">
+        <div className={`grid ${dens.filterGap} lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-2`}>
           {/* Unified search bar */}
           <div>
             <input
@@ -1173,7 +1201,7 @@ const Sales = () => {
         </div>
 
         {/* Second row: From, To, Min Rs., Max Rs. */}
-        <div className="grid gap-3 lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2">
+        <div className={`grid ${dens.filterGap} lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2`}>
           {/* Date From */}
           <div>
             <div className="relative">
@@ -1240,7 +1268,7 @@ const Sales = () => {
         </div>
 
         {/* Clear Button and Export Buttons */}
-        <div className="flex justify-end items-center gap-2">
+        <div className={`flex justify-end items-center ${dens.exportBar}`}>
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
               onClick={handlePrint}
@@ -1287,7 +1315,7 @@ const Sales = () => {
       </div>
 
       {/* Rows per page selector */}
-      <div className="mb-4 flex items-center justify-end gap-2">
+      <div className={`${dens.pagination} flex items-center justify-end gap-2`}>
         <span className="text-sm text-gray-600">Rows:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
           {[25, 50, 100].map((n) => (
@@ -1311,10 +1339,10 @@ const Sales = () => {
           <table className="min-w-full table-auto">
             <thead className="sticky top-0 z-10 bg-gray-50">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Sale ID
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Customer
                 </th>
                 <Th
@@ -1322,8 +1350,9 @@ const Sales = () => {
                   sortKey="saleDate"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Items
                 </th>
                 <Th
@@ -1331,11 +1360,12 @@ const Sales = () => {
                   sortKey="discountedAmount"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Payment
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Actions
                 </th>
               </tr>
@@ -1493,6 +1523,7 @@ const Sales = () => {
 
         {/* Pagination footer (server-side) */}
         <FooterPager
+          density={density}
           page={page}
           setPage={(p) => fetchSales(p, pageSize)}
           totalPages={totalPages}
@@ -2315,6 +2346,7 @@ function FooterPager({
   total,
   pageSize,
   setPageSize,
+  density = "comfortable",
 }) {
   const [jump, setJump] = React.useState(String(page));
   React.useEffect(() => setJump(String(page)), [page, totalPages]);
@@ -2339,7 +2371,7 @@ function FooterPager({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className={`flex flex-col ${density === "comfortable" ? "gap-3 p-3" : "gap-2 p-2"} border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between`}>
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600">Rows per page:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">

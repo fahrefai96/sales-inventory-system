@@ -9,8 +9,24 @@ import { fuzzySearch } from "../utils/fuzzySearch";
  * Utilities & Small Bits
  * ========================= */
 const DENSITIES = {
-  comfortable: { row: "py-3", cell: "px-4 py-3", text: "text-[15px]" },
-  compact: { row: "py-2", cell: "px-3 py-2", text: "text-[14px]" },
+  comfortable: { 
+    row: "py-3", 
+    cell: "px-4 py-3", 
+    headerCell: "px-4 py-3",
+    filterBar: "space-y-3",
+    filterGap: "gap-3",
+    exportBar: "gap-2",
+    pagination: "mb-4",
+  },
+  compact: { 
+    row: "py-1.5", 
+    cell: "px-3 py-1.5", 
+    headerCell: "px-3 py-2",
+    filterBar: "space-y-2",
+    filterGap: "gap-2",
+    exportBar: "gap-1.5",
+    pagination: "mb-3",
+  },
 };
 
 const fmtLKR = (n) => `Rs. ${Number(n || 0).toLocaleString()}`;
@@ -167,10 +183,10 @@ const Combo = ({
   );
 };
 
-const Th = ({ label, sortKey, sortBy, setSort }) => {
+const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   const isActive = sortBy.key === sortKey;
   return (
-    <th className="px-4 py-3 text-left">
+    <th className={`${headerCell} text-left`}>
       <button
         type="button"
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wide ${
@@ -203,6 +219,7 @@ const SkeletonRows = ({ rows = 6, dens, cols = 6 }) => (
 );
 
 const Pagination = ({
+  density = "comfortable",
   pageSize,
   setPageSize,
   page,
@@ -240,7 +257,7 @@ const Pagination = ({
   };
 
   return (
-    <div className="flex flex-col gap-3 border-t border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className={`flex flex-col ${density === "comfortable" ? "gap-3 p-3" : "gap-2 p-2"} border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between`}>
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600">Rows per page:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
@@ -677,8 +694,16 @@ const Purchases = () => {
 
       if (query.trim()) params.search = query.trim();
       if (statusFilter) params.status = statusFilter;
-      if (fromDate) params.from = fromDate;
-      if (toDate) params.to = toDate;
+      if (fromDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0); // Set to start of day
+        params.from = start.toISOString();
+      }
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999); // Set to end of day
+        params.to = end.toISOString();
+      }
       if (minTotal) params.min = minTotal;
       if (maxTotal) params.max = maxTotal;
 
@@ -812,8 +837,16 @@ const Purchases = () => {
       const params = new URLSearchParams();
       if (query.trim()) params.set("search", query.trim());
       if (statusFilter) params.set("status", statusFilter);
-      if (fromDate) params.set("from", fromDate);
-      if (toDate) params.set("to", toDate);
+      if (fromDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0); // Set to start of day
+        params.set("from", start.toISOString());
+      }
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999); // Set to end of day
+        params.set("to", end.toISOString());
+      }
 
       const apiBase =
         import.meta.env.VITE_API_URL || "http://localhost:3000/api";
@@ -1373,8 +1406,8 @@ const Purchases = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Purchases</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Purchases</h1>
+          <p className="text-gray-600 text-lg">
             Create drafts, post to update stock, cancel posted, or delete
             drafts.
           </p>
@@ -1411,8 +1444,8 @@ const Purchases = () => {
       </div>
 
       {/* Toolbar / Filters */}
-      <div className="mb-4 space-y-3">
-        <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2">
+      <div className={`mb-4 ${dens.filterBar}`}>
+        <div className={`grid ${dens.filterGap} lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2`}>
           <div>
             <input
               type="text"
@@ -1468,7 +1501,7 @@ const Purchases = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className={dens.filterGap === "gap-3" ? "flex gap-2" : "flex gap-1.5"}>
             <div className="flex-1">
               <input
                 type="number"
@@ -1493,7 +1526,7 @@ const Purchases = () => {
         </div>
 
         {/* Clear Button and Export Buttons */}
-        <div className="flex justify-end items-center gap-2">
+        <div className={`flex justify-end items-center ${dens.exportBar}`}>
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
               onClick={handlePrint}
@@ -1539,7 +1572,7 @@ const Purchases = () => {
       </div>
 
       {/* Rows per page selector */}
-      <div className="mb-4 flex items-center justify-end gap-2">
+      <div className={`${dens.pagination} flex items-center justify-end gap-2`}>
         <span className="text-sm text-gray-600">Rows:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
           {[25, 50, 100].map((n) => (
@@ -1568,14 +1601,16 @@ const Purchases = () => {
                   sortKey="createdAt"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Supplier"
                   sortKey="supplier"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Items
                 </th>
                 <Th
@@ -1583,14 +1618,16 @@ const Purchases = () => {
                   sortKey="grandTotal"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
                 <Th
                   label="Status"
                   sortKey="status"
                   sortBy={sortBy}
                   setSort={setSort}
+                  headerCell={dens.headerCell}
                 />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                <th className={`${dens.headerCell} text-left text-xs font-semibold uppercase tracking-wide text-gray-800`}>
                   Action
                 </th>
               </tr>
@@ -1692,6 +1729,7 @@ const Purchases = () => {
 
         {/* Pagination footer (server-side now) */}
         <Pagination
+          density={density}
           pageSize={pageSize}
           setPageSize={changePageSize}
           page={page}

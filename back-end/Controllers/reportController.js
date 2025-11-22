@@ -1103,10 +1103,14 @@ export const exportInventoryCsv = async (req, res) => {
       const purchaseMatch = { status: "posted" };
       if (from || to) {
         const invoiceDateMatch = {};
-        if (from) invoiceDateMatch.$gte = new Date(from);
+        if (from) {
+          const d = new Date(from);
+          d.setHours(0, 0, 0, 0); // Set to start of day
+          invoiceDateMatch.$gte = d;
+        }
         if (to) {
           const endDate = new Date(to);
-          endDate.setHours(23, 59, 59, 999);
+          endDate.setHours(23, 59, 59, 999); // Set to end of day
           invoiceDateMatch.$lte = endDate;
         }
         purchaseMatch.$or = [
@@ -1710,10 +1714,14 @@ export const exportInventoryPdf = async (req, res) => {
       const purchaseMatch = { status: "posted" };
       if (from || to) {
         const invoiceDateMatch = {};
-        if (from) invoiceDateMatch.$gte = new Date(from);
+        if (from) {
+          const d = new Date(from);
+          d.setHours(0, 0, 0, 0); // Set to start of day
+          invoiceDateMatch.$gte = d;
+        }
         if (to) {
           const endDate = new Date(to);
-          endDate.setHours(23, 59, 59, 999);
+          endDate.setHours(23, 59, 59, 999); // Set to end of day
           invoiceDateMatch.$lte = endDate;
         }
         purchaseMatch.$or = [
@@ -2055,8 +2063,16 @@ export const getReceivables = async (req, res) => {
     // If your Sale has saleDate/createdAt, include an optional range filter
     if (from || to) {
       const range = {};
-      if (from) range.$gte = new Date(from);
-      if (to) range.$lte = new Date(to);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        range.$gte = d;
+      }
+      if (to) {
+        const d = new Date(to);
+        d.setHours(23, 59, 59, 999); // Set to end of day
+        range.$lte = d;
+      }
       // prefer saleDate if you have it; otherwise createdAt
       match.saleDate ? (match.saleDate = range) : (match.createdAt = range);
     }
@@ -2111,10 +2127,14 @@ export const getCustomerBalances = async (req, res) => {
 
     // Date range on sales
     const saleDateMatch = {};
-    if (from) saleDateMatch.$gte = new Date(from);
+    if (from) {
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      saleDateMatch.$gte = d;
+    }
     if (to) {
       const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
+      end.setHours(23, 59, 59, 999); // Set to end of day
       saleDateMatch.$lte = end;
     }
 
@@ -2268,10 +2288,14 @@ export const exportCustomerBalancesCsv = async (req, res) => {
     const matchStage = {};
     if (from || to) {
       const saleDateMatch = {};
-      if (from) saleDateMatch.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        saleDateMatch.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         saleDateMatch.$lte = end;
       }
       matchStage.$expr = {
@@ -2420,10 +2444,14 @@ export const exportCustomerBalancesPdf = async (req, res) => {
     const matchStage = {};
     if (from || to) {
       const saleDateMatch = {};
-      if (from) saleDateMatch.$gte = new Date(from);
+      if (from) {
+        const d = new Date(from);
+        d.setHours(0, 0, 0, 0); // Set to start of day
+        saleDateMatch.$gte = d;
+      }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999); // Set to end of day
         saleDateMatch.$lte = end;
       }
       matchStage.$expr = {
@@ -2609,8 +2637,16 @@ function buildReceivablesMatch({ from, to, customer }) {
 
   if (from || to) {
     m.saleDate = {};
-    if (from) m.saleDate.$gte = new Date(from);
-    if (to) m.saleDate.$lte = new Date(to);
+    if (from) {
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      m.saleDate.$gte = d;
+    }
+    if (to) {
+      const d = new Date(to);
+      d.setHours(23, 59, 59, 999); // Set to end of day
+      m.saleDate.$lte = d;
+    }
   }
   if (customer) {
     m.customer = customer;
@@ -2816,11 +2852,13 @@ export const getCustomerPaymentsReport = async (req, res) => {
     // Build date filter for payment createdAt
     const paymentDateMatch = {};
     if (from) {
-      paymentDateMatch.$gte = new Date(from);
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      paymentDateMatch.$gte = d;
     }
     if (to) {
       const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
+      end.setHours(23, 59, 59, 999); // Set to end of day
       paymentDateMatch.$lte = end;
     }
 
@@ -3000,11 +3038,13 @@ export const exportCustomerPaymentsCsv = async (req, res) => {
     // Build date filter
     const paymentDateMatch = {};
     if (from) {
-      paymentDateMatch.$gte = new Date(from);
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      paymentDateMatch.$gte = d;
     }
     if (to) {
       const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
+      end.setHours(23, 59, 59, 999); // Set to end of day
       paymentDateMatch.$lte = end;
     }
 
@@ -3180,11 +3220,13 @@ export const exportCustomerPaymentsPdf = async (req, res) => {
     // Build date filter
     const paymentDateMatch = {};
     if (from) {
-      paymentDateMatch.$gte = new Date(from);
+      const d = new Date(from);
+      d.setHours(0, 0, 0, 0); // Set to start of day
+      paymentDateMatch.$gte = d;
     }
     if (to) {
       const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
+      end.setHours(23, 59, 59, 999); // Set to end of day
       paymentDateMatch.$lte = end;
     }
 

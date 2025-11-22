@@ -168,8 +168,8 @@ const Chatbot = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-gray-900">Chatbot</h1>
-          <p className="text-gray-600 text-base">
+          <h1 className="text-4xl font-bold text-gray-900">Chatbot</h1>
+          <p className="text-gray-600 text-lg">
             Ask system-related questions, get quick stats (sales, stock, dues),
             and step-by-step guidance for common tasks.
           </p>
