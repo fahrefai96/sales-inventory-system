@@ -2,7 +2,7 @@ import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   getForecastOverview,
-  getReorderSuggestions,
+  getReorderSuggestions, getMLForecast
 } from "../Controllers/forecastController.js";
 
 const router = express.Router();
@@ -15,5 +15,7 @@ router.use(requireRole(["admin"]));
 router.get("/", getForecastOverview);
 router.get("/overview", getForecastOverview);
 router.get("/ai/reorder-suggestions", getReorderSuggestions);
+router.get("/ml-forecast", getMLForecast);
+
 
 export default router;

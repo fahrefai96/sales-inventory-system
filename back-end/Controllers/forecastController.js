@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Sale from "../models/Sales.js";
 import Product from "../models/Product.js";
+import fs from "fs";
+import path from "path";
 
 /**
  * Simple linear regression: y = a + b x
@@ -376,6 +378,28 @@ export const getReorderSuggestions = async (req, res) => {
       success: false,
       message: "Failed to generate AI reorder suggestions.",
       error: err.message,
+    });
+  }
+};
+
+
+export const getMLForecast = async (req, res) => {
+  try {
+    const filePath = path.join(process.cwd(), "data", "forecast_output.json");
+    const raw = fs.readFileSync(filePath, "utf8");
+    const data = JSON.parse(raw);
+
+    return res.json({
+      success: true,
+      forecastAvailable: true,
+      data,
+    });
+  } catch (err) {
+    console.error("Error in getMLForecast:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load ML forecast.",
+      details: err.message,
     });
   }
 };

@@ -3,6 +3,7 @@ import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import { getCustomerClusters } from "../Controllers/aiCustomerClustersController.js";
 import { getCustomerCreditRiskClusters } from "../Controllers/aiCreditRiskClustersController.js";
+import { getAiMonthlyOpenAI } from "../Controllers/aiMonthlyOpenAIController.js";
 
 import {
   // Core JSON
@@ -80,5 +81,8 @@ router.get("/customer-payments/export/pdf", exportCustomerPaymentsPdf);
 /* -------- AI Customer Clusters -------- */
 router.get("/analytics/customer-clusters", getCustomerClusters);
 router.get("/analytics/customer-credit-risk-clusters", getCustomerCreditRiskClusters);
+
+/* -------- AI Monthly OpenAI Summary -------- */
+router.get("/ai-monthly-openai", authMiddleware, requireRole(["admin"]), getAiMonthlyOpenAI);
 
 export default router;

@@ -89,6 +89,8 @@ export default function DashboardPanel() {
   // --- AI summary strip (admin only) ---
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryError, setAiSummaryError] = useState("");
+  const [aiHeadline, setAiHeadline] = useState("");
+  const [aiHeadlineError, setAiHeadlineError] = useState("");
 
   // role-based visibility
   const role = (() => {
@@ -229,10 +231,25 @@ export default function DashboardPanel() {
     if (role !== "admin") {
       setAiSummary(null);
       setAiSummaryError("");
+      setAiHeadline("");
+      setAiHeadlineError("");
       return;
     }
 
     let mounted = true;
+
+    const loadAiHeadline = async () => {
+      try {
+        const res = await api.get("/reports/ai-monthly-openai");
+        if (res.data?.success) {
+          setAiHeadline(res.data.dashboardHeadline);
+        } else {
+          setAiHeadlineError("AI dashboard insight unavailable.");
+        }
+      } catch (e) {
+        setAiHeadlineError("AI dashboard insight unavailable.");
+      }
+    };
 
     const loadAiSummary = async () => {
       try {
@@ -312,6 +329,7 @@ export default function DashboardPanel() {
     };
 
     loadAiSummary();
+    loadAiHeadline();
     return () => {
       mounted = false;
     };
@@ -412,15 +430,13 @@ export default function DashboardPanel() {
             {/* AI summary strip (admin only) */}
             {role === "admin" && (
               <p className="mt-1 text-xs text-gray-500">
-                <span className="font-semibold">Insights: </span>
-                {aiSummary?.text ||
-                  aiSummaryError ||
-                  "Collecting data to generate Insights…"}{" "}
+                <span className="font-semibold">AI Insight: </span>
+                {aiHeadline || aiHeadlineError || "Generating..."}{" "}
                 <Link
                   to="/admin-dashboard/analytics"
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 hover:underline ml-1"
                 >
-                  View details in Analytics
+                  View full analysis
                 </Link>
               </p>
             )}

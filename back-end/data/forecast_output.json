@@ -1,0 +1,8502 @@
+[
+    {
+        "date": "2013-01-15",
+        "actual": 5204.174,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-16",
+        "actual": 6733.596002,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-17",
+        "actual": 4942.474,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-18",
+        "actual": 5923.124001,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-19",
+        "actual": 5895.146,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-20",
+        "actual": 2371.133995,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-21",
+        "actual": 5227.60202,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-22",
+        "actual": 5298.986,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-23",
+        "actual": 6259.346,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-24",
+        "actual": 4861.523999999999,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-25",
+        "actual": 5577.701,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-26",
+        "actual": 5290.32701,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-27",
+        "actual": 2439.378,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-28",
+        "actual": 4976.808,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-29",
+        "actual": 4681.5110005,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-30",
+        "actual": 6118.887,
+        "forecast": null
+    },
+    {
+        "date": "2013-01-31",
+        "actual": 4712.577,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-01",
+        "actual": 5782.779,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-02",
+        "actual": 5706.91901,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-03",
+        "actual": 2267.983,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-04",
+        "actual": 5574.041,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-05",
+        "actual": 5080.786,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-06",
+        "actual": 6107.432001,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-07",
+        "actual": 4452.242995,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-08",
+        "actual": 5593.812,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-09",
+        "actual": 4435.572,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-10",
+        "actual": 1199.135,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-11",
+        "actual": 1344.749998,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-12",
+        "actual": 1852.01501,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-13",
+        "actual": 6121.725,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-14",
+        "actual": 4999.187999,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-15",
+        "actual": 5387.78798,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-16",
+        "actual": 5625.385,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-17",
+        "actual": 1747.08101,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-18",
+        "actual": 5343.77902,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-19",
+        "actual": 5229.718,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-20",
+        "actual": 6024.07,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-21",
+        "actual": 5325.731,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-22",
+        "actual": 5781.510002,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-23",
+        "actual": 5426.989018,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-24",
+        "actual": 2295.712,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-25",
+        "actual": 5333.274984,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-26",
+        "actual": 4710.27898,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-27",
+        "actual": 6054.942997,
+        "forecast": null
+    },
+    {
+        "date": "2013-02-28",
+        "actual": 5009.69201,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-01",
+        "actual": 5940.556,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-02",
+        "actual": 5817.466999,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-03",
+        "actual": 2436.827,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-04",
+        "actual": 6094.491999,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-05",
+        "actual": 4968.63401,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-06",
+        "actual": 6845.5380000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-07",
+        "actual": 5199.071,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-08",
+        "actual": 6010.675998,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-09",
+        "actual": 5665.5109999999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-10",
+        "actual": 2601.404,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-11",
+        "actual": 5504.89798,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-12",
+        "actual": 4965.085,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-13",
+        "actual": 6077.77601,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-14",
+        "actual": 4557.174,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-15",
+        "actual": 5638.478,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-16",
+        "actual": 5799.479,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-17",
+        "actual": 2258.610998,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-18",
+        "actual": 5161.345,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-19",
+        "actual": 4942.25201,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-20",
+        "actual": 6195.922,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-21",
+        "actual": 5097.209,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-22",
+        "actual": 5795.069,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-23",
+        "actual": 5518.596,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-24",
+        "actual": 2056.88,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-25",
+        "actual": 5233.41299,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-26",
+        "actual": 4812.276,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-27",
+        "actual": 6387.455,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-28",
+        "actual": 5686.706,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-29",
+        "actual": 2001.729,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-30",
+        "actual": 4353.33,
+        "forecast": null
+    },
+    {
+        "date": "2013-03-31",
+        "actual": 2042.3690000000001,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-01",
+        "actual": 6144.881,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-02",
+        "actual": 5774.184999,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-03",
+        "actual": 7074.953,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-04",
+        "actual": 4896.498,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-05",
+        "actual": 6304.927,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-06",
+        "actual": 5594.088000000001,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-07",
+        "actual": 2363.7399995,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-08",
+        "actual": 5378.18,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-09",
+        "actual": 4803.334964,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-10",
+        "actual": 6835.487,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-11",
+        "actual": 4701.459,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-12",
+        "actual": 6212.33,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-13",
+        "actual": 5493.952,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-14",
+        "actual": 2209.921008,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-15",
+        "actual": 5462.558,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-16",
+        "actual": 5367.81,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-17",
+        "actual": 6207.2429999999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-18",
+        "actual": 5004.652996,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-19",
+        "actual": 5339.899,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-20",
+        "actual": 5759.571,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-21",
+        "actual": 2449.28,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-22",
+        "actual": 5504.771,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-23",
+        "actual": 5085.2429999999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-24",
+        "actual": 7112.197,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-25",
+        "actual": 4722.563002,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-26",
+        "actual": 6316.556,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-27",
+        "actual": 5334.13899,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-28",
+        "actual": 2427.34,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-29",
+        "actual": 4488.657,
+        "forecast": null
+    },
+    {
+        "date": "2013-04-30",
+        "actual": 5478.0779999999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-01",
+        "actual": 2677.930005,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-02",
+        "actual": 5648.427,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-03",
+        "actual": 7051.153003,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-04",
+        "actual": 5797.9369799999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-05",
+        "actual": 2723.904,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-06",
+        "actual": 5813.938999999999,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-07",
+        "actual": 5586.959,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-08",
+        "actual": 6351.424001,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-09",
+        "actual": 5049.362,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-10",
+        "actual": 6135.394,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-11",
+        "actual": 6289.375,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-12",
+        "actual": 1904.5529999999999,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-13",
+        "actual": 5637.614,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-14",
+        "actual": 5528.375005,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-15",
+        "actual": 5901.738,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-16",
+        "actual": 5459.329,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-17",
+        "actual": 6021.054,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-18",
+        "actual": 5681.288,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-19",
+        "actual": 2037.13201,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-20",
+        "actual": 5221.561,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-21",
+        "actual": 4932.974,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-22",
+        "actual": 5896.853,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-23",
+        "actual": 5426.115,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-24",
+        "actual": 2195.219,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-25",
+        "actual": 4255.778004,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-26",
+        "actual": 1621.783,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-27",
+        "actual": 5194.1089999999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-28",
+        "actual": 5133.556996,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-29",
+        "actual": 6685.573,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-30",
+        "actual": 4949.255,
+        "forecast": null
+    },
+    {
+        "date": "2013-05-31",
+        "actual": 6155.988,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-01",
+        "actual": 6180.505,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-02",
+        "actual": 1729.61,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-03",
+        "actual": 6302.145,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-04",
+        "actual": 5893.591,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-05",
+        "actual": 7261.88,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-06",
+        "actual": 5565.632001,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-07",
+        "actual": 6704.611,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-08",
+        "actual": 5537.825,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-09",
+        "actual": 2331.649,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-10",
+        "actual": 5703.609,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-11",
+        "actual": 5368.142,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-12",
+        "actual": 6200.09799,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-13",
+        "actual": 4737.133,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-14",
+        "actual": 6056.953,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-15",
+        "actual": 5452.68601,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-16",
+        "actual": 1983.074,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-17",
+        "actual": 5964.64102,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-18",
+        "actual": 5096.6050000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-19",
+        "actual": 6747.888002000001,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-20",
+        "actual": 4725.838,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-21",
+        "actual": 5608.436,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-22",
+        "actual": 5257.657,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-23",
+        "actual": 2207.966,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-24",
+        "actual": 5225.463,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-25",
+        "actual": 5698.107,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-26",
+        "actual": 5962.694,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-27",
+        "actual": 4822.808,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-28",
+        "actual": 6044.440996,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-29",
+        "actual": 5525.23898,
+        "forecast": null
+    },
+    {
+        "date": "2013-06-30",
+        "actual": 2154.501,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-01",
+        "actual": 5837.525,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-02",
+        "actual": 5787.712,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-03",
+        "actual": 6671.4130000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-04",
+        "actual": 5126.38599,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-05",
+        "actual": 5998.664,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-06",
+        "actual": 5157.274,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-07",
+        "actual": 2257.248003,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-08",
+        "actual": 5785.948999,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-09",
+        "actual": 5276.898,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-10",
+        "actual": 6142.587998999999,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-11",
+        "actual": 4929.228,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-12",
+        "actual": 5600.981,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-13",
+        "actual": 5136.321001,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-14",
+        "actual": 1841.979,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-15",
+        "actual": 5314.50201,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-16",
+        "actual": 5756.529,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-17",
+        "actual": 5843.33001,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-18",
+        "actual": 4763.806,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-19",
+        "actual": 6212.646,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-20",
+        "actual": 5084.118001,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-21",
+        "actual": 1905.67,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-22",
+        "actual": 5047.601,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-23",
+        "actual": 5644.173,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-24",
+        "actual": 5855.491,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-25",
+        "actual": 5112.657,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-26",
+        "actual": 5635.064,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-27",
+        "actual": 5003.337001,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-28",
+        "actual": 1795.154,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-29",
+        "actual": 5769.125,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-30",
+        "actual": 4467.499,
+        "forecast": null
+    },
+    {
+        "date": "2013-07-31",
+        "actual": 5996.35,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-01",
+        "actual": 6136.873,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-02",
+        "actual": 5517.759,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-03",
+        "actual": 5394.977,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-04",
+        "actual": 1837.975005,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-05",
+        "actual": 5594.295,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-06",
+        "actual": 5130.626,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-07",
+        "actual": 5952.391,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-08",
+        "actual": 4739.294,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-09",
+        "actual": 5630.461,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-10",
+        "actual": 3537.3489959999997,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-11",
+        "actual": 1862.6440003,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-12",
+        "actual": 5528.9310000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-13",
+        "actual": 4613.631,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-14",
+        "actual": 5701.057,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-15",
+        "actual": 4974.404,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-16",
+        "actual": 5719.50098,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-17",
+        "actual": 4919.993996,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-18",
+        "actual": 1843.36,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-19",
+        "actual": 5127.269,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-20",
+        "actual": 4658.069996,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-21",
+        "actual": 5531.862,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-22",
+        "actual": 4568.639,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-23",
+        "actual": 5678.172998,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-24",
+        "actual": 4615.946,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-25",
+        "actual": 2079.300996,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-26",
+        "actual": 5323.87,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-27",
+        "actual": 5163.91099,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-28",
+        "actual": 5864.235,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-29",
+        "actual": 4654.188,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-30",
+        "actual": 5969.395,
+        "forecast": null
+    },
+    {
+        "date": "2013-08-31",
+        "actual": 5312.932,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-01",
+        "actual": 2604.816,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-02",
+        "actual": 5619.513,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-03",
+        "actual": 5457.172,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-04",
+        "actual": 6430.77699,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-05",
+        "actual": 5171.70902,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-06",
+        "actual": 6155.6130299999995,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-07",
+        "actual": 5474.835,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-08",
+        "actual": 2208.753004,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-09",
+        "actual": 5344.079,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-10",
+        "actual": 4829.3150000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-11",
+        "actual": 6098.904,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-12",
+        "actual": 5374.129,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-13",
+        "actual": 5906.79599,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-14",
+        "actual": 5351.597,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-15",
+        "actual": 2554.649004,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-16",
+        "actual": 6000.15899,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-17",
+        "actual": 5010.839,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-18",
+        "actual": 5642.801,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-19",
+        "actual": 5064.11799,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-20",
+        "actual": 5621.1069800000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-21",
+        "actual": 5573.482,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-22",
+        "actual": 2216.21,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-23",
+        "actual": 5487.169,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-24",
+        "actual": 5622.482002,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-25",
+        "actual": 6198.481,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-26",
+        "actual": 5245.918,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-27",
+        "actual": 6130.22,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-28",
+        "actual": 5268.831,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-29",
+        "actual": 2694.199,
+        "forecast": null
+    },
+    {
+        "date": "2013-09-30",
+        "actual": 5716.80702,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-01",
+        "actual": 6542.956,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-02",
+        "actual": 7378.66,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-03",
+        "actual": 5434.25602,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-04",
+        "actual": 6844.9800000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-05",
+        "actual": 5555.94802,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-06",
+        "actual": 2523.411,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-07",
+        "actual": 5765.59299,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-08",
+        "actual": 5732.352,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-09",
+        "actual": 6104.36699,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-10",
+        "actual": 5369.694,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-11",
+        "actual": 4216.15304,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-12",
+        "actual": 4028.236,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-13",
+        "actual": 2329.071,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-14",
+        "actual": 5285.17,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-15",
+        "actual": 5423.21,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-16",
+        "actual": 6121.037,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-17",
+        "actual": 5657.76498,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-18",
+        "actual": 6565.253,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-19",
+        "actual": 5723.31102,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-20",
+        "actual": 2550.309995,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-21",
+        "actual": 5879.459,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-22",
+        "actual": 5429.2080000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-23",
+        "actual": 6429.410989999999,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-24",
+        "actual": 4811.803004,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-25",
+        "actual": 6262.030001,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-26",
+        "actual": 5558.935,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-27",
+        "actual": 2676.07501,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-28",
+        "actual": 5494.1630000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-29",
+        "actual": 5739.276,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-30",
+        "actual": 5845.980006,
+        "forecast": null
+    },
+    {
+        "date": "2013-10-31",
+        "actual": 5137.648,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-01",
+        "actual": 7045.107,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-02",
+        "actual": 5140.715,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-03",
+        "actual": 2613.706001,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-04",
+        "actual": 5930.201,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-05",
+        "actual": 6376.740004,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-06",
+        "actual": 6596.109,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-07",
+        "actual": 5574.360001,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-08",
+        "actual": 7560.176,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-09",
+        "actual": 5711.29,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-10",
+        "actual": 2787.438,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-11",
+        "actual": 5828.91598,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-12",
+        "actual": 5235.32,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-13",
+        "actual": 7397.795,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-14",
+        "actual": 5834.099,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-15",
+        "actual": 6829.481,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-16",
+        "actual": 5812.263,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-17",
+        "actual": 2389.143,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-18",
+        "actual": 6396.04003,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-19",
+        "actual": 6475.073999,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-20",
+        "actual": 7099.558,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-21",
+        "actual": 5481.078,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-22",
+        "actual": 6937.8550000000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-23",
+        "actual": 5538.412,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-24",
+        "actual": 2329.674003,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-25",
+        "actual": 6508.036,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-26",
+        "actual": 5917.107,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-27",
+        "actual": 6767.215,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-28",
+        "actual": 5409.573,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-29",
+        "actual": 6520.255,
+        "forecast": null
+    },
+    {
+        "date": "2013-11-30",
+        "actual": 6046.876,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-01",
+        "actual": 2846.616008,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-02",
+        "actual": 6691.943,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-03",
+        "actual": 6333.197996,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-04",
+        "actual": 9158.644999,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-05",
+        "actual": 5920.25,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-06",
+        "actual": 3094.0350049999997,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-07",
+        "actual": 5387.647004,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-08",
+        "actual": 2435.633,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-09",
+        "actual": 6442.102,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-10",
+        "actual": 7488.4149800000005,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-11",
+        "actual": 8486.091,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-12",
+        "actual": 7966.511,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-13",
+        "actual": 7629.721,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-14",
+        "actual": 7158.148,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-15",
+        "actual": 3157.1549999999997,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-16",
+        "actual": 7651.485999,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-17",
+        "actual": 6812.793,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-18",
+        "actual": 9382.83803,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-19",
+        "actual": 7930.986,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-20",
+        "actual": 10906.77801,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-21",
+        "actual": 8320.063,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-22",
+        "actual": 5450.846,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-23",
+        "actual": 11476.883,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-24",
+        "actual": 8536.046,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-26",
+        "actual": 6151.595,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-27",
+        "actual": 7440.179,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-28",
+        "actual": 4532.439,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-29",
+        "actual": 1819.251996,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-30",
+        "actual": 5754.39498,
+        "forecast": null
+    },
+    {
+        "date": "2013-12-31",
+        "actual": 4618.153,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-01",
+        "actual": 0.0,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-02",
+        "actual": 12034.864999,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-03",
+        "actual": 11700.4514,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-04",
+        "actual": 10863.582,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-05",
+        "actual": 4634.573,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-06",
+        "actual": 10766.978,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-07",
+        "actual": 9582.605008999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-08",
+        "actual": 13372.519,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-09",
+        "actual": 9817.64,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-10",
+        "actual": 10688.5596,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-11",
+        "actual": 10123.369896,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-12",
+        "actual": 4477.641,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-13",
+        "actual": 10587.845,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-14",
+        "actual": 9212.402,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-15",
+        "actual": 12945.315499999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-16",
+        "actual": 8728.828001,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-17",
+        "actual": 11014.48993,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-18",
+        "actual": 10084.039,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-19",
+        "actual": 4611.47,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-20",
+        "actual": 9262.298999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-21",
+        "actual": 10658.405,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-22",
+        "actual": 12342.9955,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-23",
+        "actual": 9154.47502,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-24",
+        "actual": 11079.889104,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-25",
+        "actual": 8688.380995,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-26",
+        "actual": 4675.985,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-27",
+        "actual": 9643.897019999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-28",
+        "actual": 8987.657,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-29",
+        "actual": 12354.5677,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-30",
+        "actual": 8977.837,
+        "forecast": null
+    },
+    {
+        "date": "2014-01-31",
+        "actual": 10591.1898,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-01",
+        "actual": 6642.345,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-02",
+        "actual": 2490.6729880000003,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-03",
+        "actual": 6181.2740005,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-04",
+        "actual": 5704.709001,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-05",
+        "actual": 7413.17698,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-06",
+        "actual": 5684.777,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-07",
+        "actual": 6527.8828,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-08",
+        "actual": 6081.824998,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-09",
+        "actual": 2393.5139994,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-10",
+        "actual": 5819.104,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-11",
+        "actual": 6135.15099,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-12",
+        "actual": 7494.975996,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-13",
+        "actual": 5631.581,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-14",
+        "actual": 7060.89,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-15",
+        "actual": 6569.446,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-16",
+        "actual": 2770.94799,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-17",
+        "actual": 5684.369,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-18",
+        "actual": 6545.479,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-19",
+        "actual": 6782.9310000000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-20",
+        "actual": 5634.3730000000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-21",
+        "actual": 6018.0306,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-22",
+        "actual": 6236.9529999999995,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-23",
+        "actual": 2334.053,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-24",
+        "actual": 6140.983,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-25",
+        "actual": 5916.78798,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-26",
+        "actual": 6044.604,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-27",
+        "actual": 4832.924,
+        "forecast": null
+    },
+    {
+        "date": "2014-02-28",
+        "actual": 6684.7386,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-01",
+        "actual": 8303.31698,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-02",
+        "actual": 2341.381,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-03",
+        "actual": 2960.415,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-04",
+        "actual": 3861.036,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-05",
+        "actual": 13222.915,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-06",
+        "actual": 10616.6151,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-07",
+        "actual": 11837.09557,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-08",
+        "actual": 9916.469000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-09",
+        "actual": 5084.255,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-10",
+        "actual": 9983.393,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-11",
+        "actual": 9595.985,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-12",
+        "actual": 13517.5385,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-13",
+        "actual": 8686.63,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-14",
+        "actual": 10067.934299999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-15",
+        "actual": 9029.67,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-16",
+        "actual": 5416.576,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-17",
+        "actual": 10120.124,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-18",
+        "actual": 9722.976999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-19",
+        "actual": 11942.6265,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-20",
+        "actual": 8595.955,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-21",
+        "actual": 10828.4631,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-22",
+        "actual": 10091.754,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-23",
+        "actual": 4504.294005,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-24",
+        "actual": 9187.036,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-25",
+        "actual": 9468.110999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-26",
+        "actual": 11996.316,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-27",
+        "actual": 8356.738,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-28",
+        "actual": 10277.430836,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-29",
+        "actual": 10258.32,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-30",
+        "actual": 4553.45799,
+        "forecast": null
+    },
+    {
+        "date": "2014-03-31",
+        "actual": 9569.716002000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-01",
+        "actual": 7030.401,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-02",
+        "actual": 7734.189,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-03",
+        "actual": 5534.842001,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-04",
+        "actual": 7955.9678,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-05",
+        "actual": 6592.68202,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-06",
+        "actual": 3121.13,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-07",
+        "actual": 6745.32398,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-08",
+        "actual": 5399.66002,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-09",
+        "actual": 7089.189,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-10",
+        "actual": 5723.52299,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-11",
+        "actual": 6603.9281,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-12",
+        "actual": 6133.685,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-13",
+        "actual": 2462.79199,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-14",
+        "actual": 5778.303,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-15",
+        "actual": 5928.375,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-16",
+        "actual": 7022.8,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-17",
+        "actual": 5588.881998,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-18",
+        "actual": 2998.201899,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-19",
+        "actual": 4332.51,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-20",
+        "actual": 2432.984004,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-21",
+        "actual": 6201.18003,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-22",
+        "actual": 5553.08,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-23",
+        "actual": 8424.759,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-24",
+        "actual": 5813.0869999999995,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-25",
+        "actual": 7112.4723,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-26",
+        "actual": 6384.504989999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-27",
+        "actual": 2369.78,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-28",
+        "actual": 5777.804,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-29",
+        "actual": 5882.332,
+        "forecast": null
+    },
+    {
+        "date": "2014-04-30",
+        "actual": 7410.02501,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-01",
+        "actual": 2569.481,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-02",
+        "actual": 7872.43686,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-03",
+        "actual": 7047.21,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-04",
+        "actual": 2688.856,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-05",
+        "actual": 4868.707999,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-06",
+        "actual": 7284.114979999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-07",
+        "actual": 7393.54402,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-08",
+        "actual": 5546.6849999999995,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-09",
+        "actual": 7596.6694,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-10",
+        "actual": 7075.71698,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-11",
+        "actual": 2383.417004,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-12",
+        "actual": 6006.81502,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-13",
+        "actual": 6703.55,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-14",
+        "actual": 6556.992,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-15",
+        "actual": 5704.361,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-16",
+        "actual": 7313.1204,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-17",
+        "actual": 6081.558994,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-18",
+        "actual": 2589.567999,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-19",
+        "actual": 6796.844999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-20",
+        "actual": 6606.284984,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-21",
+        "actual": 6795.899,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-22",
+        "actual": 5706.399004,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-23",
+        "actual": 6328.5587,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-24",
+        "actual": 6006.517,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-25",
+        "actual": 2395.622,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-26",
+        "actual": 6066.194001,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-27",
+        "actual": 4984.334999,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-28",
+        "actual": 6934.918,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-29",
+        "actual": 5247.004,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-30",
+        "actual": 8215.244200000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-05-31",
+        "actual": 6041.625995,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-01",
+        "actual": 2802.719,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-02",
+        "actual": 7120.854999,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-03",
+        "actual": 6652.41298,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-04",
+        "actual": 7473.020005,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-05",
+        "actual": 6036.695999,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-06",
+        "actual": 7853.17813,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-07",
+        "actual": 6007.9470010000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-08",
+        "actual": 2214.503996,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-09",
+        "actual": 6228.620000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-10",
+        "actual": 5886.0440100000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-11",
+        "actual": 7314.068,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-12",
+        "actual": 5485.5360200000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-13",
+        "actual": 7256.3383,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-14",
+        "actual": 7185.759,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-15",
+        "actual": 1755.3670000000002,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-16",
+        "actual": 6469.287,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-17",
+        "actual": 5810.603,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-18",
+        "actual": 6563.048,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-19",
+        "actual": 5595.294,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-20",
+        "actual": 8202.746500000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-21",
+        "actual": 6671.712,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-22",
+        "actual": 2449.529,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-23",
+        "actual": 6320.216001,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-24",
+        "actual": 5659.7139799999995,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-25",
+        "actual": 6971.182002,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-26",
+        "actual": 6012.036,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-27",
+        "actual": 8100.3635,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-28",
+        "actual": 6084.97498,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-29",
+        "actual": 2416.7680035,
+        "forecast": null
+    },
+    {
+        "date": "2014-06-30",
+        "actual": 5970.379,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-01",
+        "actual": 9649.17298,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-02",
+        "actual": 14812.346000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-03",
+        "actual": 9593.2990002,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-04",
+        "actual": 11822.021,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-05",
+        "actual": 8368.502,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-06",
+        "actual": 4429.332996,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-07",
+        "actual": 10168.345014,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-08",
+        "actual": 9100.60298,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-09",
+        "actual": 12147.940999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-10",
+        "actual": 9155.299999,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-11",
+        "actual": 10780.602,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-12",
+        "actual": 9308.511999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-13",
+        "actual": 4499.20999,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-14",
+        "actual": 9980.273000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-15",
+        "actual": 9225.376,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-16",
+        "actual": 11970.10502,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-17",
+        "actual": 8708.171,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-18",
+        "actual": 10811.153,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-19",
+        "actual": 9713.058,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-20",
+        "actual": 3792.860001,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-21",
+        "actual": 10118.514005,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-22",
+        "actual": 9679.421001,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-23",
+        "actual": 11188.520009,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-24",
+        "actual": 8615.948,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-25",
+        "actual": 10000.73,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-26",
+        "actual": 8792.46503,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-27",
+        "actual": 3780.808,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-28",
+        "actual": 9018.717,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-29",
+        "actual": 9249.057,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-30",
+        "actual": 10970.33899,
+        "forecast": null
+    },
+    {
+        "date": "2014-07-31",
+        "actual": 9305.559,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-01",
+        "actual": 7806.689,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-02",
+        "actual": 6057.59,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-03",
+        "actual": 2353.7219999999998,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-04",
+        "actual": 6894.018,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-05",
+        "actual": 6034.11,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-06",
+        "actual": 6307.939,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-07",
+        "actual": 5208.132,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-08",
+        "actual": 7653.309,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-09",
+        "actual": 5666.582999,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-10",
+        "actual": 2320.304,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-11",
+        "actual": 6019.558,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-12",
+        "actual": 5236.424,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-13",
+        "actual": 7177.144,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-14",
+        "actual": 5829.916001,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-15",
+        "actual": 6912.125999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-16",
+        "actual": 5782.00302,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-17",
+        "actual": 2488.339,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-18",
+        "actual": 5838.877999,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-19",
+        "actual": 5242.299,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-20",
+        "actual": 6880.68802,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-21",
+        "actual": 6034.266,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-22",
+        "actual": 6924.622,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-23",
+        "actual": 5699.918999,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-24",
+        "actual": 2299.636,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-25",
+        "actual": 5579.97,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-26",
+        "actual": 5542.154,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-27",
+        "actual": 6601.723,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-28",
+        "actual": 4860.695,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-29",
+        "actual": 7610.318998000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-30",
+        "actual": 6532.23,
+        "forecast": null
+    },
+    {
+        "date": "2014-08-31",
+        "actual": 2912.434,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-01",
+        "actual": 10969.092,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-02",
+        "actual": 10751.012,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-03",
+        "actual": 12646.868,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-04",
+        "actual": 8847.568004,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-05",
+        "actual": 11518.21403,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-06",
+        "actual": 10191.576000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-07",
+        "actual": 4787.518,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-08",
+        "actual": 10839.942998999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-09",
+        "actual": 10222.208,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-10",
+        "actual": 12134.201,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-11",
+        "actual": 9783.738996,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-12",
+        "actual": 10121.306,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-13",
+        "actual": 9576.454,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-14",
+        "actual": 5032.4210005,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-15",
+        "actual": 9379.699,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-16",
+        "actual": 9769.906,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-17",
+        "actual": 12013.201995000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-18",
+        "actual": 8527.190999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-19",
+        "actual": 10086.329,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-20",
+        "actual": 10740.699999,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-21",
+        "actual": 4808.5990010000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-22",
+        "actual": 8939.85,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-23",
+        "actual": 9219.73699,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-24",
+        "actual": 12576.187,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-25",
+        "actual": 9321.836001,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-26",
+        "actual": 9878.165996,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-27",
+        "actual": 10779.00199,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-28",
+        "actual": 4752.113,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-29",
+        "actual": 9997.416000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-09-30",
+        "actual": 9332.828,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-01",
+        "actual": 14093.202,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-02",
+        "actual": 10415.538,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-03",
+        "actual": 12998.612017,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-04",
+        "actual": 11982.685,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-05",
+        "actual": 4996.582,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-06",
+        "actual": 9985.157,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-07",
+        "actual": 9149.682,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-08",
+        "actual": 12656.043,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-09",
+        "actual": 9144.302,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-10",
+        "actual": 5455.4800000000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-11",
+        "actual": 8605.298,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-12",
+        "actual": 4161.074,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-13",
+        "actual": 9958.743,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-14",
+        "actual": 10530.82402,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-15",
+        "actual": 12210.306499999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-16",
+        "actual": 9387.887,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-17",
+        "actual": 10479.597,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-18",
+        "actual": 11063.902,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-19",
+        "actual": 5440.934,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-20",
+        "actual": 9833.982,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-21",
+        "actual": 8768.161,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-22",
+        "actual": 12626.88498,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-23",
+        "actual": 8583.776996,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-24",
+        "actual": 10218.456004,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-25",
+        "actual": 9671.527005,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-26",
+        "actual": 5161.1,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-27",
+        "actual": 10133.547998,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-28",
+        "actual": 8414.216,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-29",
+        "actual": 12226.11198,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-30",
+        "actual": 9255.494999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-10-31",
+        "actual": 11131.58,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-01",
+        "actual": 7928.994,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-02",
+        "actual": 3242.056,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-03",
+        "actual": 4472.1199990000005,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-04",
+        "actual": 10387.528,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-05",
+        "actual": 14717.784000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-06",
+        "actual": 9689.043,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-07",
+        "actual": 10642.417998,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-08",
+        "actual": 10069.003,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-09",
+        "actual": 4750.965998,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-10",
+        "actual": 9189.821,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-11",
+        "actual": 9717.118,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-12",
+        "actual": 12185.867,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-13",
+        "actual": 9262.553009,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-14",
+        "actual": 9809.377,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-15",
+        "actual": 10471.291000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-16",
+        "actual": 5420.276,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-17",
+        "actual": 10206.562999,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-18",
+        "actual": 10905.223,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-19",
+        "actual": 12583.195,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-20",
+        "actual": 9345.748,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-21",
+        "actual": 10196.284996,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-22",
+        "actual": 10008.385,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-23",
+        "actual": 5028.03899,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-24",
+        "actual": 9546.543,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-25",
+        "actual": 9275.025995,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-26",
+        "actual": 13066.438001999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-27",
+        "actual": 8407.379010999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-28",
+        "actual": 10104.487,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-29",
+        "actual": 9693.379004,
+        "forecast": null
+    },
+    {
+        "date": "2014-11-30",
+        "actual": 4868.091998,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-01",
+        "actual": 11009.652004,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-02",
+        "actual": 9985.882999,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-03",
+        "actual": 13598.77,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-04",
+        "actual": 10817.062,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-05",
+        "actual": 10996.84596,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-06",
+        "actual": 8846.294,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-07",
+        "actual": 4674.22,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-08",
+        "actual": 10686.636,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-09",
+        "actual": 10861.7821,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-10",
+        "actual": 15642.736799999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-11",
+        "actual": 11736.022,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-12",
+        "actual": 10623.036,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-13",
+        "actual": 10683.493995,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-14",
+        "actual": 5008.342,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-15",
+        "actual": 11730.244,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-16",
+        "actual": 12286.737998999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-17",
+        "actual": 13995.168,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-18",
+        "actual": 11976.336026,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-19",
+        "actual": 13083.348,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-20",
+        "actual": 12562.634,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-21",
+        "actual": 7662.177101,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-22",
+        "actual": 13743.307999999999,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-23",
+        "actual": 13523.496000000001,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-24",
+        "actual": 12834.101,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-26",
+        "actual": 9701.673,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-27",
+        "actual": 6548.209,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-28",
+        "actual": 2818.98,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-29",
+        "actual": 9580.585,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-30",
+        "actual": 11038.835,
+        "forecast": null
+    },
+    {
+        "date": "2014-12-31",
+        "actual": 10756.988,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-01",
+        "actual": 0.0,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-02",
+        "actual": 4797.803,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-03",
+        "actual": 5270.969,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-04",
+        "actual": 3035.146999,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-05",
+        "actual": 8494.916,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-06",
+        "actual": 6931.2140039999995,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-07",
+        "actual": 8341.813,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-08",
+        "actual": 6301.889999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-09",
+        "actual": 7622.522,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-10",
+        "actual": 7375.1630000000005,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-11",
+        "actual": 2930.321,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-12",
+        "actual": 7320.509,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-13",
+        "actual": 7260.77202,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-14",
+        "actual": 7455.8150000000005,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-15",
+        "actual": 5525.603,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-16",
+        "actual": 7622.985,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-17",
+        "actual": 7521.470998,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-18",
+        "actual": 2915.434,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-19",
+        "actual": 7185.957,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-20",
+        "actual": 6244.418,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-21",
+        "actual": 7495.845,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-22",
+        "actual": 6531.595,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-23",
+        "actual": 7298.3369999999995,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-24",
+        "actual": 6537.567,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-25",
+        "actual": 2610.2609979999997,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-26",
+        "actual": 6404.881,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-27",
+        "actual": 5989.554,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-28",
+        "actual": 7486.48202,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-29",
+        "actual": 6773.12702,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-30",
+        "actual": 8636.572002,
+        "forecast": null
+    },
+    {
+        "date": "2015-01-31",
+        "actual": 7274.061,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-01",
+        "actual": 3249.462,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-02",
+        "actual": 7915.997,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-03",
+        "actual": 7162.597,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-04",
+        "actual": 7345.591,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-05",
+        "actual": 5934.152986,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-06",
+        "actual": 7519.287,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-07",
+        "actual": 6761.33098,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-08",
+        "actual": 3035.288,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-09",
+        "actual": 6558.34898,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-10",
+        "actual": 6830.423,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-11",
+        "actual": 6718.368,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-12",
+        "actual": 6056.028,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-13",
+        "actual": 7323.950989,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-14",
+        "actual": 5419.901,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-15",
+        "actual": 1926.741,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-16",
+        "actual": 2053.522,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-17",
+        "actual": 1858.5620000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-18",
+        "actual": 7123.381,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-19",
+        "actual": 5408.486,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-20",
+        "actual": 7950.327,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-21",
+        "actual": 7214.185,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-22",
+        "actual": 2932.0750000000003,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-23",
+        "actual": 6769.553,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-24",
+        "actual": 6157.185001,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-25",
+        "actual": 7147.01298,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-26",
+        "actual": 5764.931999,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-27",
+        "actual": 7717.962,
+        "forecast": null
+    },
+    {
+        "date": "2015-02-28",
+        "actual": 6960.8,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-01",
+        "actual": 3324.632,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-02",
+        "actual": 6953.34,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-03",
+        "actual": 7073.353999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-04",
+        "actual": 7540.497,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-05",
+        "actual": 6554.471,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-06",
+        "actual": 7240.658,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-07",
+        "actual": 7828.779001,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-08",
+        "actual": 2879.174995,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-09",
+        "actual": 8072.94,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-10",
+        "actual": 6833.652,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-11",
+        "actual": 7774.883,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-12",
+        "actual": 5766.168,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-13",
+        "actual": 8347.092,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-14",
+        "actual": 7518.053976,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-15",
+        "actual": 2918.190998,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-16",
+        "actual": 6853.39699,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-17",
+        "actual": 6218.916,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-18",
+        "actual": 6410.72501,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-19",
+        "actual": 6548.7370005,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-20",
+        "actual": 8245.05602,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-21",
+        "actual": 7184.04,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-22",
+        "actual": 2979.585,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-23",
+        "actual": 6491.4619999999995,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-24",
+        "actual": 6742.714,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-25",
+        "actual": 7049.156,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-26",
+        "actual": 5704.197,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-27",
+        "actual": 7472.078028,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-28",
+        "actual": 6809.218,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-29",
+        "actual": 2783.5039859999997,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-30",
+        "actual": 5858.376,
+        "forecast": null
+    },
+    {
+        "date": "2015-03-31",
+        "actual": 6781.097,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-01",
+        "actual": 8213.818,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-02",
+        "actual": 7032.032,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-03",
+        "actual": 2728.186,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-04",
+        "actual": 5479.481,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-05",
+        "actual": 2643.16,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-06",
+        "actual": 7388.703,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-07",
+        "actual": 7083.305,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-08",
+        "actual": 7925.73098,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-09",
+        "actual": 6211.811996,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-10",
+        "actual": 7963.008,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-11",
+        "actual": 7054.226000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-12",
+        "actual": 2674.19298,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-13",
+        "actual": 6678.795,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-14",
+        "actual": 5800.545,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-15",
+        "actual": 6939.186,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-16",
+        "actual": 6435.694996,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-17",
+        "actual": 6961.35903,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-18",
+        "actual": 7204.217,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-19",
+        "actual": 3230.33,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-20",
+        "actual": 6955.54,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-21",
+        "actual": 7215.342001,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-22",
+        "actual": 9754.940999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-23",
+        "actual": 6407.665,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-24",
+        "actual": 7730.524005,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-25",
+        "actual": 6822.64102,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-26",
+        "actual": 2857.678,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-27",
+        "actual": 6661.12702,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-28",
+        "actual": 5705.07101,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-29",
+        "actual": 6987.636,
+        "forecast": null
+    },
+    {
+        "date": "2015-04-30",
+        "actual": 6794.165,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-01",
+        "actual": 2707.398,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-02",
+        "actual": 7231.594,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-03",
+        "actual": 2732.77,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-04",
+        "actual": 7291.053,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-05",
+        "actual": 7244.744000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-06",
+        "actual": 8395.354998,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-07",
+        "actual": 6711.380999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-08",
+        "actual": 8748.510980000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-09",
+        "actual": 8369.26198,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-10",
+        "actual": 2382.026,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-11",
+        "actual": 7290.303,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-12",
+        "actual": 7231.055981,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-13",
+        "actual": 8133.482,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-14",
+        "actual": 6096.641,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-15",
+        "actual": 7561.868,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-16",
+        "actual": 7289.329004,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-17",
+        "actual": 3015.681,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-18",
+        "actual": 7026.321,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-19",
+        "actual": 7511.659,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-20",
+        "actual": 8375.775,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-21",
+        "actual": 6775.157,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-22",
+        "actual": 8283.12998,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-23",
+        "actual": 7028.643,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-24",
+        "actual": 3314.924,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-25",
+        "actual": 7800.116,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-26",
+        "actual": 7897.662004999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-27",
+        "actual": 8700.202,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-28",
+        "actual": 7361.214,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-29",
+        "actual": 8799.685003999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-30",
+        "actual": 8802.474,
+        "forecast": null
+    },
+    {
+        "date": "2015-05-31",
+        "actual": 3854.498,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-01",
+        "actual": 10818.649996,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-02",
+        "actual": 11220.017,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-03",
+        "actual": 15224.785004,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-04",
+        "actual": 9580.316,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-05",
+        "actual": 12002.99,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-06",
+        "actual": 10939.875,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-07",
+        "actual": 3906.407,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-08",
+        "actual": 11190.642976000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-09",
+        "actual": 9290.694,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-10",
+        "actual": 12264.93802,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-11",
+        "actual": 9291.9571,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-12",
+        "actual": 10896.572,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-13",
+        "actual": 10652.519,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-14",
+        "actual": 5093.6009995,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-15",
+        "actual": 10368.812,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-16",
+        "actual": 10782.219,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-17",
+        "actual": 13632.878999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-18",
+        "actual": 9501.738,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-19",
+        "actual": 11995.303,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-20",
+        "actual": 11892.822998,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-21",
+        "actual": 4066.430002,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-22",
+        "actual": 10925.374,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-23",
+        "actual": 10133.63,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-24",
+        "actual": 12143.965001,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-25",
+        "actual": 9261.524999000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-26",
+        "actual": 10684.28,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-27",
+        "actual": 10663.54702,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-28",
+        "actual": 5360.274,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-29",
+        "actual": 10540.696,
+        "forecast": null
+    },
+    {
+        "date": "2015-06-30",
+        "actual": 10627.11,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-01",
+        "actual": 14017.068,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-02",
+        "actual": 10896.185,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-03",
+        "actual": 14673.134,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-04",
+        "actual": 10654.451996,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-05",
+        "actual": 3709.089,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-06",
+        "actual": 7419.557102,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-07",
+        "actual": 0.0,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-08",
+        "actual": 13489.635,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-09",
+        "actual": 11945.477,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-10",
+        "actual": 11837.584,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-11",
+        "actual": 10827.921,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-12",
+        "actual": 4177.606,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-13",
+        "actual": 10697.79202,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-14",
+        "actual": 10799.032,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-15",
+        "actual": 13195.295,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-16",
+        "actual": 9919.048,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-17",
+        "actual": 13125.63702,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-18",
+        "actual": 9208.722,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-19",
+        "actual": 3800.270999,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-20",
+        "actual": 11011.89198,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-21",
+        "actual": 9104.631,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-22",
+        "actual": 11947.509,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-23",
+        "actual": 9161.459996,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-24",
+        "actual": 10920.393996,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-25",
+        "actual": 9325.047999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-26",
+        "actual": 4316.108,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-27",
+        "actual": 10285.238025,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-28",
+        "actual": 10234.318000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-29",
+        "actual": 11816.024,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-30",
+        "actual": 8889.634,
+        "forecast": null
+    },
+    {
+        "date": "2015-07-31",
+        "actual": 11201.103,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-01",
+        "actual": 10732.418,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-02",
+        "actual": 4353.509001,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-03",
+        "actual": 11232.437,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-04",
+        "actual": 11271.805,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-05",
+        "actual": 13591.66798,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-06",
+        "actual": 9605.14298,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-07",
+        "actual": 11324.413002,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-08",
+        "actual": 7799.07799,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-09",
+        "actual": 3415.9280005,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-10",
+        "actual": 3297.028,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-11",
+        "actual": 10789.077001,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-12",
+        "actual": 12936.002,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-13",
+        "actual": 8779.985,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-14",
+        "actual": 13938.9,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-15",
+        "actual": 12373.519,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-16",
+        "actual": 3926.107,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-17",
+        "actual": 10466.366,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-18",
+        "actual": 9904.44302,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-19",
+        "actual": 11504.925000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-20",
+        "actual": 9398.781004,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-21",
+        "actual": 11087.339,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-22",
+        "actual": 9964.302001,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-23",
+        "actual": 3763.293008,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-24",
+        "actual": 10101.54202,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-25",
+        "actual": 9781.127996000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-26",
+        "actual": 12433.10302,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-27",
+        "actual": 9429.452,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-28",
+        "actual": 10835.361,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-29",
+        "actual": 10441.452979,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-30",
+        "actual": 4213.56,
+        "forecast": null
+    },
+    {
+        "date": "2015-08-31",
+        "actual": 10322.236,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-01",
+        "actual": 10823.672,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-02",
+        "actual": 14177.1541,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-03",
+        "actual": 11522.89,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-04",
+        "actual": 12174.21304,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-05",
+        "actual": 11078.508996,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-06",
+        "actual": 4625.906988,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-07",
+        "actual": 10480.783001,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-08",
+        "actual": 10211.097996,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-09",
+        "actual": 13040.414999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-10",
+        "actual": 8941.558,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-11",
+        "actual": 11486.983,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-12",
+        "actual": 11174.742,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-13",
+        "actual": 4580.307,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-14",
+        "actual": 11033.979019999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-15",
+        "actual": 9584.504005,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-16",
+        "actual": 13039.082,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-17",
+        "actual": 9516.80601,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-18",
+        "actual": 11796.214,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-19",
+        "actual": 11620.016,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-20",
+        "actual": 4794.836998,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-21",
+        "actual": 10235.090979999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-22",
+        "actual": 10459.358998,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-23",
+        "actual": 12247.307996,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-24",
+        "actual": 9829.34,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-25",
+        "actual": 11487.514,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-26",
+        "actual": 11807.678,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-27",
+        "actual": 5477.675,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-28",
+        "actual": 10526.361001,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-29",
+        "actual": 9930.759,
+        "forecast": null
+    },
+    {
+        "date": "2015-09-30",
+        "actual": 13924.853,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-01",
+        "actual": 10349.178,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-02",
+        "actual": 12496.113,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-03",
+        "actual": 13521.371998,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-04",
+        "actual": 5665.602001,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-05",
+        "actual": 12970.47302,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-06",
+        "actual": 10625.603005,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-07",
+        "actual": 12806.892,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-08",
+        "actual": 10490.668,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-09",
+        "actual": 5316.309,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-10",
+        "actual": 8891.894,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-11",
+        "actual": 4047.962,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-12",
+        "actual": 10893.578,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-13",
+        "actual": 9934.782,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-14",
+        "actual": 12616.05704,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-15",
+        "actual": 9524.846996,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-16",
+        "actual": 13036.786,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-17",
+        "actual": 12073.70598,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-18",
+        "actual": 6190.317,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-19",
+        "actual": 11361.91298,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-20",
+        "actual": 10732.539896,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-21",
+        "actual": 11876.420004,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-22",
+        "actual": 9146.047,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-23",
+        "actual": 11912.931004,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-24",
+        "actual": 10840.862995,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-25",
+        "actual": 5281.570998,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-26",
+        "actual": 10506.740004,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-27",
+        "actual": 10108.646999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-28",
+        "actual": 12580.23802,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-29",
+        "actual": 9171.836,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-30",
+        "actual": 10831.515,
+        "forecast": null
+    },
+    {
+        "date": "2015-10-31",
+        "actual": 8829.708,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-01",
+        "actual": 2994.41,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-02",
+        "actual": 3036.4749995,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-03",
+        "actual": 4814.29999,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-04",
+        "actual": 14878.463,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-05",
+        "actual": 10880.690999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-06",
+        "actual": 11690.851,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-07",
+        "actual": 11374.563,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-08",
+        "actual": 5886.876,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-09",
+        "actual": 10443.728,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-10",
+        "actual": 9714.440999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-11",
+        "actual": 13168.33,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-12",
+        "actual": 9525.952,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-13",
+        "actual": 11240.863996,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-14",
+        "actual": 10718.807995000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-15",
+        "actual": 5303.268,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-16",
+        "actual": 10977.736,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-17",
+        "actual": 9994.93801,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-18",
+        "actual": 12271.98,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-19",
+        "actual": 10322.622995,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-20",
+        "actual": 12022.107,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-21",
+        "actual": 10760.010994,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-22",
+        "actual": 5430.128998,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-23",
+        "actual": 11290.93498,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-24",
+        "actual": 10622.567,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-25",
+        "actual": 12388.645,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-26",
+        "actual": 9986.053,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-27",
+        "actual": 11484.110999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-28",
+        "actual": 10330.686,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-29",
+        "actual": 4798.263001,
+        "forecast": null
+    },
+    {
+        "date": "2015-11-30",
+        "actual": 12012.977,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-01",
+        "actual": 12664.0,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-02",
+        "actual": 13733.519004,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-03",
+        "actual": 11284.07899,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-04",
+        "actual": 12985.974,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-05",
+        "actual": 11084.104,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-06",
+        "actual": 5145.028,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-07",
+        "actual": 12532.267,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-08",
+        "actual": 10711.84701,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-09",
+        "actual": 14404.59802,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-10",
+        "actual": 11815.341999999999,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-11",
+        "actual": 11765.727979,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-12",
+        "actual": 10731.189,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-13",
+        "actual": 5255.996,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-14",
+        "actual": 11772.483,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-15",
+        "actual": 16521.089016,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-16",
+        "actual": 15815.478000000001,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-17",
+        "actual": 12218.27397,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-18",
+        "actual": 14401.484,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-19",
+        "actual": 13374.578,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-20",
+        "actual": 6992.16301,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-21",
+        "actual": 14565.814,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-22",
+        "actual": 14846.071005,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-23",
+        "actual": 16290.52,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-24",
+        "actual": 13042.847,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-26",
+        "actual": 8012.843,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-27",
+        "actual": 3182.498,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-28",
+        "actual": 9120.024,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-29",
+        "actual": 9893.204,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-30",
+        "actual": 14354.578,
+        "forecast": null
+    },
+    {
+        "date": "2015-12-31",
+        "actual": 10587.376,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-01",
+        "actual": 0.0,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-02",
+        "actual": 8877.175,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-03",
+        "actual": 5119.277,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-04",
+        "actual": 14619.33902,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-05",
+        "actual": 12060.107,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-06",
+        "actual": 15928.654,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-07",
+        "actual": 10556.557,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-08",
+        "actual": 12306.13303,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-09",
+        "actual": 11423.130996,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-10",
+        "actual": 4931.47,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-11",
+        "actual": 10816.629981,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-12",
+        "actual": 11643.1551,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-13",
+        "actual": 12719.307,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-14",
+        "actual": 11683.193,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-15",
+        "actual": 10941.234024,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-16",
+        "actual": 11929.99702,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-17",
+        "actual": 5321.608001,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-18",
+        "actual": 11606.992003,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-19",
+        "actual": 10171.57902,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-20",
+        "actual": 13638.985,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-21",
+        "actual": 8854.23402,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-22",
+        "actual": 12126.907000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-23",
+        "actual": 10662.263995,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-24",
+        "actual": 4763.883998,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-25",
+        "actual": 10930.072001,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-26",
+        "actual": 10015.910995,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-27",
+        "actual": 12924.733999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-28",
+        "actual": 9381.658,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-29",
+        "actual": 11233.454,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-30",
+        "actual": 11390.704,
+        "forecast": null
+    },
+    {
+        "date": "2016-01-31",
+        "actual": 5120.153,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-01",
+        "actual": 11688.280001,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-02",
+        "actual": 10655.793,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-03",
+        "actual": 14724.247,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-04",
+        "actual": 10220.617,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-05",
+        "actual": 11216.751975,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-06",
+        "actual": 10244.838,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-07",
+        "actual": 2876.325,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-08",
+        "actual": 3072.805996,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-09",
+        "actual": 4195.352001,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-10",
+        "actual": 13452.689,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-11",
+        "actual": 10812.941004,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-12",
+        "actual": 12557.833,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-13",
+        "actual": 11195.6099,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-14",
+        "actual": 4687.693997,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-15",
+        "actual": 10982.73802,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-16",
+        "actual": 11976.383,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-17",
+        "actual": 13849.123,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-18",
+        "actual": 9562.982,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-19",
+        "actual": 12247.982,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-20",
+        "actual": 12201.808,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-21",
+        "actual": 5360.734998,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-22",
+        "actual": 10921.543,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-23",
+        "actual": 10211.301,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-24",
+        "actual": 12944.691,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-25",
+        "actual": 8975.213,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-26",
+        "actual": 11287.460000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-27",
+        "actual": 11155.342,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-28",
+        "actual": 4391.388,
+        "forecast": null
+    },
+    {
+        "date": "2016-02-29",
+        "actual": 10864.044,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-01",
+        "actual": 11442.525,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-02",
+        "actual": 14227.763700000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-03",
+        "actual": 9907.659,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-04",
+        "actual": 13024.52608,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-05",
+        "actual": 12215.61,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-06",
+        "actual": 5326.90499,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-07",
+        "actual": 10398.266999,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-08",
+        "actual": 9925.632,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-09",
+        "actual": 13101.241,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-10",
+        "actual": 9478.16,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-11",
+        "actual": 11767.093,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-12",
+        "actual": 11222.854,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-13",
+        "actual": 4875.2819995,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-14",
+        "actual": 10366.963,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-15",
+        "actual": 10418.358004,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-16",
+        "actual": 13500.63398,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-17",
+        "actual": 9876.26,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-18",
+        "actual": 11310.90203,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-19",
+        "actual": 11322.238,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-20",
+        "actual": 5254.490997999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-21",
+        "actual": 10265.369,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-22",
+        "actual": 9954.13,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-23",
+        "actual": 12646.128,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-24",
+        "actual": 12450.442998,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-25",
+        "actual": 4112.867,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-26",
+        "actual": 7583.2570000000005,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-27",
+        "actual": 4301.589,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-28",
+        "actual": 10090.241,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-29",
+        "actual": 11029.38,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-30",
+        "actual": 12195.649,
+        "forecast": null
+    },
+    {
+        "date": "2016-03-31",
+        "actual": 10097.373,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-01",
+        "actual": 13478.62,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-02",
+        "actual": 12069.150979,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-03",
+        "actual": 5694.664004,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-04",
+        "actual": 11356.597021,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-05",
+        "actual": 10535.975,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-06",
+        "actual": 13216.21302,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-07",
+        "actual": 10163.651,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-08",
+        "actual": 11363.351999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-09",
+        "actual": 10749.706,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-10",
+        "actual": 5046.561004,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-11",
+        "actual": 10336.687001,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-12",
+        "actual": 9775.690999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-13",
+        "actual": 12728.69002,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-14",
+        "actual": 9432.008,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-15",
+        "actual": 11725.045,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-16",
+        "actual": 10527.32201,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-17",
+        "actual": 7741.658,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-18",
+        "actual": 21788.899999999998,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-19",
+        "actual": 20811.844,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-20",
+        "actual": 18575.06,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-21",
+        "actual": 13637.778999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-22",
+        "actual": 15088.342999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-23",
+        "actual": 11701.438,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-24",
+        "actual": 5721.287,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-25",
+        "actual": 9837.596,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-26",
+        "actual": 10411.154,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-27",
+        "actual": 12491.929001,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-28",
+        "actual": 10710.40198,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-29",
+        "actual": 12093.106999,
+        "forecast": null
+    },
+    {
+        "date": "2016-04-30",
+        "actual": 11891.135,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-01",
+        "actual": 5748.366,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-02",
+        "actual": 11469.481,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-03",
+        "actual": 10635.6581,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-04",
+        "actual": 14285.435,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-05",
+        "actual": 10964.97,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-06",
+        "actual": 13110.130000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-07",
+        "actual": 12851.412,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-08",
+        "actual": 4239.267,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-09",
+        "actual": 11749.036995999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-10",
+        "actual": 9276.519,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-11",
+        "actual": 13033.325999,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-12",
+        "actual": 9427.574999,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-13",
+        "actual": 11462.110995000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-14",
+        "actual": 11160.271999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-15",
+        "actual": 5386.157,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-16",
+        "actual": 12300.916004,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-17",
+        "actual": 10884.85,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-18",
+        "actual": 12762.789,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-19",
+        "actual": 9360.158,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-20",
+        "actual": 12091.8381,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-21",
+        "actual": 11420.773,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-22",
+        "actual": 4919.231,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-23",
+        "actual": 10053.379,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-24",
+        "actual": 9161.781,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-25",
+        "actual": 12181.12301,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-26",
+        "actual": 10560.148,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-27",
+        "actual": 5733.468,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-28",
+        "actual": 8369.976998,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-29",
+        "actual": 4427.090002,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-30",
+        "actual": 10979.74,
+        "forecast": null
+    },
+    {
+        "date": "2016-05-31",
+        "actual": 12266.418001,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-01",
+        "actual": 14458.383001,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-02",
+        "actual": 9705.669,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-03",
+        "actual": 13409.14998,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-04",
+        "actual": 11465.81,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-05",
+        "actual": 4929.354,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-06",
+        "actual": 11100.488000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-07",
+        "actual": 10283.343,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-08",
+        "actual": 13536.554,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-09",
+        "actual": 8121.008,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-10",
+        "actual": 12087.85497,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-11",
+        "actual": 10788.66,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-12",
+        "actual": 4864.933003,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-13",
+        "actual": 10556.533,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-14",
+        "actual": 9464.089,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-15",
+        "actual": 13223.444994,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-16",
+        "actual": 9832.850999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-17",
+        "actual": 11649.69499,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-18",
+        "actual": 11453.529,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-19",
+        "actual": 4765.486003999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-20",
+        "actual": 10805.30802,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-21",
+        "actual": 9622.353,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-22",
+        "actual": 13056.30502,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-23",
+        "actual": 9335.041000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-24",
+        "actual": 10689.319001,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-25",
+        "actual": 10858.349,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-26",
+        "actual": 5208.754,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-27",
+        "actual": 10682.921996,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-28",
+        "actual": 10853.039999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-29",
+        "actual": 11766.3019,
+        "forecast": null
+    },
+    {
+        "date": "2016-06-30",
+        "actual": 9096.679,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-01",
+        "actual": 13323.116,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-02",
+        "actual": 11189.01,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-03",
+        "actual": 5190.026001,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-04",
+        "actual": 11803.014,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-05",
+        "actual": 10130.962,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-06",
+        "actual": 13442.464001,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-07",
+        "actual": 9581.654,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-08",
+        "actual": 12255.994996,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-09",
+        "actual": 10081.310000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-10",
+        "actual": 4455.012,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-11",
+        "actual": 9984.0429995,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-12",
+        "actual": 9085.744999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-13",
+        "actual": 13147.682,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-14",
+        "actual": 9209.611,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-15",
+        "actual": 12075.518,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-16",
+        "actual": 11613.16,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-17",
+        "actual": 4815.242,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-18",
+        "actual": 10712.03,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-19",
+        "actual": 9928.27,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-20",
+        "actual": 12154.349001,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-21",
+        "actual": 9637.363001,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-22",
+        "actual": 11491.652002,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-23",
+        "actual": 10016.80702,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-24",
+        "actual": 4713.034004,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-25",
+        "actual": 9436.25702,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-26",
+        "actual": 9554.54602,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-27",
+        "actual": 12775.538004,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-28",
+        "actual": 9542.752,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-29",
+        "actual": 9758.121998,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-30",
+        "actual": 11566.888,
+        "forecast": null
+    },
+    {
+        "date": "2016-07-31",
+        "actual": 4311.997,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-01",
+        "actual": 12144.726999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-02",
+        "actual": 9494.01,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-03",
+        "actual": 13925.177,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-04",
+        "actual": 9420.414,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-05",
+        "actual": 12272.125,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-06",
+        "actual": 10434.342979,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-07",
+        "actual": 4169.782,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-08",
+        "actual": 10804.048,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-09",
+        "actual": 10174.669999,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-10",
+        "actual": 11856.648,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-11",
+        "actual": 10465.866,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-12",
+        "actual": 5260.085,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-13",
+        "actual": 7312.6810000000005,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-14",
+        "actual": 3548.1440000000002,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-15",
+        "actual": 11907.947996,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-16",
+        "actual": 9939.011,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-17",
+        "actual": 12498.141,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-18",
+        "actual": 8957.776995,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-19",
+        "actual": 10769.785004,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-20",
+        "actual": 10097.733,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-21",
+        "actual": 4166.414,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-22",
+        "actual": 10244.09699,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-23",
+        "actual": 9993.56,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-24",
+        "actual": 12837.78,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-25",
+        "actual": 8691.55101,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-26",
+        "actual": 10805.095,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-27",
+        "actual": 9745.501,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-28",
+        "actual": 4595.423,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-29",
+        "actual": 9710.813,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-30",
+        "actual": 9319.313,
+        "forecast": null
+    },
+    {
+        "date": "2016-08-31",
+        "actual": 12753.023,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-01",
+        "actual": 11201.878996,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-02",
+        "actual": 11980.501,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-03",
+        "actual": 10913.0429,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-04",
+        "actual": 5041.814,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-05",
+        "actual": 10881.009,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-06",
+        "actual": 11120.047,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-07",
+        "actual": 12384.205,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-08",
+        "actual": 9683.909,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-09",
+        "actual": 11860.668,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-10",
+        "actual": 10815.429,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-11",
+        "actual": 4392.577001,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-12",
+        "actual": 11500.15,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-13",
+        "actual": 9904.759,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-14",
+        "actual": 12078.072,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-15",
+        "actual": 9122.126,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-16",
+        "actual": 11882.457,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-17",
+        "actual": 11323.475999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-18",
+        "actual": 5216.363998,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-19",
+        "actual": 10883.877,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-20",
+        "actual": 10206.429,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-21",
+        "actual": 12363.738000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-22",
+        "actual": 9432.738,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-23",
+        "actual": 10815.502,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-24",
+        "actual": 10609.752,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-25",
+        "actual": 4849.326999,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-26",
+        "actual": 9527.791,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-27",
+        "actual": 9061.425000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-28",
+        "actual": 12834.586,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-29",
+        "actual": 8301.976996,
+        "forecast": null
+    },
+    {
+        "date": "2016-09-30",
+        "actual": 10821.204999,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-01",
+        "actual": 13471.048,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-02",
+        "actual": 5984.562000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-03",
+        "actual": 12352.342,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-04",
+        "actual": 11219.523,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-05",
+        "actual": 14663.82,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-06",
+        "actual": 10373.368,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-07",
+        "actual": 11417.003,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-08",
+        "actual": 11489.716,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-09",
+        "actual": 5817.9179970000005,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-10",
+        "actual": 11018.039999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-11",
+        "actual": 9537.574,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-12",
+        "actual": 13642.59002,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-13",
+        "actual": 8896.14,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-14",
+        "actual": 12179.376,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-15",
+        "actual": 11255.32,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-16",
+        "actual": 6231.972003,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-17",
+        "actual": 11523.686,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-18",
+        "actual": 10030.23,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-19",
+        "actual": 13910.232,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-20",
+        "actual": 9996.057024000002,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-21",
+        "actual": 11863.349,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-22",
+        "actual": 11588.332993,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-23",
+        "actual": 5474.39801,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-24",
+        "actual": 9700.549002,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-25",
+        "actual": 10842.730996,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-26",
+        "actual": 12265.287004,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-27",
+        "actual": 10419.897,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-28",
+        "actual": 12202.652,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-29",
+        "actual": 10820.421001,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-30",
+        "actual": 5327.120001,
+        "forecast": null
+    },
+    {
+        "date": "2016-10-31",
+        "actual": 8670.588,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-01",
+        "actual": 13544.815999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-02",
+        "actual": 4795.6849999999995,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-03",
+        "actual": 4060.610998,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-04",
+        "actual": 7825.10398,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-05",
+        "actual": 7759.131002,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-06",
+        "actual": 5002.124,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-07",
+        "actual": 11862.516,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-08",
+        "actual": 11983.032996,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-09",
+        "actual": 18148.644,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-10",
+        "actual": 10272.176,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-11",
+        "actual": 11401.809,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-12",
+        "actual": 11313.099,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-13",
+        "actual": 5858.185004999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-14",
+        "actual": 11653.468,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-15",
+        "actual": 10954.451,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-16",
+        "actual": 14448.00501,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-17",
+        "actual": 10255.081,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-18",
+        "actual": 12403.906,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-19",
+        "actual": 11965.2,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-20",
+        "actual": 5618.854002,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-21",
+        "actual": 12567.545,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-22",
+        "actual": 10341.23898,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-23",
+        "actual": 14044.713,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-24",
+        "actual": 9578.2620005,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-25",
+        "actual": 12120.162,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-26",
+        "actual": 10752.353000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-27",
+        "actual": 4871.081999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-28",
+        "actual": 11982.59,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-29",
+        "actual": 10437.893,
+        "forecast": null
+    },
+    {
+        "date": "2016-11-30",
+        "actual": 14347.259,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-01",
+        "actual": 11421.137991,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-02",
+        "actual": 15683.886999999999,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-03",
+        "actual": 11322.29602,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-04",
+        "actual": 6015.824004,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-05",
+        "actual": 10911.071,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-06",
+        "actual": 4684.1759999999995,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-07",
+        "actual": 15846.475,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-08",
+        "actual": 11358.607,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-09",
+        "actual": 14351.003,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-10",
+        "actual": 11562.999,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-11",
+        "actual": 5606.629003,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-12",
+        "actual": 11609.916000000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-13",
+        "actual": 14288.602001,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-14",
+        "actual": 15157.958,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-15",
+        "actual": 12080.256010000001,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-16",
+        "actual": 13946.75797,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-17",
+        "actual": 13100.65,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-18",
+        "actual": 7932.707999,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-19",
+        "actual": 14722.579,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-20",
+        "actual": 14684.381,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-21",
+        "actual": 17926.17498,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-22",
+        "actual": 15938.702,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-23",
+        "actual": 18554.34204,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-24",
+        "actual": 12963.608,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-26",
+        "actual": 3715.753,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-27",
+        "actual": 12157.823,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-28",
+        "actual": 12144.918,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-29",
+        "actual": 10244.317014,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-30",
+        "actual": 13584.621,
+        "forecast": null
+    },
+    {
+        "date": "2016-12-31",
+        "actual": 10741.06,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-01",
+        "actual": 0.0,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-02",
+        "actual": 5624.0259,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-03",
+        "actual": 14932.341,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-04",
+        "actual": 16356.818000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-05",
+        "actual": 12789.186004,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-06",
+        "actual": 13364.828,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-07",
+        "actual": 11773.944,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-08",
+        "actual": 6144.0070000000005,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-09",
+        "actual": 14312.390995,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-10",
+        "actual": 12060.286,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-11",
+        "actual": 14150.699,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-12",
+        "actual": 10831.247,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-13",
+        "actual": 13469.946,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-14",
+        "actual": 12338.469000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-15",
+        "actual": 5986.059987000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-16",
+        "actual": 11797.987,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-17",
+        "actual": 12942.477,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-18",
+        "actual": 14276.43672,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-19",
+        "actual": 10505.899996,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-20",
+        "actual": 10766.622,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-21",
+        "actual": 13271.161,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-22",
+        "actual": 5245.2699999999995,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-23",
+        "actual": 12973.752004,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-24",
+        "actual": 11331.452,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-25",
+        "actual": 13740.706,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-26",
+        "actual": 10407.096,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-27",
+        "actual": 12294.119,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-28",
+        "actual": 11856.993999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-29",
+        "actual": 5238.817,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-30",
+        "actual": 10890.876,
+        "forecast": null
+    },
+    {
+        "date": "2017-01-31",
+        "actual": 10125.046,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-01",
+        "actual": 14961.579999,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-02",
+        "actual": 11341.542995,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-03",
+        "actual": 12461.34899,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-04",
+        "actual": 12703.63,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-05",
+        "actual": 5266.3589999999995,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-06",
+        "actual": 10858.515,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-07",
+        "actual": 11408.945,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-08",
+        "actual": 13686.225,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-09",
+        "actual": 10527.450009999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-10",
+        "actual": 12853.598,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-11",
+        "actual": 12587.978000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-12",
+        "actual": 5495.094,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-13",
+        "actual": 12579.33799,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-14",
+        "actual": 10865.672,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-15",
+        "actual": 13083.796,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-16",
+        "actual": 10306.516,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-17",
+        "actual": 12547.40704,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-18",
+        "actual": 13379.741,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-19",
+        "actual": 4761.3819975,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-20",
+        "actual": 11006.965,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-21",
+        "actual": 11075.815,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-22",
+        "actual": 12969.76802,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-23",
+        "actual": 10394.717996,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-24",
+        "actual": 12310.243,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-25",
+        "actual": 10516.325,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-26",
+        "actual": 3475.025999,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-27",
+        "actual": 2951.0409999999997,
+        "forecast": null
+    },
+    {
+        "date": "2017-02-28",
+        "actual": 5553.757,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-01",
+        "actual": 16819.463,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-02",
+        "actual": 12781.885,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-03",
+        "actual": 13219.127,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-04",
+        "actual": 12086.526,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-05",
+        "actual": 5156.634,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-06",
+        "actual": 10819.112,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-07",
+        "actual": 14300.59,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-08",
+        "actual": 13247.726,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-09",
+        "actual": 10605.342999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-10",
+        "actual": 12329.87103,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-11",
+        "actual": 11997.510004,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-12",
+        "actual": 5897.179,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-13",
+        "actual": 11353.198,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-14",
+        "actual": 10622.636,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-15",
+        "actual": 14398.525020000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-16",
+        "actual": 10642.391,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-17",
+        "actual": 15182.124,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-18",
+        "actual": 11699.793004,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-19",
+        "actual": 5631.118,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-20",
+        "actual": 11953.704,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-21",
+        "actual": 12336.948,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-22",
+        "actual": 14122.550000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-23",
+        "actual": 10741.143,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-24",
+        "actual": 13505.038,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-25",
+        "actual": 11667.069,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-26",
+        "actual": 5306.7369,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-27",
+        "actual": 11811.434000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-28",
+        "actual": 10759.35598,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-29",
+        "actual": 14369.385,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-30",
+        "actual": 10265.408,
+        "forecast": null
+    },
+    {
+        "date": "2017-03-31",
+        "actual": 13320.378975,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-01",
+        "actual": 15094.336,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-02",
+        "actual": 5521.681903,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-03",
+        "actual": 11166.36702,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-04",
+        "actual": 11028.61,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-05",
+        "actual": 15539.17,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-06",
+        "actual": 10487.067001,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-07",
+        "actual": 13014.477,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-08",
+        "actual": 12509.368,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-09",
+        "actual": 5621.146,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-10",
+        "actual": 10221.429,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-11",
+        "actual": 10463.389,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-12",
+        "actual": 14034.103974,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-13",
+        "actual": 11394.875999,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-14",
+        "actual": 4192.903,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-15",
+        "actual": 8229.871,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-16",
+        "actual": 4695.418,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-17",
+        "actual": 12958.248998000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-18",
+        "actual": 10410.45999,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-19",
+        "actual": 13399.714,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-20",
+        "actual": 10048.905,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-21",
+        "actual": 13296.02397,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-22",
+        "actual": 11995.482,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-23",
+        "actual": 4800.859998,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-24",
+        "actual": 11186.166,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-25",
+        "actual": 10352.57301,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-26",
+        "actual": 13849.35,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-27",
+        "actual": 9760.476999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-28",
+        "actual": 12199.520036,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-29",
+        "actual": 10542.024,
+        "forecast": null
+    },
+    {
+        "date": "2017-04-30",
+        "actual": 4141.205,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-01",
+        "actual": 4031.118,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-02",
+        "actual": 14847.012,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-03",
+        "actual": 15268.652,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-04",
+        "actual": 11149.448,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-05",
+        "actual": 12701.114996,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-06",
+        "actual": 11937.496,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-07",
+        "actual": 4812.538,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-08",
+        "actual": 11854.108,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-09",
+        "actual": 10843.036,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-10",
+        "actual": 13250.725,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-11",
+        "actual": 9039.18,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-12",
+        "actual": 13269.807,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-13",
+        "actual": 12306.483994,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-14",
+        "actual": 4081.640004,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-15",
+        "actual": 11186.266003,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-16",
+        "actual": 11206.256983,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-17",
+        "actual": 13594.376,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-18",
+        "actual": 10348.56302,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-19",
+        "actual": 13483.6569,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-20",
+        "actual": 10749.912,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-21",
+        "actual": 4885.59199,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-22",
+        "actual": 11657.8199,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-23",
+        "actual": 11253.753,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-24",
+        "actual": 14215.447,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-25",
+        "actual": 10587.049,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-26",
+        "actual": 5946.604996,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-27",
+        "actual": 9247.769,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-28",
+        "actual": 4871.577,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-29",
+        "actual": 11704.673999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-30",
+        "actual": 9755.859,
+        "forecast": null
+    },
+    {
+        "date": "2017-05-31",
+        "actual": 14064.38398,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-01",
+        "actual": 11293.651,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-02",
+        "actual": 13122.11403,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-03",
+        "actual": 12653.627,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-04",
+        "actual": 5111.884,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-05",
+        "actual": 12049.031984,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-06",
+        "actual": 12775.544,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-07",
+        "actual": 14705.93103,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-08",
+        "actual": 10373.042,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-09",
+        "actual": 13456.414999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-10",
+        "actual": 11449.76,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-11",
+        "actual": 5825.817998,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-12",
+        "actual": 10798.44101,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-13",
+        "actual": 10801.989021000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-14",
+        "actual": 14891.530003,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-15",
+        "actual": 11433.403,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-16",
+        "actual": 12456.52503,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-17",
+        "actual": 12414.342,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-18",
+        "actual": 4957.632,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-19",
+        "actual": 11907.839,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-20",
+        "actual": 13910.833004,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-21",
+        "actual": 13682.951998,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-22",
+        "actual": 10069.635,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-23",
+        "actual": 12013.79102,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-24",
+        "actual": 11769.444,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-25",
+        "actual": 5011.069,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-26",
+        "actual": 10722.777,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-27",
+        "actual": 10498.349,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-28",
+        "actual": 13409.584,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-29",
+        "actual": 10247.561996,
+        "forecast": null
+    },
+    {
+        "date": "2017-06-30",
+        "actual": 12272.991998,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-01",
+        "actual": 11801.934,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-02",
+        "actual": 5308.296996,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-03",
+        "actual": 12201.219001,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-04",
+        "actual": 10951.704,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-05",
+        "actual": 14023.388,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-06",
+        "actual": 10311.751006,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-07",
+        "actual": 12001.7,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-08",
+        "actual": 10995.22,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-09",
+        "actual": 5131.654004,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-10",
+        "actual": 11624.978000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-11",
+        "actual": 10553.459004,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-12",
+        "actual": 13726.383,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-13",
+        "actual": 10269.74299,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-14",
+        "actual": 12375.274004,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-15",
+        "actual": 9871.204,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-16",
+        "actual": 4629.171,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-17",
+        "actual": 11337.712992,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-18",
+        "actual": 11978.147002,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-19",
+        "actual": 12998.338,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-20",
+        "actual": 10448.933905,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-21",
+        "actual": 12780.709996,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-22",
+        "actual": 11120.524,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-23",
+        "actual": 5308.637,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-24",
+        "actual": 11094.851,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-25",
+        "actual": 10329.44303,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-26",
+        "actual": 12579.23302,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-27",
+        "actual": 10078.642,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-28",
+        "actual": 11361.689,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-29",
+        "actual": 10165.192000000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-30",
+        "actual": 4950.2159897,
+        "forecast": null
+    },
+    {
+        "date": "2017-07-31",
+        "actual": 11626.725,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-01",
+        "actual": 11829.888998,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-02",
+        "actual": 14527.532220000001,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-03",
+        "actual": 9070.619999999999,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-04",
+        "actual": 12149.89796,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-05",
+        "actual": 9387.579,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-06",
+        "actual": 4409.247998,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-07",
+        "actual": 10538.136,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-08",
+        "actual": 11070.75899,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-09",
+        "actual": 12583.652,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-10",
+        "actual": 10834.579,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-11",
+        "actual": 5403.742021,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-12",
+        "actual": 7543.623,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-13",
+        "actual": 3902.782,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-14",
+        "actual": 10433.314,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-15",
+        "actual": 9823.551018,
+        "forecast": null
+    },
+    {
+        "date": "2017-08-16",
+        "actual": null,
+        "forecast": 12941.8134765625
+    },
+    {
+        "date": "2017-08-17",
+        "actual": null,
+        "forecast": 10140.208984375
+    },
+    {
+        "date": "2017-08-18",
+        "actual": null,
+        "forecast": 9981.603515625
+    },
+    {
+        "date": "2017-08-19",
+        "actual": null,
+        "forecast": 11111.59765625
+    },
+    {
+        "date": "2017-08-20",
+        "actual": null,
+        "forecast": 6683.30859375
+    },
+    {
+        "date": "2017-08-21",
+        "actual": null,
+        "forecast": 8921.916015625
+    },
+    {
+        "date": "2017-08-22",
+        "actual": null,
+        "forecast": 11003.22265625
+    },
+    {
+        "date": "2017-08-23",
+        "actual": null,
+        "forecast": 12396.8681640625
+    },
+    {
+        "date": "2017-08-24",
+        "actual": null,
+        "forecast": 9441.107421875
+    },
+    {
+        "date": "2017-08-25",
+        "actual": null,
+        "forecast": 10708.73046875
+    },
+    {
+        "date": "2017-08-26",
+        "actual": null,
+        "forecast": 10971.357421875
+    },
+    {
+        "date": "2017-08-27",
+        "actual": null,
+        "forecast": 7584.263671875
+    },
+    {
+        "date": "2017-08-28",
+        "actual": null,
+        "forecast": 10259.34375
+    },
+    {
+        "date": "2017-08-29",
+        "actual": null,
+        "forecast": 11768.4794921875
+    },
+    {
+        "date": "2017-08-30",
+        "actual": null,
+        "forecast": 11104.322265625
+    },
+    {
+        "date": "2017-08-31",
+        "actual": null,
+        "forecast": 10094.82421875
+    },
+    {
+        "date": "2017-09-01",
+        "actual": null,
+        "forecast": 11957.8974609375
+    },
+    {
+        "date": "2017-09-02",
+        "actual": null,
+        "forecast": 10201.5732421875
+    },
+    {
+        "date": "2017-09-03",
+        "actual": null,
+        "forecast": 9465.517578125
+    },
+    {
+        "date": "2017-09-04",
+        "actual": null,
+        "forecast": 10574.4267578125
+    },
+    {
+        "date": "2017-09-05",
+        "actual": null,
+        "forecast": 9400.7744140625
+    },
+    {
+        "date": "2017-09-06",
+        "actual": null,
+        "forecast": 11718.3408203125
+    },
+    {
+        "date": "2017-09-07",
+        "actual": null,
+        "forecast": 9757.708984375
+    },
+    {
+        "date": "2017-09-08",
+        "actual": null,
+        "forecast": 11224.388671875
+    },
+    {
+        "date": "2017-09-09",
+        "actual": null,
+        "forecast": 11125.6328125
+    },
+    {
+        "date": "2017-09-10",
+        "actual": null,
+        "forecast": 9781.2119140625
+    },
+    {
+        "date": "2017-09-11",
+        "actual": null,
+        "forecast": 10893.458984375
+    },
+    {
+        "date": "2017-09-12",
+        "actual": null,
+        "forecast": 9762.1796875
+    },
+    {
+        "date": "2017-09-13",
+        "actual": null,
+        "forecast": 11106.3251953125
+    },
+    {
+        "date": "2017-09-14",
+        "actual": null,
+        "forecast": 10373.548828125
+    }
+]

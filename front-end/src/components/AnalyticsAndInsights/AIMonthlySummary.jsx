@@ -14,6 +14,9 @@ export default function AIMonthlySummary({ density = "comfortable" }) {
   const [summaryText, setSummaryText] = React.useState("");
   const [period, setPeriod] = React.useState(null);
   const [stats, setStats] = React.useState(null);
+  const [aiText, setAiText] = React.useState("");
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [aiError, setAiError] = React.useState("");
 
   const loadSummary = React.useCallback(async (isRefresh = false) => {
     try {
@@ -50,9 +53,27 @@ export default function AIMonthlySummary({ density = "comfortable" }) {
     }
   }, []);
 
+  const loadAiText = React.useCallback(async () => {
+    try {
+      setAiLoading(true);
+      setAiError("");
+      const res = await api.get("/reports/ai-monthly-openai");
+      if (res.data?.success) {
+        setAiText(res.data.monthlySummary);
+      } else {
+        setAiError("Failed to load AI insights.");
+      }
+    } catch (e) {
+      setAiError("AI summary failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     loadSummary(false);
-  }, [loadSummary]);
+    loadAiText();
+  }, [loadSummary, loadAiText]);
 
   const fmtMoney = (v) =>
     `Rs ${Number(v || 0).toLocaleString("en-LK", {
@@ -150,12 +171,24 @@ export default function AIMonthlySummary({ density = "comfortable" }) {
         </button>
       </div>
 
-      {/* summary text */}
+      {/* AI summary text */}
       <div className={`rounded-xl border border-indigo-100 bg-indigo-50 ${dens.card}`}>
         <div className={`${dens.text} font-semibold uppercase tracking-wide text-indigo-700 mb-1`}>
-          Summary
+          AI Insights
         </div>
-        <p className={`${dens.text} text-indigo-900 leading-relaxed`}>{summaryText}</p>
+        {aiLoading ? (
+          <p className={`${dens.text} text-indigo-900 italic`}>Generating insights…</p>
+        ) : aiError ? (
+          <p className={`${dens.text} text-red-600`}>{aiError}</p>
+        ) : (
+          <p className={`${dens.text} text-indigo-900 leading-relaxed`}>{aiText}</p>
+        )}
+        <button
+          onClick={loadAiText}
+          className="mt-2 text-xs px-3 py-1.5 rounded border border-indigo-200 bg-white hover:bg-indigo-50"
+        >
+          Regenerate AI Insights
+        </button>
       </div>
 
       {/* SALES + PURCHASES GRID (6 KPIs) */}

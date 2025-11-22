@@ -52,12 +52,6 @@ const StaffSidebar = () => {
       path: "/staff/customers",
       icon: <FiUsers />,
     },
-
-    {
-      name: "Inventory Logs",
-      path: "/staff/inventory-logs",
-      icon: <FiClipboard />,
-    },
     {
       name: "Chatbot",
       path: "/staff/chatbot",
