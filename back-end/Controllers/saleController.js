@@ -144,7 +144,7 @@ const getSales = async (req, res) => {
 
     const q = {};
 
-    // --- Unified search: use OR logic (saleId OR customerName) ---
+    // --- Unified search: only search by saleId ---
     let effectiveSaleId = saleId;
     let effectiveCustomerName = customerName;
     const hasUnifiedSearch = search && search.trim();
@@ -152,36 +152,16 @@ const getSales = async (req, res) => {
     if (hasUnifiedSearch) {
       const s = search.trim();
       if (!effectiveSaleId) effectiveSaleId = s;
-      if (!effectiveCustomerName) effectiveCustomerName = s;
+      // Don't set effectiveCustomerName from unified search anymore
     }
 
-    // If unified search is used, build OR query for saleId OR customerName
+    // If unified search is used, only search by saleId
     if (hasUnifiedSearch && !saleId && !customerName) {
-      const orConditions = [];
-
-      // Try to match saleId
+      // Only match saleId
       if (effectiveSaleId && effectiveSaleId.trim()) {
-        orConditions.push({
-          saleId: { $regex: effectiveSaleId.trim(), $options: "i" },
-        });
-      }
-
-      // Try to match customer names
-      if (effectiveCustomerName && effectiveCustomerName.trim()) {
-        const rx = new RegExp(effectiveCustomerName.trim(), "i");
-        const custs = await Customer.find({ name: rx }).select("_id").lean();
-        const ids = custs.map((c) => c._id);
-
-        if (ids.length > 0) {
-          orConditions.push({ customer: { $in: ids } });
-        }
-      }
-
-      // If we have any OR conditions, use them; otherwise return empty
-      if (orConditions.length > 0) {
-        q.$or = orConditions;
+        q.saleId = { $regex: effectiveSaleId.trim(), $options: "i" };
       } else {
-        // No matches for saleId or customerName
+        // No saleId to search
         return res.json({
           success: true,
           sales: [],
@@ -979,7 +959,7 @@ const returnSaleItems = async (req, res) => {
       // Create inventory log entry
       logsToWrite.push({
         product: productId,
-        action: "stock.adjust", // Using existing action since "sale.return" is not in enum
+        action: "sale.return",
         delta: +qtyNum, // positive for stock increase
         beforeQty,
         afterQty,

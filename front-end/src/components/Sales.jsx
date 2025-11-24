@@ -1155,7 +1155,7 @@ const Sales = () => {
           <div>
             <input
               type="text"
-              placeholder="Search by sale ID, customer"
+              placeholder="Search by sale ID"
               value={unifiedSearch}
               onChange={(e) => {
                 setUnifiedSearch(e.target.value);

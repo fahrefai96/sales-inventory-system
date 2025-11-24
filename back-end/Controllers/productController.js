@@ -224,6 +224,7 @@ const getProducts = async (req, res) => {
       search = "",
       brand: brandId,
       category: categoryId,
+      supplier: supplierId,
       stock: stockFilter,
       code,
       sortBy = "lastUpdated",
@@ -249,6 +250,7 @@ const getProducts = async (req, res) => {
     // Filters
     if (brandId) q.brand = brandId;
     if (categoryId) q.category = categoryId;
+    if (supplierId) q.supplier = supplierId;
     if (code) q.code = code;
 
     // Stock filter - get threshold from Settings

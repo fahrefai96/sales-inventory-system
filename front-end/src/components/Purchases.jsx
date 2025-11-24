@@ -1,5 +1,6 @@
 // frontend/src/components/Purchases.jsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import AsyncSelect from "react-select/async";
 import axiosInstance from "../utils/api";
 import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
@@ -153,7 +154,7 @@ const Combo = ({
           id="combo-listbox"
           role="listbox"
           ref={listRef}
-          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+          className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
         >
           {filtered.length ? (
             filtered.map((opt, idx) => (
@@ -369,256 +370,6 @@ const StatusChip = ({ status }) => {
 };
 
 /** =========================
- * Quick Add Product Modal
- * ========================= */
-const QuickAddProductModal = ({
-  open,
-  onClose,
-  brands,
-  categories,
-  suppliers,
-  onCreated,
-}) => {
-  const [value, setValue] = React.useState({
-    code: "",
-    name: "",
-    brand: "",
-    category: "",
-    size: "",
-    supplier: "",
-    price: "",
-  });
-
-  const selectedCategory = React.useMemo(
-    () => categories.find((c) => c._id === value.category) || null,
-    [categories, value.category]
-  );
-
-  const sizeOptions = React.useMemo(() => {
-    const arr = Array.isArray(selectedCategory?.sizeOptions)
-      ? selectedCategory.sizeOptions
-      : [];
-    return arr.filter(Boolean);
-  }, [selectedCategory]);
-
-  React.useEffect(() => {
-    if (
-      value.size &&
-      sizeOptions.length > 0 &&
-      !sizeOptions.includes(value.size)
-    ) {
-      setValue((f) => ({ ...f, size: "" }));
-    }
-  }, [sizeOptions]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const onChange = (e) => {
-    const { name, value: v } = e.target;
-    setValue((f) => ({ ...f, [name]: v }));
-  };
-
-  const submit = async (e) => {
-    e.preventDefault();
-
-    const payload = {
-      code: value.code?.trim(),
-      name: value.name?.trim(),
-      brand: value.brand || undefined,
-      category: value.category || undefined,
-      size: value.size || undefined,
-      supplier: value.supplier || undefined,
-      price: Number(value.price || 0),
-    };
-
-    if (!payload.code) return alert("Code is required");
-    if (!payload.name) return alert("Name is required");
-    if (!payload.category) return alert("Category is required");
-    if (sizeOptions.length > 0 && !payload.size)
-      return alert("Please select a size for this category");
-    if (!payload.supplier) return alert("Preferred supplier is required");
-
-    try {
-      const { data } = await axiosInstance.post("/products/add", payload, {
-        headers: { ...authHeader(), "Content-Type": "application/json" },
-      });
-
-      const created = data?.product || data?.data || data;
-      if (!created?._id)
-        return alert("Product created but response had no _id");
-
-      onCreated(created);
-      onClose();
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err.message;
-      alert(msg);
-    }
-  };
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">New Product</h3>
-          <button
-            onClick={onClose}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            Close
-          </button>
-        </div>
-
-        {/* Body */}
-        <form
-          onSubmit={submit}
-          className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
-        >
-          {/* Code / Name */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Code" required>
-              <input
-                type="text"
-                name="code"
-                value={value.code}
-                onChange={onChange}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </Field>
-            <Field label="Name" required>
-              <input
-                type="text"
-                name="name"
-                value={value.name}
-                onChange={onChange}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </Field>
-          </div>
-
-          {/* Brand / Category / Size */}
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Brand">
-              <Combo
-                value={value.brand}
-                onChange={(val) => {
-                  const fakeEvent = { target: { name: "brand", value: val } };
-                  onChange(fakeEvent);
-                }}
-                options={[
-                  { value: "", label: "-- select --" },
-                  ...brands.map((b) => ({ value: b._id, label: b.name })),
-                ]}
-                placeholder="-- select --"
-              />
-            </Field>
-
-            <Field label="Category" required>
-              <Combo
-                value={value.category}
-                onChange={(val) => {
-                  const fakeEvent = { target: { name: "category", value: val } };
-                  onChange(fakeEvent);
-                }}
-                options={[
-                  { value: "", label: "-- select --" },
-                  ...categories.map((c) => ({ value: c._id, label: c.name })),
-                ]}
-                placeholder="-- select --"
-                required
-              />
-            </Field>
-
-            <Field label="Size" required={sizeOptions.length > 0}>
-              {sizeOptions.length > 0 ? (
-                <Combo
-                  value={value.size}
-                  onChange={(val) => {
-                    const fakeEvent = { target: { name: "size", value: val } };
-                    onChange(fakeEvent);
-                  }}
-                  options={[
-                    { value: "", label: "-- select --" },
-                    ...sizeOptions.map((s) => ({ value: s, label: s })),
-                  ]}
-                  placeholder="-- select --"
-                  required
-                />
-              ) : (
-                <input
-                  type="text"
-                  name="size"
-                  value={value.size}
-                  onChange={onChange}
-                  placeholder={
-                    value.category
-                      ? "No predefined sizes — enter size"
-                      : "Select a category first"
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-            </Field>
-          </div>
-
-          {/* Supplier / Price */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Preferred supplier" required>
-              <select
-                name="supplier"
-                value={value.supplier}
-                onChange={onChange}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- select --</option>
-                {suppliers.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Selling Price">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                name="price"
-                value={value.price}
-                onChange={onChange}
-                placeholder="0.00"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </Field>
-          </div>
-
-          {/* Footer */}
-          <div className="border-t border-gray-200 pt-4 flex justify-end">
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Create Product
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-/** =========================
  * Main Component
  * ========================= */
 const Purchases = () => {
@@ -627,8 +378,6 @@ const Purchases = () => {
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [productOptions, setProductOptions] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [categories, setCategories] = useState([]);
 
   // ui state (list)
   const [density, setDensity] = useState("comfortable");
@@ -653,6 +402,9 @@ const Purchases = () => {
   // drawer (create/edit draft)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [quantities, setQuantities] = useState({});
+  const [unitCosts, setUnitCosts] = useState({});
   const [form, setForm] = useState({
     supplier: "",
     invoiceNo: "",
@@ -660,12 +412,7 @@ const Purchases = () => {
     discount: "",
     tax: "",
     note: "",
-    items: [{ product: "", quantity: "", unitCost: "" }],
   });
-
-  // quick add product
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [quickRowIndex, setQuickRowIndex] = useState(null);
 
   // view modal
   const [viewOpen, setViewOpen] = useState(false);
@@ -765,27 +512,24 @@ const Purchases = () => {
     }
   }, []);
 
-  const fetchBrands = useCallback(async () => {
+  // Load product options for AsyncSelect (similar to Sales.jsx)
+  const loadProductOptions = async (inputValue) => {
     try {
-      const { data } = await axiosInstance.get("/brands", {
-        headers: authHeader(),
-      });
-      if (data?.success) setBrands(data.brands || []);
-    } catch (e) {
-      console.error("brands load:", e);
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const res = await axios.get(
+        `${apiBase}/products?dropdown=true&search=${encodeURIComponent(
+          inputValue || ""
+        )}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("pos-token")}` } }
+      );
+      const products = Array.isArray(res.data) ? res.data : [];
+      return products.map((p) => ({ value: p.value, label: p.label }));
+    } catch (err) {
+      console.error("Error loading products:", err);
+      return [];
     }
-  }, []);
+  };
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const { data } = await axiosInstance.get("/category", {
-        headers: authHeader(),
-      });
-      if (data?.success) setCategories(data.categories || []);
-    } catch (e) {
-      console.error("categories load:", e);
-    }
-  }, []);
 
   // initial + whenever filters/sort/pagination change
   useEffect(() => {
@@ -796,9 +540,7 @@ const Purchases = () => {
   useEffect(() => {
     fetchSuppliers();
     fetchProductDropdown();
-    fetchBrands();
-    fetchCategories();
-  }, [fetchSuppliers, fetchProductDropdown, fetchBrands, fetchCategories]);
+  }, [fetchSuppliers, fetchProductDropdown]);
 
   // Close drawers/modals on ESC key press
   useEffect(() => {
@@ -811,20 +553,19 @@ const Purchases = () => {
         if (drawerOpen) {
           setDrawerOpen(false);
           setEditId(null);
-        }
-        if (quickOpen) {
-          setQuickOpen(false);
-          setQuickRowIndex(null);
+          setSelectedProducts([]);
+          setQuantities({});
+          setUnitCosts({});
         }
       }
     };
-    if (drawerOpen || viewOpen || quickOpen) {
+    if (drawerOpen || viewOpen) {
       document.addEventListener("keydown", handleEsc);
     }
     return () => {
       document.removeEventListener("keydown", handleEsc);
     };
-  }, [drawerOpen, viewOpen, quickOpen]);
+  }, [drawerOpen, viewOpen]);
 
   // Apply fuzzy search to purchases (frontend only, on top of server results)
   const displayPurchases = useMemo(() => {
@@ -1154,14 +895,14 @@ const Purchases = () => {
   const productLabel = (id) =>
     productOptions.find((o) => o.value === id)?.label || "—";
 
-  const computeLineTotal = (row) => {
-    const q = Number(row.quantity || 0);
-    const u = Number(row.unitCost || 0);
+  const computeLineTotal = (productId) => {
+    const q = Number(quantities[productId] || 0);
+    const u = Number(unitCosts[productId] || 0);
     return q > 0 && u >= 0 ? q * u : 0;
   };
 
   const computeSubTotal = () =>
-    form.items.reduce((sum, r) => sum + computeLineTotal(r), 0);
+    selectedProducts.reduce((sum, p) => sum + computeLineTotal(p.value), 0);
 
   const computeGrandTotal = () => {
     const sub = computeSubTotal();
@@ -1179,8 +920,10 @@ const Purchases = () => {
       discount: "",
       tax: "",
       note: "",
-      items: [{ product: "", quantity: "", unitCost: "" }],
     });
+    setSelectedProducts([]);
+    setQuantities({});
+    setUnitCosts({});
     setEditId(null);
     setDrawerOpen(true);
   };
@@ -1188,42 +931,33 @@ const Purchases = () => {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditId(null);
+    setSelectedProducts([]);
+    setQuantities({});
+    setUnitCosts({});
   };
-
-  const addRow = () =>
-    setForm((f) => ({
-      ...f,
-      items: [...f.items, { product: "", quantity: "", unitCost: "" }],
-    }));
-
-  const removeRow = (idx) =>
-    setForm((f) => ({
-      ...f,
-      items: f.items.filter((_, i) => i !== idx),
-    }));
 
   const onFormChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const onItemChange = (idx, field, value) => {
-    setForm((f) => {
-      const items = [...f.items];
-      items[idx] = { ...items[idx], [field]: value };
-      return { ...f, items };
-    });
+  const handleQuantityChange = (productId, value) => {
+    setQuantities((prev) => ({ ...prev, [productId]: Number(value) || 0 }));
+  };
+
+  const handleUnitCostChange = (productId, value) => {
+    setUnitCosts((prev) => ({ ...prev, [productId]: Number(value) || 0 }));
   };
 
   const onSubmitDrawer = async (e) => {
     e.preventDefault();
-    if (!form.items.length) return alert("Add at least one line item");
-    for (const r of form.items) {
-      if (!r.product) return alert("Each row must have a product");
-      const q = Number(r.quantity || 0);
-      if (!q || q <= 0) return alert("Quantity must be > 0");
-      const u = Number(r.unitCost || 0);
-      if (u < 0) return alert("Unit cost cannot be negative");
+    if (!selectedProducts.length) return alert("Select at least one product");
+    
+    for (const p of selectedProducts) {
+      const q = Number(quantities[p.value] || 0);
+      if (!q || q <= 0) return alert(`Quantity must be > 0 for ${p.label}`);
+      const u = Number(unitCosts[p.value] || 0);
+      if (u < 0) return alert(`Unit cost cannot be negative for ${p.label}`);
     }
 
     const payload = {
@@ -1233,10 +967,10 @@ const Purchases = () => {
       discount: Number(form.discount || 0),
       tax: Number(form.tax || 0),
       note: form.note || "",
-      items: form.items.map((r) => ({
-        product: r.product,
-        quantity: Number(r.quantity),
-        unitCost: Number(r.unitCost),
+      items: selectedProducts.map((p) => ({
+        product: p.value,
+        quantity: Number(quantities[p.value] || 0),
+        unitCost: Number(unitCosts[p.value] || 0),
       })),
     };
 
@@ -1308,12 +1042,30 @@ const Purchases = () => {
         discount: String(p.discount ?? ""),
         tax: String(p.tax ?? ""),
         note: p.note || "",
-        items: (p.items || []).map((it) => ({
-          product: it.product?._id || it.product,
-          quantity: String(it.quantity ?? ""),
-          unitCost: String(it.unitCost ?? ""),
-        })),
       });
+
+      // Populate selectedProducts, quantities, and unitCosts
+      const products = (p.items || []).map((it) => {
+        const productId = it.product?._id || it.product;
+        const productName = it.product?.name || productLabel(productId);
+        const productCode = it.product?.code || "";
+        return {
+          value: productId,
+          label: productCode ? `${productCode} - ${productName}` : productName,
+        };
+      });
+      setSelectedProducts(products);
+
+      const qtyMap = {};
+      const costMap = {};
+      (p.items || []).forEach((it) => {
+        const productId = it.product?._id || it.product;
+        qtyMap[productId] = it.quantity || 0;
+        costMap[productId] = it.unitCost || 0;
+      });
+      setQuantities(qtyMap);
+      setUnitCosts(costMap);
+
       setEditId(p._id);
       setDrawerOpen(true);
     } catch (e) {
@@ -1749,7 +1501,7 @@ const Purchases = () => {
             onClick={closeDrawer}
             aria-hidden
           />
-          <div className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl flex flex-col min-h-0">
+          <div className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl flex flex-col min-h-0 z-50">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
@@ -1825,113 +1577,95 @@ const Purchases = () => {
                   </Field>
                 </div>
 
-                {/* Items grid */}
-                <div>
-                  <div className="mb-2 text-sm font-medium text-gray-700">
-                    Items
-                  </div>
-                  <div className="overflow-hidden rounded border border-gray-200">
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
-                          <th className="px-3 py-2">Product</th>
-                          <th className="px-3 py-2">Qty</th>
-                          <th className="px-3 py-2">Unit Cost</th>
-                          <th className="px-3 py-2">Line Total</th>
-                          <th className="px-3 py-2">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-sm">
-                        {form.items.map((row, idx) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 min-w-[120px]">
-                                  <Combo
-                                    value={row.product}
-                                    onChange={(val) =>
-                                      onItemChange(idx, "product", val)
-                                    }
-                                    options={[
-                                      { value: "", label: "select" },
-                                      ...productOptions,
-                                    ]}
-                                    placeholder="select"
-                                    required
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setQuickRowIndex(idx);
-                                    setQuickOpen(true);
-                                  }}
-                                  className="shrink-0 rounded border px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                                  title="Create product"
-                                >
-                                  New
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                min="1"
-                                value={row.quantity}
-                                onChange={(e) =>
-                                  onItemChange(idx, "quantity", e.target.value)
-                                }
-                                className="w-18 rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={row.unitCost}
-                                onChange={(e) =>
-                                  onItemChange(idx, "unitCost", e.target.value)
-                                }
-                                className="w-18 rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-gray-800">
-                              {fmtLKR(computeLineTotal(row))}
-                            </td>
-                            <td className="px-3 py-2">
-                              <button
-                                type="button"
-                                onClick={() => removeRow(idx)}
-                                className="text-red-600 hover:text-red-800 text-sm"
-                                disabled={form.items.length === 1}
-                                title={
-                                  form.items.length === 1
-                                    ? "At least one row is required"
-                                    : "Remove row"
-                                }
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {/* Products Selection */}
+                <Field label="Products" required>
+                  <AsyncSelect
+                    isMulti
+                    cacheOptions
+                    defaultOptions
+                    loadOptions={loadProductOptions}
+                    value={selectedProducts}
+                    onChange={(v) => {
+                      setSelectedProducts(v || []);
+                      // Remove quantities and costs for removed products
+                      const newQuantities = {};
+                      const newUnitCosts = {};
+                      (v || []).forEach((p) => {
+                        if (quantities[p.value] !== undefined) {
+                          newQuantities[p.value] = quantities[p.value];
+                        }
+                        if (unitCosts[p.value] !== undefined) {
+                          newUnitCosts[p.value] = unitCosts[p.value];
+                        }
+                      });
+                      setQuantities(newQuantities);
+                      setUnitCosts(newUnitCosts);
+                    }}
+                    placeholder="Search and select products..."
+                  />
+                </Field>
 
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={addRow}
-                      className="rounded border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      + Add Row
-                    </button>
+                {/* Quantities and Unit Costs for Selected Products */}
+                {selectedProducts.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-sm font-medium text-gray-700">
+                      Items
+                    </div>
+                    <div className="rounded border border-gray-200">
+                      <table className="min-w-full">
+                        <thead className="bg-gray-50">
+                          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
+                            <th className="px-3 py-2">Product</th>
+                            <th className="px-3 py-2">Qty</th>
+                            <th className="px-3 py-2">Unit Cost</th>
+                            <th className="px-3 py-2">Line Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm">
+                          {selectedProducts.map((product) => (
+                            <tr key={product.value}>
+                              <td className="px-3 py-2">
+                                <div className="font-medium text-gray-900">
+                                  {product.label}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={quantities[product.value] || ""}
+                                  onChange={(e) =>
+                                    handleQuantityChange(product.value, e.target.value)
+                                  }
+                                  className="w-20 rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  required
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={unitCosts[product.value] || ""}
+                                  onChange={(e) =>
+                                    handleUnitCostChange(product.value, e.target.value)
+                                  }
+                                  className="w-24 rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  required
+                                  placeholder="0.00"
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-gray-800 font-medium">
+                                {fmtLKR(computeLineTotal(product.value))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Totals */}
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -2118,31 +1852,6 @@ const Purchases = () => {
         </div>
       )}
 
-      {/* Quick Add Product Modal */}
-      <QuickAddProductModal
-        open={quickOpen}
-        onClose={() => setQuickOpen(false)}
-        brands={brands}
-        categories={categories}
-        suppliers={suppliers}
-        onCreated={(created) => {
-          if (!created?._id || quickRowIndex == null) return;
-
-          const label = `${created.code} - ${created.name}`;
-          appendProductOption({ value: created._id, label });
-
-          setForm((f) => {
-            const items = [...f.items];
-            items[quickRowIndex] = {
-              ...items[quickRowIndex],
-              product: created._id,
-            };
-            return { ...f, items };
-          });
-
-          setQuickRowIndex(null);
-        }}
-      />
     </div>
   );
 };

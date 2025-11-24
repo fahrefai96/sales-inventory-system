@@ -1,6 +1,6 @@
-// back-end/Controllers/aiCustomerClustersController.js
-import { computeCustomerMetrics } from "./customerMetrics.js";
-import { kmeans } from "../utils/kmeans.js";
+// back-end/Controllers/ai/aiCustomerClustersController.js
+import { computeCustomerMetrics } from "../customerMetrics.js";
+import { kmeans } from "../../utils/kmeans.js";
 
 export const getCustomerClusters = async (req, res) => {
   try {
@@ -166,3 +166,4 @@ export const getCustomerClusters = async (req, res) => {
     });
   }
 };
+

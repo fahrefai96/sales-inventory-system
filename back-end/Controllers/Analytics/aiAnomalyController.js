@@ -1,6 +1,6 @@
-// back-end/Controllers/aiAnomalyController.js
-import Sale from "../models/Sales.js";
-import Product from "../models/Product.js";
+// back-end/Controllers/ai/aiAnomalyController.js
+import Sale from "../../models/Sales.js";
+import Product from "../../models/Product.js";
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 const WINDOW_DAYS = 30; // last 30 days
@@ -220,3 +220,4 @@ export const getDemandAnomalies = async (req, res) => {
     });
   }
 };
+

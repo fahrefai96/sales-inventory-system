@@ -58,7 +58,7 @@ const Sidebar = () => {
       icon: <FiBarChart2 />,
     },
     {
-      name: "Analytics",
+      name: "Analytics & Insights",
       path: "/admin-dashboard/analytics",
       icon: <FiTrendingUp />,
     },

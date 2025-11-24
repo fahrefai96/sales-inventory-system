@@ -1,8 +1,8 @@
-import Sale from "../models/Sales.js";
-import Product from "../models/Product.js";
-import Customer from "../models/Customer.js";
-import Purchase from "../models/Purchase.js";
-import Supplier from "../models/Supplier.js";
+import Sale from "../../models/Sales.js";
+import Product from "../../models/Product.js";
+import Customer from "../../models/Customer.js";
+import Purchase from "../../models/Purchase.js";
+import Supplier from "../../models/Supplier.js";
 
 // Helper function to get raw monthly summary data (without HTTP response)
 export async function getRawMonthlySummary() {
@@ -688,3 +688,4 @@ export const getMonthlySummary = async (req, res) => {
     });
   }
 };
+

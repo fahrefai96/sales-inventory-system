@@ -1,6 +1,6 @@
-import Product from "../models/Product.js";
-import Sale from "../models/Sales.js";
-import Customer from "../models/Customer.js";
+import Product from "../../models/Product.js";
+import Sale from "../../models/Sales.js";
+import Customer from "../../models/Customer.js";
 
 export const getSmartAlerts = async (req, res) => {
   try {
@@ -235,3 +235,4 @@ export const getSmartAlerts = async (req, res) => {
     });
   }
 };
+

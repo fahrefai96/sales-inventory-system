@@ -1,7 +1,7 @@
 // back-end/routes/aiCustomerInsights.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getCustomerInsights } from "../Controllers/aiCustomerInsightsController.js";
+import { getCustomerInsights } from "../Controllers/Analytics/aiCustomerInsightsController.js";
 
 const router = express.Router();
 

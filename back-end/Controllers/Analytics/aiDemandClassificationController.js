@@ -1,5 +1,5 @@
-import Sale from "../models/Sales.js";
-import Product from "../models/Product.js";
+import Sale from "../../models/Sales.js";
+import Product from "../../models/Product.js";
 
 export const getDemandClassification = async (req, res) => {
   try {
@@ -173,3 +173,4 @@ export const getDemandClassification = async (req, res) => {
     });
   }
 };
+

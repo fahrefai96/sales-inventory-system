@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import Sale from "../models/Sales.js";
-import Product from "../models/Product.js";
+import Sale from "../../models/Sales.js";
+import Product from "../../models/Product.js";
 import fs from "fs";
 import path from "path";
 
@@ -403,3 +403,4 @@ export const getMLForecast = async (req, res) => {
     });
   }
 };
+

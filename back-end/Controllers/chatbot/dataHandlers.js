@@ -67,8 +67,75 @@ export function getLastMonthRange() {
 }
 
 /**
+ * Helper: get specific month range by month name or number
+ * @param {string} monthName - Month name (e.g., "november", "nov", "11") or "november 2024"
+ * @param {number} year - Optional year (defaults to current year, or previous year if month has passed)
+ */
+export function getSpecificMonthRange(monthName, year = null) {
+  const now = new Date();
+  const monthNames = {
+    january: 0, jan: 0,
+    february: 1, feb: 1,
+    march: 2, mar: 2,
+    april: 3, apr: 3,
+    may: 4,
+    june: 5, jun: 5,
+    july: 6, jul: 6,
+    august: 7, aug: 7,
+    september: 8, sep: 8, sept: 8,
+    october: 9, oct: 9,
+    november: 10, nov: 10,
+    december: 11, dec: 11,
+  };
+
+  let monthIndex = null;
+  let targetYear = year;
+
+  // Try to parse month name
+  const lower = monthName.toLowerCase().trim();
+  
+  // Check if it contains a year (e.g., "november 2024")
+  const yearMatch = lower.match(/\b(20\d{2})\b/);
+  if (yearMatch) {
+    targetYear = parseInt(yearMatch[1], 10);
+    const monthPart = lower.replace(/\b(20\d{2})\b/, "").trim();
+    monthIndex = monthNames[monthPart] !== undefined ? monthNames[monthPart] : null;
+  } else {
+    monthIndex = monthNames[lower];
+  }
+
+  // If month name not found, try parsing as number (1-12)
+  if (monthIndex === null || monthIndex === undefined) {
+    const monthNum = parseInt(lower, 10);
+    if (monthNum >= 1 && monthNum <= 12) {
+      monthIndex = monthNum - 1; // JavaScript months are 0-indexed
+    }
+  }
+
+  if (monthIndex === null || monthIndex === undefined) {
+    return null; // Invalid month
+  }
+
+  // Determine year if not provided
+  if (!targetYear) {
+    targetYear = now.getFullYear();
+    // If the requested month is in the future (e.g., asking for December when it's January),
+    // assume they mean last year
+    if (monthIndex > now.getMonth()) {
+      targetYear = now.getFullYear() - 1;
+    }
+  }
+
+  const start = new Date(targetYear, monthIndex, 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(targetYear, monthIndex + 1, 0); // Last day of the month
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+/**
  * Helper: parse date range from string
- * Supports: "today", "yesterday", "this week", "this month", "last month", or specific dates like "2024-01-15" or "2024-01-15 to 2024-01-20"
+ * Supports: "today", "yesterday", "this week", "this month", "last month", month names (e.g., "november", "nov"), or specific dates like "2024-01-15" or "2024-01-15 to 2024-01-20"
  */
 export function parseDateRange(dateRange) {
   if (!dateRange) return null;
@@ -101,6 +168,12 @@ export function parseDateRange(dateRange) {
       }
     }
   } else {
+    // Try to parse as month name (e.g., "november", "nov", "november 2024")
+    const monthRange = getSpecificMonthRange(lower);
+    if (monthRange) {
+      return monthRange;
+    }
+    
     // Try to parse as single date first (handles YYYY-MM-DD, MM/DD/YYYY, etc.)
     const singleDate = new Date(lower);
     if (!isNaN(singleDate.getTime())) {
@@ -231,12 +304,49 @@ async function getSalesByDateRange(dateRange = null) {
       start = parsed.start;
       end = parsed.end;
       // Generate label
-      if (dateRange.toLowerCase() === "today") dateLabel = "Today";
-      else if (dateRange.toLowerCase() === "yesterday") dateLabel = "Yesterday";
-      else if (dateRange.toLowerCase() === "this week" || dateRange.toLowerCase() === "week") dateLabel = "This Week";
-      else if (dateRange.toLowerCase() === "this month" || dateRange.toLowerCase() === "month") dateLabel = "This Month";
-      else if (dateRange.toLowerCase() === "last month") dateLabel = "Last Month";
-      else dateLabel = dateRange;
+      const lower = dateRange.toLowerCase().trim();
+      if (lower === "today") dateLabel = "Today";
+      else if (lower === "yesterday") dateLabel = "Yesterday";
+      else if (lower === "this week" || lower === "week") dateLabel = "This Week";
+      else if (lower === "this month" || lower === "month") dateLabel = "This Month";
+      else if (lower === "last month") dateLabel = "Last Month";
+      else {
+        // Check if it's a month name
+        const monthNames = {
+          january: "January", jan: "January",
+          february: "February", feb: "February",
+          march: "March", mar: "March",
+          april: "April", apr: "April",
+          may: "May",
+          june: "June", jun: "June",
+          july: "July", jul: "July",
+          august: "August", aug: "August",
+          september: "September", sep: "September", sept: "September",
+          october: "October", oct: "October",
+          november: "November", nov: "November",
+          december: "December", dec: "December",
+        };
+        
+        // Extract month name and year if present
+        const yearMatch = lower.match(/\b(20\d{2})\b/);
+        const monthPart = yearMatch ? lower.replace(/\b(20\d{2})\b/, "").trim() : lower;
+        const monthName = monthNames[monthPart];
+        
+        if (monthName) {
+          const year = yearMatch ? yearMatch[1] : start.getFullYear();
+          dateLabel = `${monthName} ${year}`;
+        } else {
+          // Try parsing as month number (1-12)
+          const monthNum = parseInt(lower, 10);
+          if (monthNum >= 1 && monthNum <= 12) {
+            const monthNamesArray = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const year = yearMatch ? yearMatch[1] : start.getFullYear();
+            dateLabel = `${monthNamesArray[monthNum - 1]} ${year}`;
+          } else {
+            dateLabel = dateRange;
+          }
+        }
+      }
     } else {
       // Invalid date range, use today as default
       const today = getTodayRange();
@@ -338,7 +448,7 @@ export async function handleMonthSales(dateRange = null) {
 
   if (!sales.length) {
     return {
-      reply: "📊 There are no sales recorded for this month yet.",
+      reply: `📊 There are no sales recorded for ${dateLabel} yet.`,
       intent: "MONTH_SALES",
       data: { count: 0, totalRevenue: 0 },
     };
@@ -356,10 +466,18 @@ export async function handleMonthSales(dateRange = null) {
     else unpaid++;
   }
 
-  const daysInMonth = new Date().getDate();
+  // Calculate days in the month for the date range
+  const startDate = sales[0]?.saleDate || sales[0]?.createdAt;
+  let daysInMonth = new Date().getDate(); // Default to current day
+  if (startDate) {
+    const monthDate = new Date(startDate);
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    daysInMonth = new Date(year, month + 1, 0).getDate(); // Last day of the month
+  }
   const avgPerDay = totalRevenue / daysInMonth;
 
-  const reply = `📅 **This Month's Sales:**\n• Total Revenue: **Rs. ${totalRevenue.toLocaleString()}**\n• Number of Sales: ${sales.length}\n• Average per day: Rs. ${avgPerDay.toFixed(0)}\n• Payment status: Paid: ${paid} | Partial: ${partial} | Unpaid: ${unpaid}`;
+  const reply = `📅 **${dateLabel}'s Sales:**\n• Total Revenue: **Rs. ${totalRevenue.toLocaleString()}**\n• Number of Sales: ${sales.length}\n• Average per day: Rs. ${avgPerDay.toFixed(0)}\n• Payment status: Paid: ${paid} | Partial: ${partial} | Unpaid: ${unpaid}`;
 
   return {
     reply,

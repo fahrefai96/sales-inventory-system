@@ -713,13 +713,13 @@ export default function CustomerBalances({ density = "comfortable" }) {
           {/* Spacer */}
           <div className="hidden lg:block flex-1 min-w-0" />
 
-          {/* Reset Button */}
+          {/* Clear Button */}
           <div className="shrink-0">
             <button
               onClick={resetFilters}
               className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-white bg-white shadow-sm"
             >
-              Reset
+              Clear
             </button>
           </div>
         </div>

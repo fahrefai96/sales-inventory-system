@@ -12,9 +12,61 @@ const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const endOfDay = (d) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
+// Density options to match DashboardPanel
+const DENSITIES = {
+  comfortable: { card: "p-5", listItem: "py-2", text: "text-[15px]" },
+  compact: { card: "p-3", listItem: "py-1", text: "text-[14px]" },
+};
+
 export default function StaffDashboardPanel() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [density, setDensity] = useState("comfortable"); // "compact" | "comfortable"
+
+  // Get user name for welcome message (reactive to localStorage changes)
+  const [userName, setUserName] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.name || null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Update userName when localStorage changes or window gains focus
+  useEffect(() => {
+    const updateUserName = () => {
+      try {
+        const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+        setUserName(u?.name || null);
+      } catch {
+        setUserName(null);
+      }
+    };
+
+    // Update on mount
+    updateUserName();
+
+    // Listen for storage events (works across tabs/windows)
+    const handleStorageChange = (e) => {
+      if (e.key === "pos-user") {
+        updateUserName();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Update when window gains focus (in case localStorage was changed in same tab)
+    window.addEventListener("focus", updateUserName);
+
+    // Also check periodically (every 2 seconds) as a fallback
+    const interval = setInterval(updateUserName, 2000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", updateUserName);
+      clearInterval(interval);
+    };
+  }, []);
 
   const [dashboard, setDashboard] = useState(null); // /dashboard
   const [sales, setSales] = useState([]); // all recent sales (we'll filter "today" on FE)
@@ -110,9 +162,11 @@ export default function StaffDashboardPanel() {
   const lowStockCount = dashboard?.lowStock?.length || 0;
   const lowStockPreview = (dashboard?.lowStock || []).slice(0, 5);
 
+  const densityCls = DENSITIES[density];
+
   // ---- skeleton card ----
   const SkeletonCard = () => (
-    <div className="rounded shadow bg-white p-4 animate-pulse">
+    <div className={`rounded shadow bg-white ${densityCls.card} animate-pulse`}>
       <div className="h-4 w-24 bg-gray-200 rounded mb-3"></div>
       <div className="h-6 w-32 bg-gray-200 rounded"></div>
     </div>
@@ -121,12 +175,43 @@ export default function StaffDashboardPanel() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
         <div>
           <h1 className="text-4xl font-bold">Staff Dashboard</h1>
           <p className="text-gray-600 text-lg">
             Quick view of today&apos;s sales and stock alerts
           </p>
+        </div>
+        <div className="flex flex-col items-end gap-2 pt-1">
+          {/* Density */}
+          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "comfortable" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("comfortable")}
+              title="Comfortable density"
+            >
+              Comfortable
+            </button>
+            <button
+              className={`px-3 py-2 text-xs font-medium ${
+                density === "compact" ? "bg-gray-100" : "bg-white"
+              }`}
+              onClick={() => setDensity("compact")}
+              title="Compact density"
+            >
+              Compact
+            </button>
+          </div>
+          {/* Welcome Message */}
+          {userName && (
+            <div className="text-right mt-2">
+              <p className="text-xl font-semibold text-gray-700">
+                Welcome back, <span className="text-gray-900 font-bold">{userName}</span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -144,7 +229,7 @@ export default function StaffDashboardPanel() {
         ) : (
           <>
             {/* Today's Revenue */}
-            <div className="rounded shadow bg-white p-4 text-center">
+            <div className={`rounded shadow bg-white ${densityCls.card} text-center`}>
               <div className="text-xs uppercase tracking-wide text-gray-500">
                 Today&apos;s Revenue
               </div>
@@ -154,7 +239,7 @@ export default function StaffDashboardPanel() {
             </div>
 
             {/* Today's Orders */}
-            <div className="rounded shadow bg-white p-4 text-center">
+            <div className={`rounded shadow bg-white ${densityCls.card} text-center`}>
               <div className="text-xs uppercase tracking-wide text-gray-500">
                 Today&apos;s Orders
               </div>
@@ -164,7 +249,7 @@ export default function StaffDashboardPanel() {
             </div>
 
             {/* Pending Invoices */}
-            <div className="rounded shadow bg-white p-4 text-center">
+            <div className={`rounded shadow bg-white ${densityCls.card} text-center`}>
               <div className="text-xs uppercase tracking-wide text-gray-500">
                 Pending Invoices (Today)
               </div>
@@ -174,7 +259,7 @@ export default function StaffDashboardPanel() {
             </div>
 
             {/* Low stock count */}
-            <div className="rounded shadow bg-white p-4 text-center">
+            <div className={`rounded shadow bg-white ${densityCls.card} text-center`}>
               <div className="text-xs uppercase tracking-wide text-gray-500">
                 Low Stock Items (&lt;5)
               </div>
@@ -189,7 +274,7 @@ export default function StaffDashboardPanel() {
       {/* Lists: Recent Sales, Pending Invoices, Low Stock */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Recent Sales (today) */}
-        <div className="rounded shadow bg-white p-4">
+        <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-semibold">Today&apos;s Sales</div>
             <Link
@@ -214,7 +299,7 @@ export default function StaffDashboardPanel() {
               {todaySales.slice(0, 10).map((s) => (
                 <li
                   key={s._id}
-                  className="border-b last:border-b-0 py-2 text-sm"
+                  className={`border-b last:border-b-0 ${densityCls.listItem} text-sm`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="font-medium">
@@ -239,7 +324,7 @@ export default function StaffDashboardPanel() {
         </div>
 
         {/* Pending invoices (today) */}
-        <div className="rounded shadow bg-white p-4">
+        <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-semibold">
               Pending Invoices (Today)
@@ -266,7 +351,7 @@ export default function StaffDashboardPanel() {
               {pendingSales.slice(0, 10).map((s) => (
                 <li
                   key={s._id}
-                  className="border-b last:border-b-0 py-2 text-sm"
+                  className={`border-b last:border-b-0 ${densityCls.listItem} text-sm`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="font-medium">
@@ -291,7 +376,7 @@ export default function StaffDashboardPanel() {
         </div>
 
         {/* Low stock preview */}
-        <div className="rounded shadow bg-white p-4">
+        <div className={`rounded shadow bg-white ${densityCls.card}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-semibold">Low Stock Preview</div>
             <Link
@@ -316,7 +401,7 @@ export default function StaffDashboardPanel() {
               {lowStockPreview.map((p) => (
                 <li
                   key={p._id}
-                  className="border-b last:border-b-0 py-2 text-sm"
+                  className={`border-b last:border-b-0 ${densityCls.listItem} text-sm`}
                 >
                   <div className="flex items-center justify-between">
                     <div>{p.name}</div>

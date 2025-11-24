@@ -184,7 +184,7 @@ export const askChatbot = async (req, res) => {
           else if (/\b(last month)\b/i.test(text)) dateRangeWeek = "last month";
           result = await handleWeekSales(dateRangeWeek);
           break;
-        case "MONTH_SALES":
+      case "MONTH_SALES":
           // Extract date range from text for RULE_ONLY mode
           let dateRangeMonth = null;
           const textLowerMonth = text.toLowerCase();
@@ -192,8 +192,24 @@ export const askChatbot = async (req, res) => {
           else if (/\b(this week|week)\b/i.test(text)) dateRangeMonth = "this week";
           else if (/\b(this month|month)\b/i.test(text)) dateRangeMonth = "this month";
           else if (/\b(last month)\b/i.test(text)) dateRangeMonth = "last month";
+          else {
+            // Try to extract month name (e.g., "november", "nov", "november 2024")
+            const monthPattern = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(?:(\d{4}))?\b/i;
+            const monthMatch = text.match(monthPattern);
+            if (monthMatch) {
+              const monthName = monthMatch[1];
+              const year = monthMatch[2] ? monthMatch[2] : null;
+              dateRangeMonth = year ? `${monthName} ${year}` : monthName;
+            } else {
+              // Try to extract month number (1-12)
+              const monthNumMatch = text.match(/\b(0?[1-9]|1[0-2])\b/);
+              if (monthNumMatch) {
+                dateRangeMonth = monthNumMatch[1];
+              }
+            }
+          }
           result = await handleMonthSales(dateRangeMonth);
-          break;
+        break;
         case "RECEIVABLES":
           result = await handleReceivables();
           break;
@@ -361,6 +377,22 @@ export const askChatbot = async (req, res) => {
                   else if (/\b(this week|week)\b/i.test(text)) dateRangeMonth = "this week";
                   else if (/\b(this month|month)\b/i.test(text)) dateRangeMonth = "this month";
                   else if (/\b(last month)\b/i.test(text)) dateRangeMonth = "last month";
+                  else {
+                    // Try to extract month name (e.g., "november", "nov", "november 2024")
+                    const monthPattern = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(?:(\d{4}))?\b/i;
+                    const monthMatch = text.match(monthPattern);
+                    if (monthMatch) {
+                      const monthName = monthMatch[1];
+                      const year = monthMatch[2] ? monthMatch[2] : null;
+                      dateRangeMonth = year ? `${monthName} ${year}` : monthName;
+                    } else {
+                      // Try to extract month number (1-12)
+                      const monthNumMatch = text.match(/\b(0?[1-9]|1[0-2])\b/);
+                      if (monthNumMatch) {
+                        dateRangeMonth = monthNumMatch[1];
+                      }
+                    }
+                  }
                 }
                 result = await handleMonthSales(dateRangeMonth || null);
                 break;
@@ -553,6 +585,22 @@ export const askChatbot = async (req, res) => {
           else if (/\b(this week|week)\b/i.test(text)) dateRangeMonth = "this week";
           else if (/\b(this month|month)\b/i.test(text)) dateRangeMonth = "this month";
           else if (/\b(last month)\b/i.test(text)) dateRangeMonth = "last month";
+          else {
+            // Try to extract month name (e.g., "november", "nov", "november 2024")
+            const monthPattern = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(?:(\d{4}))?\b/i;
+            const monthMatch = text.match(monthPattern);
+            if (monthMatch) {
+              const monthName = monthMatch[1];
+              const year = monthMatch[2] ? monthMatch[2] : null;
+              dateRangeMonth = year ? `${monthName} ${year}` : monthName;
+            } else {
+              // Try to extract month number (1-12)
+              const monthNumMatch = text.match(/\b(0?[1-9]|1[0-2])\b/);
+              if (monthNumMatch) {
+                dateRangeMonth = monthNumMatch[1];
+              }
+            }
+          }
           result = await handleMonthSales(dateRangeMonth);
         break;
       case "RECEIVABLES":
@@ -701,6 +749,22 @@ export const askChatbot = async (req, res) => {
                   else if (/\b(this week|week)\b/i.test(text)) dateRangeMonth = "this week";
                   else if (/\b(this month|month)\b/i.test(text)) dateRangeMonth = "this month";
                   else if (/\b(last month)\b/i.test(text)) dateRangeMonth = "last month";
+                  else {
+                    // Try to extract month name (e.g., "november", "nov", "november 2024")
+                    const monthPattern = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(?:(\d{4}))?\b/i;
+                    const monthMatch = text.match(monthPattern);
+                    if (monthMatch) {
+                      const monthName = monthMatch[1];
+                      const year = monthMatch[2] ? monthMatch[2] : null;
+                      dateRangeMonth = year ? `${monthName} ${year}` : monthName;
+                    } else {
+                      // Try to extract month number (1-12)
+                      const monthNumMatch = text.match(/\b(0?[1-9]|1[0-2])\b/);
+                      if (monthNumMatch) {
+                        dateRangeMonth = monthNumMatch[1];
+                      }
+                    }
+                  }
                 }
                 result = await handleMonthSales(dateRangeMonth || null);
                 break;

@@ -1,6 +1,6 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getMonthlySummary } from "../Controllers/aiMonthlySummaryController.js";
+import { getMonthlySummary } from "../Controllers/Analytics/aiMonthlySummaryController.js";
 
 const router = express.Router();
 

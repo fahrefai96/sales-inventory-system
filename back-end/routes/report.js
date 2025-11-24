@@ -1,9 +1,9 @@
 // back-end/routes/report.js
 import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
-import { getCustomerClusters } from "../Controllers/aiCustomerClustersController.js";
-import { getCustomerCreditRiskClusters } from "../Controllers/aiCreditRiskClustersController.js";
-import { getAiMonthlyOpenAI } from "../Controllers/aiMonthlyOpenAIController.js";
+import { getCustomerClusters } from "../Controllers/Analytics/aiCustomerClustersController.js";
+import { getCustomerCreditRiskClusters } from "../Controllers/Analytics/aiCreditRiskClustersController.js";
+import { getAiMonthlyOpenAI } from "../Controllers/Analytics/aiMonthlyOpenAIController.js";
 
 import {
   // Core JSON

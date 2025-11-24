@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 import { getRawMonthlySummary } from "./aiMonthlySummaryController.js";
-import Product from "../models/Product.js";
-import Sale from "../models/Sales.js";
-import Customer from "../models/Customer.js";
-import { computeCustomerMetrics } from "./customerMetrics.js";
-import { kmeans } from "../utils/kmeans.js";
+import Product from "../../models/Product.js";
+import Sale from "../../models/Sales.js";
+import Customer from "../../models/Customer.js";
+import { computeCustomerMetrics } from "../customerMetrics.js";
+import { kmeans } from "../../utils/kmeans.js";
 
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -671,3 +671,4 @@ ${JSON.stringify(payload, null, 2)}`;
     });
   }
 };
+

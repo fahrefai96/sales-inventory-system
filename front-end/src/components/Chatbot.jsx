@@ -14,8 +14,28 @@ const SUGGESTIONS = [
 ];
 
 const DENSITIES = {
-  comfortable: { message: "px-3 py-2", text: "text-sm", gap: "gap-3" },
-  compact: { message: "px-2 py-1.5", text: "text-xs", gap: "gap-2" },
+  comfortable: { 
+    message: "px-3 py-2", 
+    text: "text-sm", 
+    gap: "gap-3",
+    container: "p-4",
+    header: "mb-6",
+    suggestion: "px-4 py-1.5",
+    inputContainer: "p-4",
+    input: "px-3 py-2",
+    button: "px-4 py-2",
+  },
+  compact: { 
+    message: "px-2 py-1.5", 
+    text: "text-xs", 
+    gap: "gap-2",
+    container: "p-3",
+    header: "mb-4",
+    suggestion: "px-3 py-1",
+    inputContainer: "p-3",
+    input: "px-2.5 py-1.5",
+    button: "px-3 py-1.5",
+  },
 };
 
 const Chatbot = () => {
@@ -164,7 +184,7 @@ const Chatbot = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[50vw]">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -200,42 +220,43 @@ const Chatbot = () => {
       </div>
 
       {/* Suggestions */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => handleSuggestionClick(s)}
-              className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200"
-              disabled={loading}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        {/* Clear Chat */}
-        <button
-          onClick={clearChat}
-          className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          title="Clear chat"
-        >
-          Clear
-        </button>
+      <div className={`${dens.header} flex flex-wrap items-center ${dens.gap}`}>
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => handleSuggestionClick(s)}
+            className={`rounded-full border border-gray-200 bg-white ${dens.suggestion} text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200`}
+            disabled={loading}
+          >
+            {s}
+          </button>
+        ))}
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div className={`mb-3 rounded border border-red-200 bg-red-50 ${dens.message} text-xs text-red-700`}>
           {error}
         </div>
       )}
 
+      {/* Clear Chat button above chat container */}
+      <div className="mb-2 flex justify-end">
+        <button
+          onClick={clearChat}
+          className={`rounded-lg border border-gray-300 ${dens.button} text-sm font-medium text-gray-700 hover:bg-gray-50`}
+          title="Clear chat"
+        >
+          Clear Chat
+        </button>
+      </div>
+
       {/* Chat area */}
       <div
         ref={containerRef}
-        className="mb-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4"
-        style={{ maxHeight: "calc(100vh - 450px)", minHeight: "400px" }}
+        className={`mb-4 overflow-y-auto rounded-lg border border-gray-200 bg-white ${dens.container}`}
+        style={{ maxHeight: "calc(100vh - 450px)", minHeight: "300px" }}
       >
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-gray-500">
@@ -321,26 +342,26 @@ const Chatbot = () => {
       </div>
 
       {/* Input */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <form onSubmit={handleSubmit} className="flex items-end gap-3">
+      <div className={`rounded-lg border border-gray-200 bg-white ${dens.inputContainer}`}>
+        <form onSubmit={handleSubmit} className={`flex items-end ${dens.gap}`}>
           <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className={`block text-xs font-medium text-gray-600 ${density === "comfortable" ? "mb-1.5" : "mb-1"}`}>
               Ask a question
             </label>
             <textarea
-              rows={2}
+              rows={density === "comfortable" ? 2 : 2}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full resize-none rounded-lg border border-gray-300 ${dens.input} ${dens.text} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder={`Examples: "Show low stock items", "What is today's sales total?", "How to record a payment?"`}
             />
           </div>
-          <div className="pb-1">
+          <div className={density === "comfortable" ? "pb-1" : "pb-0.5"}>
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-lg bg-blue-600 ${dens.button} ${dens.text} font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {loading ? "Sending..." : "Send"}
             </button>

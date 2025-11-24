@@ -3,7 +3,7 @@ import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   getForecastOverview,
   getReorderSuggestions, getMLForecast
-} from "../Controllers/forecastController.js";
+} from "../Controllers/Analytics/forecastController.js";
 
 const router = express.Router();
 

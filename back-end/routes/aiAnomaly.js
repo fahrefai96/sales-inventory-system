@@ -1,7 +1,7 @@
 // back-end/routes/aiAnomaly.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getDemandAnomalies } from "../Controllers/aiAnomalyController.js";
+import { getDemandAnomalies } from "../Controllers/Analytics/aiAnomalyController.js";
 
 const router = express.Router();
 

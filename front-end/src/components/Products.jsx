@@ -42,6 +42,7 @@ const Products = () => {
   const [filters, setFilters] = useState({
     category: "all",
     brand: "all",
+    supplier: "all",
     stock: "all", // all | low | out | in
   });
 
@@ -88,6 +89,7 @@ const Products = () => {
       // Filters
       if (filters.category !== "all") params.category = filters.category;
       if (filters.brand !== "all") params.brand = filters.brand;
+      if (filters.supplier !== "all") params.supplier = filters.supplier;
       if (filters.stock !== "all") params.stock = filters.stock;
       
       // Sorting
@@ -122,7 +124,7 @@ const Products = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, filters.category, filters.brand, filters.stock, sortBy.key, sortBy.dir, page, pageSize]);
+  }, [query, filters.category, filters.brand, filters.supplier, filters.stock, sortBy.key, sortBy.dir, page, pageSize]);
 
   const fetchBrands = async () => {
     try {
@@ -182,7 +184,7 @@ const Products = () => {
   // Reset to page 1 when filters or sorting changes
   useEffect(() => {
     setPage(1);
-  }, [query, filters.category, filters.brand, filters.stock, sortBy.key, sortBy.dir]);
+  }, [query, filters.category, filters.brand, filters.supplier, filters.stock, sortBy.key, sortBy.dir]);
 
   // Close drawer on ESC key press
   useEffect(() => {
@@ -372,6 +374,7 @@ const Products = () => {
       if (query.trim()) params.set("search", query.trim());
       if (filters.category !== "all") params.set("category", filters.category);
       if (filters.brand !== "all") params.set("brand", filters.brand);
+      if (filters.supplier !== "all") params.set("supplier", filters.supplier);
       if (filters.stock !== "all") params.set("stock", filters.stock);
 
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
@@ -446,6 +449,9 @@ const Products = () => {
     const brandFilter = filters.brand !== "all"
       ? brands.find((b) => b._id === filters.brand)?.name || "All Brands"
       : "All Brands";
+    const supplierFilter = filters.supplier !== "all"
+      ? suppliers.find((s) => s._id === filters.supplier)?.name || "All Suppliers"
+      : "All Suppliers";
     const stockFilter = filters.stock === "low" ? `Low (<${lowStockThreshold})` 
       : filters.stock === "out" ? "Out (0)"
       : filters.stock === "in" ? `In Stock (≥${lowStockThreshold})`
@@ -520,7 +526,7 @@ const Products = () => {
           <h1>Products</h1>
           <div class="info">
             <div><strong>Total Records:</strong> ${displayProducts.length} | <strong>Printed:</strong> ${new Date().toLocaleString("en-LK")}</div>
-            <div><strong>Filters:</strong> Search: ${query || "All"} | Category: ${categoryFilter} | Brand: ${brandFilter} | Stock: ${stockFilter}</div>
+            <div><strong>Filters:</strong> Search: ${query || "All"} | Category: ${categoryFilter} | Brand: ${brandFilter} | Supplier: ${supplierFilter} | Stock: ${stockFilter}</div>
           </div>
           <table>
             <thead>
@@ -656,7 +662,7 @@ const Products = () => {
 
       {/* Toolbar */}
       <div className={`mb-4 ${dens.filterBar}`}>
-        <div className={`grid grid-cols-4 ${dens.filterGap}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 ${dens.filterGap}`}>
           <div>
             <input
               type="text"
@@ -685,6 +691,16 @@ const Products = () => {
               ...brands.map((b) => ({ value: b._id, label: b.name })),
             ]}
             placeholder="All Brands"
+          />
+
+          <Combo
+            value={filters.supplier}
+            onChange={(val) => setFilters((f) => ({ ...f, supplier: val }))}
+            options={[
+              { value: "all", label: "All Suppliers" },
+              ...suppliers.map((s) => ({ value: s._id, label: s.name })),
+            ]}
+            placeholder="All Suppliers"
           />
 
           <Combo
@@ -732,7 +748,7 @@ const Products = () => {
             type="button"
             onClick={() => {
               setQuery("");
-              setFilters({ category: "all", brand: "all", stock: "all" });
+              setFilters({ category: "all", brand: "all", supplier: "all", stock: "all" });
               const input = document.querySelector(
                 'input[placeholder^="Search"]'
               );

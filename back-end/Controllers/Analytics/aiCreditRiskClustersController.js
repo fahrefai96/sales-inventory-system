@@ -1,6 +1,6 @@
-// back-end/Controllers/aiCreditRiskClustersController.js
-import { computeCustomerRiskMetrics } from "./customerMetrics.js";
-import { kmeans } from "../utils/kmeans.js";
+// back-end/Controllers/ai/aiCreditRiskClustersController.js
+import { computeCustomerRiskMetrics } from "../customerMetrics.js";
+import { kmeans } from "../../utils/kmeans.js";
 
 export const getCustomerCreditRiskClusters = async (req, res) => {
   try {

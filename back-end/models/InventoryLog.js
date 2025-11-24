@@ -14,6 +14,7 @@ const inventoryLogSchema = new mongoose.Schema(
         "sale.update.restore",
         "sale.update.apply",
         "sale.delete.restore",
+        "sale.return",
         "product.create",
         "product.update",
         "product.restore",

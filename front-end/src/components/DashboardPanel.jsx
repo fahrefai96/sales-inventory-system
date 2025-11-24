@@ -108,15 +108,50 @@ export default function DashboardPanel() {
     }
   })();
 
-  // Get user name for welcome message
-  const userName = (() => {
+  // Get user name for welcome message (reactive to localStorage changes)
+  const [userName, setUserName] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
       return u?.name || null;
     } catch {
       return null;
     }
-  })();
+  });
+
+  // Update userName when localStorage changes or window gains focus
+  useEffect(() => {
+    const updateUserName = () => {
+      try {
+        const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+        setUserName(u?.name || null);
+      } catch {
+        setUserName(null);
+      }
+    };
+
+    // Update on mount
+    updateUserName();
+
+    // Listen for storage events (works across tabs/windows)
+    const handleStorageChange = (e) => {
+      if (e.key === "pos-user") {
+        updateUserName();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Update when window gains focus (in case localStorage was changed in same tab)
+    window.addEventListener("focus", updateUserName);
+
+    // Also check periodically (every 2 seconds) as a fallback
+    const interval = setInterval(updateUserName, 2000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", updateUserName);
+      clearInterval(interval);
+    };
+  }, []);
 
   // preset range helper
   const setPreset = (key) => {
@@ -509,86 +544,96 @@ export default function DashboardPanel() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
-              <button
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
-                  range.key === "today"
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
-                }`}
-                onClick={() => setPreset("today")}
-              >
-                <span>Today</span>
-              </button>
-              <button
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
-                  range.key === "7d"
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
-                }`}
-                onClick={() => setPreset("7d")}
-              >
-                <span>7d</span>
-              </button>
-              <button
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
-                  range.key === "30d"
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
-                }`}
-                onClick={() => setPreset("30d")}
-              >
-                <span>30d</span>
-              </button>
-              <div className="h-8 w-px bg-gray-200 self-center" />
-              <input
-                type="date"
-                value={toISODate(range.from).slice(0, 10)}
-                onChange={(e) =>
-                  setRange((r) => ({
-                    ...r,
-                    from: startOfDay(new Date(e.target.value)),
-                    key: "custom",
-                  }))
-                }
-                className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
-              />
-              <span className="px-2 text-sm text-gray-500">–</span>
-              <input
-                type="date"
-                value={toISODate(range.to).slice(0, 10)}
-                onChange={(e) =>
-                  setRange((r) => ({
-                    ...r,
-                    to: endOfDay(new Date(e.target.value)),
-                    key: "custom",
-                  }))
-                }
-                className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
-              />
+          <div className="flex flex-col items-end gap-2 pt-1">
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <button
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+                    range.key === "today"
+                      ? "bg-gray-900 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                  onClick={() => setPreset("today")}
+                >
+                  <span>Today</span>
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+                    range.key === "7d"
+                      ? "bg-gray-900 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                  onClick={() => setPreset("7d")}
+                >
+                  <span>7d</span>
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+                    range.key === "30d"
+                      ? "bg-gray-900 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                  onClick={() => setPreset("30d")}
+                >
+                  <span>30d</span>
+                </button>
+                <div className="h-8 w-px bg-gray-200 self-center" />
+                <input
+                  type="date"
+                  value={toISODate(range.from).slice(0, 10)}
+                  onChange={(e) =>
+                    setRange((r) => ({
+                      ...r,
+                      from: startOfDay(new Date(e.target.value)),
+                      key: "custom",
+                    }))
+                  }
+                  className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
+                />
+                <span className="px-2 text-sm text-gray-500">–</span>
+                <input
+                  type="date"
+                  value={toISODate(range.to).slice(0, 10)}
+                  onChange={(e) =>
+                    setRange((r) => ({
+                      ...r,
+                      to: endOfDay(new Date(e.target.value)),
+                      key: "custom",
+                    }))
+                  }
+                  className="px-4 py-2 text-sm border-0 focus:outline-none focus:ring-0"
+                />
+              </div>
+              {/* Density */}
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                <button
+                  className={`px-3 py-2 text-xs font-medium ${
+                    density === "comfortable" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => setDensity("comfortable")}
+                  title="Comfortable density"
+                >
+                  Comfortable
+                </button>
+                <button
+                  className={`px-3 py-2 text-xs font-medium ${
+                    density === "compact" ? "bg-gray-100" : "bg-white"
+                  }`}
+                  onClick={() => setDensity("compact")}
+                  title="Compact density"
+                >
+                  Compact
+                </button>
+              </div>
             </div>
-            {/* Density */}
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
-              <button
-                className={`px-3 py-2 text-xs font-medium ${
-                  density === "comfortable" ? "bg-gray-100" : "bg-white"
-                }`}
-                onClick={() => setDensity("comfortable")}
-                title="Comfortable density"
-              >
-                Comfortable
-              </button>
-              <button
-                className={`px-3 py-2 text-xs font-medium ${
-                  density === "compact" ? "bg-gray-100" : "bg-white"
-                }`}
-                onClick={() => setDensity("compact")}
-                title="Compact density"
-              >
-                Compact
-              </button>
-            </div>
+            {/* Welcome Message */}
+            {userName && (
+              <div className="text-right mt-2">
+                <p className="text-xl font-semibold text-gray-700">
+                  Welcome back, <span className="text-gray-900 font-bold">{userName}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </StickyHeader>

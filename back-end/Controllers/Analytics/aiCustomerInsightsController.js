@@ -1,7 +1,7 @@
-// back-end/Controllers/aiCustomerInsightsController.js
-import Sale from "../models/Sales.js";
-import Customer from "../models/Customer.js";
-import { computeCustomerMetrics } from "./customerMetrics.js";
+// back-end/Controllers/ai/aiCustomerInsightsController.js
+import Sale from "../../models/Sales.js";
+import Customer from "../../models/Customer.js";
+import { computeCustomerMetrics } from "../customerMetrics.js";
 
 export const getCustomerInsights = async (req, res) => {
   try {
@@ -226,3 +226,4 @@ export const getCustomerInsights = async (req, res) => {
       .json({ success: false, error: "Failed to compute customer insights." });
   }
 };
+

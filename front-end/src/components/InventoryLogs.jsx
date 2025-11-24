@@ -21,6 +21,7 @@ const ACTIONS = [
   "sale.update.apply",
   "sale.update.restore",
   "sale.delete.restore",
+  "sale.return",
   // Products
   "product.create",
   "product.update",
@@ -827,7 +828,24 @@ const InventoryLogs = () => {
             }}
             options={[
               { value: "", label: "All Actions" },
-              ...ACTIONS.map((a) => ({ value: a, label: a })),
+              ...ACTIONS.map((a) => {
+                // Map action values to user-friendly labels
+                const labelMap = {
+                  "sale.create": "Sale Created",
+                  "sale.update.apply": "Sale Updated (Apply)",
+                  "sale.update.restore": "Sale Updated (Restore)",
+                  "sale.delete.restore": "Sale Deleted (Restore)",
+                  "sale.return": "Returned Sales",
+                  "product.create": "Product Created",
+                  "product.update": "Product Updated",
+                  "product.delete": "Product Deleted",
+                  "product.restore": "Product Restored",
+                  "stock.adjust": "Stock Adjustment",
+                  "purchase.post": "Purchase Posted",
+                  "purchase.cancel": "Purchase Cancelled",
+                };
+                return { value: a, label: labelMap[a] || a };
+              }),
             ]}
             placeholder="All Actions"
           />

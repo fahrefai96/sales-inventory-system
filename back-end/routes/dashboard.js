@@ -7,7 +7,7 @@ import {
   getCombinedTrend,
   exportLowStockCsv,
 } from "../Controllers/dashboardController.js";
-import { getSmartQuery } from "../Controllers/aiDashboardSmartQueryController.js";
+import { getSmartQuery } from "../Controllers/Analytics/aiDashboardSmartQueryController.js";
 
 const router = express.Router();
 

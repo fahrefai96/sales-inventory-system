@@ -1,6 +1,6 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getSmartAlerts } from "../Controllers/aiSmartAlertsController.js";
+import { getSmartAlerts } from "../Controllers/Analytics/aiSmartAlertsController.js";
 
 const router = express.Router();
 
