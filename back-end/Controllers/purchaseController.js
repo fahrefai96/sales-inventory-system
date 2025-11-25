@@ -503,21 +503,90 @@ export const getPurchases = async (req, res) => {
     // ---------- SORTING ----------
     const sort = {};
 
-    const dir = sortDir === "asc" ? 1 : -1;
+    // Ensure sortDir is valid, default to "desc" for newest first
+    const validSortDir = sortDir === "asc" ? "asc" : "desc";
+    const dir = validSortDir === "asc" ? 1 : -1;
 
     if (sortBy === "invoiceNo") sort.invoiceNo = dir;
     else if (sortBy === "supplier") sort["supplier.name"] = dir;
     else if (sortBy === "grandTotal") sort.grandTotal = dir;
     else if (sortBy === "status") sort.status = dir;
-    else sort.invoiceDate = dir; // invoiceDate / createdAt default
+    else {
+      // For invoiceDate, sort by invoiceDate first, then createdAt as fallback
+      // This ensures purchases without invoiceDate still sort correctly
+      // Use $ifNull to treat null invoiceDate as createdAt for sorting
+      sort.invoiceDate = dir;
+      sort.createdAt = dir; // Secondary sort for consistency
+    }
 
     // ---------- QUERY ----------
-    const purchases = await Purchase.find(filter)
-      .populate("supplier", "name")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // Use aggregation to properly handle null invoiceDate values when sorting
+    let pipeline = [
+      { $match: filter }
+    ];
+
+    // If sorting by invoiceDate, use a computed field that falls back to createdAt
+    if (sortBy === "invoiceDate" || !sortBy || sortBy === "") {
+      pipeline.push({
+        $addFields: {
+          sortDate: {
+            $ifNull: ["$invoiceDate", "$createdAt"]
+          }
+        }
+      });
+      // Update sort to use the computed field
+      const computedSort = { sortDate: dir };
+      pipeline.push({ $sort: computedSort });
+    } else {
+      // For other sort fields, use the regular sort
+      pipeline.push({ $sort: sort });
+    }
+
+    // Add pagination
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    // Populate supplier
+    pipeline.push({
+      $lookup: {
+        from: "suppliers",
+        localField: "supplier",
+        foreignField: "_id",
+        as: "supplier"
+      }
+    });
+    pipeline.push({
+      $unwind: {
+        path: "$supplier",
+        preserveNullAndEmptyArrays: true
+      }
+    });
+
+    // Project fields (remove the computed sortDate field)
+    pipeline.push({
+      $project: {
+        supplier: {
+          _id: "$supplier._id",
+          name: "$supplier.name"
+        },
+        invoiceNo: 1,
+        invoiceDate: 1,
+        status: 1,
+        items: 1,
+        subTotal: 1,
+        discount: 1,
+        tax: 1,
+        grandTotal: 1,
+        note: 1,
+        createdBy: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        cancelledAt: 1,
+        cancelReason: 1
+      }
+    });
+
+    const purchases = await Purchase.aggregate(pipeline);
 
     const totalCount = await Purchase.countDocuments(filter);
 

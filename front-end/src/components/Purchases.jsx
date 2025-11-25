@@ -391,7 +391,7 @@ const Purchases = () => {
   const [maxTotal, setMaxTotal] = useState(""); // max grandTotal
 
   // server-side sorting
-  const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
+  const [sortBy, setSortBy] = useState({ key: "invoiceDate", dir: "desc" });
 
   // server-side pagination
   const [pageSize, setPageSize] = useState(25); // limit
@@ -435,8 +435,8 @@ const Purchases = () => {
       const params = {
         page,
         limit: pageSize,
-        sortBy: sortBy.key, // "createdAt" | "grandTotal" | "supplier" | "status"
-        sortDir: sortBy.dir, // "asc" | "desc"
+        sortBy: sortBy.key || "invoiceDate", // "invoiceDate" | "grandTotal" | "supplier" | "status"
+        sortDir: sortBy.dir || "desc", // "asc" | "desc" - default to "desc" for newest first
       };
 
       if (query.trim()) params.search = query.trim();
@@ -1350,7 +1350,7 @@ const Purchases = () => {
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-800">
                 <Th
                   label="Invoice Date"
-                  sortKey="createdAt"
+                  sortKey="invoiceDate"
                   sortBy={sortBy}
                   setSort={setSort}
                   headerCell={dens.headerCell}

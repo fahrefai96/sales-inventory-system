@@ -607,7 +607,10 @@ export const getInventoryReport = async (req, res) => {
         page: supplierSummaryPageNum,
         limit: supplierSummaryLimitNum,
       },
-      stockValueBySupplier: stockValueBySupplierRows,
+      stockValueBySupplier: stockValueBySupplierRows.map((s) => ({
+        ...s,
+        stockValue: money(s.stockValue),
+      })),
     });
   } catch (err) {
     console.error("getInventoryReport error:", err);
