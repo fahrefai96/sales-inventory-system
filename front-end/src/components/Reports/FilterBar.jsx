@@ -6,12 +6,16 @@ export default function FilterBar({
   range,
   setRange,
   extras = null,
+  disabled = false,
 }) {
-  const onChange = (key) => (e) =>
+  const onChange = (key) => (e) => {
+    if (disabled || !setRange) return;
     setRange({ ...range, [key]: e.target.value });
+  };
   const iso = (d) => d.toISOString().slice(0, 10);
 
   const setPreset = (type) => {
+    if (disabled || !setRange) return;
     const now = new Date();
     const asISO = (d) => d.toISOString().slice(0, 10);
     let from, to;
@@ -84,7 +88,10 @@ export default function FilterBar({
             type="date"
             value={range.from || ""}
             onChange={onChange("from")}
-            className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={disabled}
+            className={`w-36 sm:w-40 rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"
+            }`}
           />
         </div>
 
@@ -95,12 +102,20 @@ export default function FilterBar({
             type="date"
             value={range.to || ""}
             onChange={onChange("to")}
-            className="w-36 sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={disabled}
+            className={`w-36 sm:w-40 rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"
+            }`}
           />
         </div>
 
         {/* Presets */}
-        <div className="shrink-0">{Presets}</div>
+        {!disabled && <div className="shrink-0">{Presets}</div>}
+        {disabled && (
+          <div className="shrink-0 px-3 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg border border-gray-200">
+            Today Only
+          </div>
+        )}
 
         {/* Spacer pushes extras to the far right on large screens */}
         <div className="hidden lg:block flex-1 min-w-0" />

@@ -1,4 +1,4 @@
-// /src/components/Suppliers.jsx
+// This is the Suppliers page component
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
@@ -26,12 +26,12 @@ const DENSITIES = {
 };
 
 const Suppliers = () => {
-  // data
+  // Data we get from the server
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
 
-  // ui state
+  // UI state (how things look and work)
   const [query, setQuery] = useState("");
   const [density, setDensity] = useState("comfortable");
   const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
@@ -40,7 +40,7 @@ const Suppliers = () => {
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  // drawer (add/edit)
+  // Drawer for adding or editing suppliers
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -51,12 +51,12 @@ const Suppliers = () => {
     country: "",
   });
 
-  // profile (view purchases & documents)
+  // Profile modal (shows purchases and documents)
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSupplier, setProfileSupplier] = useState(null);
   const [supplierPurchases, setSupplierPurchases] = useState([]);
-  const [profileTab, setProfileTab] = useState("purchases"); // 'purchases' | 'documents'
+  const [profileTab, setProfileTab] = useState("purchases"); // purchases or documents
   
   // Documents state
   const [documents, setDocuments] = useState([]);
@@ -65,11 +65,11 @@ const Suppliers = () => {
   const [documentTypeFilter, setDocumentTypeFilter] = useState("all");
   const [uploadDocumentType, setUploadDocumentType] = useState("other");
 
-  // current user role
+  // Check if user is admin
   const currentUser = JSON.parse(localStorage.getItem("pos-user") || "{}");
   const isAdmin = currentUser.role === "admin";
 
-  // -------- Fetch --------
+  // Function to get suppliers from the server
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
@@ -540,26 +540,14 @@ const Suppliers = () => {
     }
   };
 
-  const handleDocumentDownload = async (supplierId, docId, fileName) => {
-    try {
-      const { data } = await axiosInstance.get(`/supplier/${supplierId}/documents/${docId}`, {
-        responseType: "blob",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
-      });
-      
-      const blob = new Blob([data]);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(e?.response?.data?.error || "Failed to download document");
+  const handleDocumentDownload = (supplierId, docId, fileName) => {
+    // Use window.open() like invoice PDF downloads to avoid CORS issues
+    const token = localStorage.getItem("pos-token") || "";
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    const url = `${apiBase}/supplier/${supplierId}/documents/${docId}?token=${encodeURIComponent(token)}`;
+    const win = window.open(url, "_blank");
+    if (!win) {
+      alert("Pop-up blocked. Please allow pop-ups to download the document.");
     }
   };
 

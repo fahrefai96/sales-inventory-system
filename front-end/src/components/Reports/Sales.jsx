@@ -176,15 +176,50 @@ const DENSITIES = {
 
 export default function Sales({ density = "comfortable" }) {
   const dens = DENSITIES[density] || DENSITIES.comfortable;
-  const [range, setRange] = useState(() => {
+  
+  // Get user role from localStorage
+  const role = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.role || "staff";
+    } catch {
+      return "staff";
+    }
+  })();
+  
+  // Get today's date in YYYY-MM-DD format
+  const getToday = () => {
     const today = new Date();
     const pad = (n) => String(n).padStart(2, "0");
-    const s = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
-    const e = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(
-      today.getDate()
-    )}`;
-    return { from: s, to: e, type: "month", groupBy: "day", user: "" };
+    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  };
+  
+  const [range, setRange] = useState(() => {
+    const today = getToday();
+    // Staff: only today, Admin: current month
+    if (role === "staff") {
+      return { from: today, to: today, type: "today", groupBy: "day", user: "" };
+    } else {
+      const pad = (n) => String(n).padStart(2, "0");
+      const now = new Date();
+      const s = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      const e = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      return { from: s, to: e, type: "month", groupBy: "day", user: "" };
+    }
   });
+  
+  // For Staff: Lock range to today and prevent changes
+  const isStaff = role === "staff";
+  
+  // Ensure Staff always has today's date
+  useEffect(() => {
+    if (isStaff) {
+      const today = getToday();
+      if (range.from !== today || range.to !== today) {
+        setRange({ from: today, to: today, type: "today", groupBy: range.groupBy, user: range.user });
+      }
+    }
+  }, [isStaff, range.from, range.to, range.groupBy, range.user]);
 
   const [loading, setLoading] = useState(false);
   const [loadingReturns, setLoadingReturns] = useState(false);
@@ -466,43 +501,49 @@ export default function Sales({ density = "comfortable" }) {
 
   const extras = (
     <>
-      <div className="w-32 shrink-0">
-        <Combo
-          value={range.groupBy}
-          onChange={(val) => setRange({ ...range, groupBy: val })}
-          options={[
-            { value: "day", label: "Daily" },
-            { value: "week", label: "Weekly" },
-            { value: "month", label: "Monthly" },
-          ]}
-          placeholder="Daily"
-        />
-      </div>
+      {role === "admin" && (
+        <div className="w-32 shrink-0">
+          <Combo
+            value={range.groupBy}
+            onChange={(val) => setRange({ ...range, groupBy: val })}
+            options={[
+              { value: "day", label: "Daily" },
+              { value: "week", label: "Weekly" },
+              { value: "month", label: "Monthly" },
+            ]}
+            placeholder="Daily"
+          />
+        </div>
+      )}
 
-      <div className="w-32 shrink-0">
-        <Combo
-          value={range.user}
-          onChange={(val) => setRange({ ...range, user: val })}
-          options={[
-            { value: "", label: "All Users" },
-            ...users.map((u) => ({ value: u._id, label: u.name })),
-          ]}
-          placeholder="All Users"
-        />
-      </div>
+      {role === "admin" && (
+        <div className="w-32 shrink-0">
+          <Combo
+            value={range.user}
+            onChange={(val) => setRange({ ...range, user: val })}
+            options={[
+              { value: "", label: "All Users" },
+              ...users.map((u) => ({ value: u._id, label: u.name })),
+            ]}
+            placeholder="All Users"
+          />
+        </div>
+      )}
 
-      <div className="shrink-0">
-        <ExportButtons
-          urls={{
-            csv: `/reports/sales/export/csv?from=${range.from}&to=${
-              range.to
-            }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
-            pdf: `/reports/sales/export/pdf?from=${range.from}&to=${
-              range.to
-            }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
-          }}
-        />
-      </div>
+      {role === "admin" && (
+        <div className="shrink-0">
+          <ExportButtons
+            urls={{
+              csv: `/reports/sales/export/csv?from=${range.from}&to=${
+                range.to
+              }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
+              pdf: `/reports/sales/export/pdf?from=${range.from}&to=${
+                range.to
+              }&groupBy=${range.groupBy}${range.user ? `&user=${range.user}` : ""}`,
+            }}
+          />
+        </div>
+      )}
     </>
   );
 
@@ -517,6 +558,7 @@ export default function Sales({ density = "comfortable" }) {
         range={range}
         setRange={setRange}
         extras={extras}
+        disabled={isStaff}
       />
       <KpiCards items={kpis} density={density} />
 

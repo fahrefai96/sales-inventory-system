@@ -220,14 +220,35 @@ export default function Inventory({ density = "comfortable" }) {
       const payload = r?.data || {};
       // Handle both { success: true, ... } and direct data structures
       const data = payload.success !== undefined ? payload : payload;
+      
+      // Ensure proper structure even if backend returns old format
+      const stockStatusPageNum = Math.max(1, parseInt(stockStatusPage, 10) || 1);
+      const stockStatusLimitNum = Math.max(1, Math.min(200, parseInt(stockStatusLimit, 10) || 25));
+      const supplierSummaryPageNum = Math.max(1, parseInt(supplierSummaryPage, 10) || 1);
+      const supplierSummaryLimitNum = Math.max(1, Math.min(200, parseInt(supplierSummaryLimit, 10) || 10));
+      
+      const stockStatus = data?.stockStatus || (data?.rows ? {
+        rows: Array.isArray(data.rows) ? data.rows : [],
+        total: Array.isArray(data.rows) ? data.rows.length : 0,
+        page: stockStatusPageNum,
+        limit: stockStatusLimitNum,
+      } : { rows: [], total: 0, page: 1, limit: 25 });
+      
+      const supplierSummary = data?.supplierSummary || (Array.isArray(data?.supplierSummary) ? {
+        rows: data.supplierSummary,
+        total: data.supplierSummary.length,
+        page: supplierSummaryPageNum,
+        limit: supplierSummaryLimitNum,
+      } : { rows: [], total: 0, page: 1, limit: 10 });
+      
       setData({
         KPIs: {
           totalSkus: num(data?.KPIs?.totalSkus),
           totalUnits: num(data?.KPIs?.totalUnits),
           stockValue: num(data?.KPIs?.stockValue),
         },
-        stockStatus: data?.stockStatus || { rows: [], total: 0, page: 1, limit: 25 },
-        supplierSummary: data?.supplierSummary || { rows: [], total: 0, page: 1, limit: 10 },
+        stockStatus,
+        supplierSummary,
         stockValueBySupplier: Array.isArray(data?.stockValueBySupplier) ? data.stockValueBySupplier : [],
       });
     } catch (err) {

@@ -1,4 +1,4 @@
-// back-end/Controllers/productController.js
+// This file handles all product-related requests
 import Category from "../models/Category.js";
 import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
@@ -18,20 +18,29 @@ const writeInventoryLog = async ({
   const b = Number(beforeQty || 0);
   const a = Number(afterQty || 0);
   const delta = a - b;
-  if (delta === 0) return; // only log if stock actually changed
+  
+  // Always log product creation and restore events, even if stock didn't change
+  // For other actions, only log if stock actually changed
+  const shouldLog = delta !== 0 || action === "product.create" || action === "product.restore";
+  if (!shouldLog) return;
+  
+  // Actor is required, so we need to ensure userId is provided
+  if (!userId) {
+    console.warn(`Inventory log skipped: missing userId for action ${action} on product ${productId}`);
+    return;
+  }
+  
   await InventoryLog.create({
     product: productId,
-    action, // e.g., "product.create", "product.update.stock", "product.delete", "product.restore"
-    delta, // + added, - removed
+    action, // like product.create, product.update.stock, product.delete, product.restore
+    delta, // positive means stock went up, negative means stock went down
     beforeQty: b,
     afterQty: a,
-    actor: userId || null,
+    actor: userId,
   });
 };
 
-/**
- * Add a new product (or restore if a soft-deleted product with the same code exists)
- */
+// Add a new product (or restore if a deleted product with the same code exists)
 const addProduct = async (req, res) => {
   try {
     const {
@@ -46,7 +55,7 @@ const addProduct = async (req, res) => {
       code,
     } = req.body || {};
 
-    // ---- Basic validations ----
+    // Check if required fields are filled in
     if (!code?.trim()) {
       return res
         .status(400)
@@ -59,7 +68,7 @@ const addProduct = async (req, res) => {
     }
     const trimmedCode = code.trim();
 
-    // Price (allow 0, but not negative / NaN)
+    // Check price (can be 0, but not negative or wrong)
     const priceNum = Number(price ?? 0);
     if (Number.isNaN(priceNum) || priceNum < 0) {
       return res
@@ -67,7 +76,7 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Price must be a non-negative number" });
     }
 
-    // Stock defaults to 0 if not provided
+    // Stock is 0 if not provided
     const initialStock = Number(stock ?? 0);
     if (Number.isNaN(initialStock) || initialStock < 0) {
       return res
@@ -75,7 +84,15 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Stock must be a non-negative number" });
     }
 
-    // Validate refs
+    // Only admin can create a product with stock greater than 0 (Opening Stock)
+    if (initialStock > 0 && req.user?.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: "Only admin can set opening stock. Create the product with stock = 0.",
+      });
+    }
+
+    // Check if category and brand are valid
     const cat = await Category.findById(category);
     if (!cat) {
       return res
@@ -97,7 +114,7 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Invalid supplier" });
     }
 
-    // Size must match category.sizeOptions (if defined)
+    // Size must be one of the allowed sizes for this category
     if (!size) {
       return res
         .status(400)
@@ -109,8 +126,8 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Invalid size for this category" });
     }
 
-    // ---- Duplicates by code ----
-    // Active duplicate?
+    // Check for duplicate product codes
+    // Is there already an active product with this code?
     const activeDup = await Product.findOne({
       code: trimmedCode,
       isDeleted: false,
@@ -121,7 +138,7 @@ const addProduct = async (req, res) => {
         .json({ success: false, error: "Product code already exists" });
     }
 
-    // Soft-deleted duplicate? Restore instead of create
+    // Is there a deleted product with this code? Restore it instead of making a new one
     const deletedMatch = await Product.findOne({
       code: trimmedCode,
       isDeleted: true,
@@ -164,7 +181,7 @@ const addProduct = async (req, res) => {
         product: deletedMatch,
       });
     }
-    // ---- Create new product ----
+    // Create a new product
     const newProduct = await Product.create({
       name,
       description,
@@ -179,7 +196,7 @@ const addProduct = async (req, res) => {
       lastCost: 0,
     });
 
-    // Inventory log (0 -> initialStock)
+    // Record in inventory log (stock changed from 0 to initial stock)
     await writeInventoryLog({
       productId: newProduct._id,
       action: "product.create",
@@ -204,20 +221,18 @@ const addProduct = async (req, res) => {
   }
 };
 
-/**
- * Get all products (with optional filters); supports dropdown mode
- * Query params:
- *  - search: search by name or code
- *  - brand: filter by brand ID
- *  - category: filter by category ID
- *  - stock: filter by stock status (all, low, out, in)
- *  - code: exact code match
- *  - sortBy: field to sort by (code, name, price, stock, lastUpdated)
- *  - sortDir: asc | desc
- *  - page: page number (default: 1)
- *  - limit: items per page (default: 25)
- *  - dropdown: if true, returns dropdown format
- */
+// Get all products (with optional filters); supports dropdown mode
+// Query params:
+//  - search: search by name or code
+//  - brand: filter by brand ID
+//  - category: filter by category ID
+//  - stock: filter by stock status (all, low, out, in)
+//  - code: exact code match
+//  - sortBy: field to sort by (code, name, price, stock, lastUpdated)
+//  - sortDir: asc or desc
+//  - page: page number (default: 1)
+//  - limit: items per page (default: 25)
+//  - dropdown: if true, returns dropdown format
 const getProducts = async (req, res) => {
   try {
     const {
@@ -238,7 +253,7 @@ const getProducts = async (req, res) => {
       isDeleted: false,
     };
 
-    // Search by name or code
+      // Search by product name or code
     if (search && search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: "i" };
       q.$or = [
@@ -247,13 +262,16 @@ const getProducts = async (req, res) => {
       ];
     }
 
-    // Filters
+      // Apply filters
     if (brandId) q.brand = brandId;
     if (categoryId) q.category = categoryId;
-    if (supplierId) q.supplier = supplierId;
+      // For normal requests, filter by supplier exactly
+    if (supplierId && !dropdown) {
+      q.supplier = supplierId;
+    }
     if (code) q.code = code;
 
-    // Stock filter - get threshold from Settings
+      // Stock filter - get the low stock number from Settings
     if (stockFilter && stockFilter !== "all") {
       let lowStockThreshold = 5; // default
       try {
@@ -274,7 +292,7 @@ const getProducts = async (req, res) => {
       }
     }
 
-    // Sorting
+      // Apply sorting
     const validSortFields = {
       code: "code",
       name: "name",
@@ -284,16 +302,39 @@ const getProducts = async (req, res) => {
     };
     const sortField = validSortFields[sortBy] || "lastUpdated";
     const sortDirection = sortDir === "asc" ? 1 : -1;
-    const sortObj = { [sortField]: sortDirection, _id: -1 }; // stable tiebreaker
+    const sortObj = { [sortField]: sortDirection, _id: -1 }; // use _id to keep order the same
 
-    // Dropdown mode: used by your React AsyncSelect (no pagination)
+      // Dropdown mode: used by the React dropdown component (no pagination)
     if (dropdown) {
-    const products = await Product.find(q)
-      .populate("category")
-      .populate("brand")
+        // For dropdown with supplier filter, show products with that supplier OR no supplier
+      if (supplierId) {
+          // Build filter to match products with this supplier OR no supplier
+        const supplierOr = [
+          { supplier: supplierId },
+          { supplier: null },
+          { supplier: { $exists: false } },
+        ];
+        
+          // If there's already a search filter, combine it with supplier filter
+        if (q.$or) {
+            // Combine search filter with supplier filter
+          q.$and = [
+            { $or: q.$or }, // existing search filter
+            { $or: supplierOr }, // supplier filter
+          ];
+          delete q.$or; // Remove the top-level $or since we moved it to $and
+        } else {
+            // No existing search filter, just add supplier filter
+          q.$or = supplierOr;
+        }
+      }
+
+      const products = await Product.find(q)
+        .populate("category")
+        .populate("brand")
         .populate("supplier")
         .sort(sortObj)
-        .limit(500); // reasonable limit for dropdowns
+        .limit(500); // good limit for dropdowns
 
       const dropdownOptions = products.map((p) => ({
         value: p._id,
@@ -302,15 +343,15 @@ const getProducts = async (req, res) => {
       return res.json(dropdownOptions);
     }
 
-    // Pagination
+    // Set up pagination
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
     const skip = (pageNum - 1) * limitNum;
 
-    // Get total count
+    // Count total products that match
     const total = await Product.countDocuments(q);
 
-    // Get paginated products
+    // Get products for the current page
     const products = await Product.find(q)
       .populate("category")
       .populate("brand")
@@ -321,7 +362,7 @@ const getProducts = async (req, res) => {
 
     const totalPages = Math.max(1, Math.ceil(total / limitNum));
 
-    // Get metadata (categories, suppliers, brands) - only on first page or when needed
+    // Get extra info (categories, suppliers, brands) - only on first page or when needed
     const categories = await Category.find();
     const suppliers = await Supplier.find();
     const brands = await Brand.find({ active: true }).sort({ name: 1 });
@@ -343,9 +384,7 @@ const getProducts = async (req, res) => {
   }
 };
 
-/**
- * Update a product
- */
+// Update a product
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -374,7 +413,7 @@ const updateProduct = async (req, res) => {
 
     const trimmedCode = code.trim();
 
-    // Unique code among ACTIVE products (ignore self)
+    // Make sure code is unique among active products (don't check this product itself)
     const dup = await Product.findOne({
       _id: { $ne: id },
       code: trimmedCode,
@@ -414,7 +453,7 @@ const updateProduct = async (req, res) => {
         .json({ success: false, error: "Invalid size for this category" });
     }
 
-    // INVENTORY LOG: capture stock BEFORE update
+    // Remember stock BEFORE we update it
     const beforeQty = Number(product.stock);
 
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -434,7 +473,7 @@ const updateProduct = async (req, res) => {
       { new: true }
     );
 
-    // INVENTORY LOG: write only if stock actually changed
+    // Record in inventory log only if stock actually changed
     await writeInventoryLog({
       productId: updatedProduct._id,
       action: "stock.adjust",
@@ -457,14 +496,12 @@ const updateProduct = async (req, res) => {
   }
 };
 
-/**
- * Soft delete a product
- */
+// Soft delete a product (mark as deleted but don't remove from database)
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate existence first
+    // Check if product exists
     const existing = await Product.findById(id);
     if (!existing) {
       return res
@@ -473,7 +510,7 @@ const deleteProduct = async (req, res) => {
     }
 
     if (existing.isDeleted) {
-      // Already soft-deleted; return current state (idempotent)
+      // Already deleted; return current state (it's ok to call this multiple times)
       return res.status(200).json({
         success: true,
         product: existing,
@@ -481,17 +518,17 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    // INVENTORY LOG: capture stock BEFORE deletion
+    // Remember stock BEFORE we delete it
     const beforeQty = Number(existing.stock) || 0;
 
-    // Mark deleted and bump lastUpdated; return the updated doc
+    // Mark as deleted and update lastUpdated; return the updated product
     const updated = await Product.findByIdAndUpdate(
       id,
       { isDeleted: true, lastUpdated: new Date() },
       { new: true }
     );
 
-    // INVENTORY LOG: deleting a product (stock -> 0)
+    // Record in inventory log: deleting a product (stock goes to 0)
     await writeInventoryLog({
       productId: existing._id,
       action: "product.delete",
@@ -565,7 +602,7 @@ export const exportProductsCsv = async (req, res) => {
       query.brand = brand;
     }
     
-    // Stock filter - get threshold from Settings
+      // Stock filter - get the low stock number from Settings
     if (stock && stock !== "all") {
       let lowStockThreshold = 5; // default
       try {
@@ -633,7 +670,7 @@ export const exportProductsPdf = async (req, res) => {
     if (brand && brand !== "all") {
       query.brand = brand;
     }
-    // Stock filter - get threshold from Settings
+      // Stock filter - get the low stock number from Settings
     if (stock && stock !== "all") {
       let lowStockThreshold = 5; // default
       try {
@@ -664,7 +701,7 @@ export const exportProductsPdf = async (req, res) => {
 
     const doc = pipeDoc(res, `products_${new Date().toISOString().slice(0, 10)}.pdf`);
     
-    // Fetch and add business information header
+    // Get business info and add it to the PDF header
     const businessInfo = await getBusinessInfo();
     addBusinessHeader(doc, businessInfo);
     

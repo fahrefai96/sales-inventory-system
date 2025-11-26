@@ -1,4 +1,4 @@
-// front-end/src/components/DashboardPanel.jsx
+// This is the Dashboard panel component
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -25,7 +25,7 @@ import {
   Tooltip,
 } from "recharts";
 
-// ---- utilities ----
+// Helper functions we use in this component
 const fmt = (n) =>
   new Intl.NumberFormat("en-LK", { maximumFractionDigits: 2 }).format(
     Number(n || 0)
@@ -48,7 +48,7 @@ const StickyHeader = ({ children }) => (
   </div>
 );
 
-// small header component for KPI cards (monochrome, centered)
+// Small header component for KPI cards (simple, centered)
 const KpiHeader = ({ icon, label }) => (
   <div className="flex flex-col items-center justify-center gap-1 text-xs uppercase tracking-wide text-gray-600 text-center">
     <span className="bg-gray-100 p-1.5 rounded-full leading-none">
@@ -59,12 +59,12 @@ const KpiHeader = ({ icon, label }) => (
 );
 
 export default function DashboardPanel() {
-  // ---- UI state ----
-  const [density, setDensity] = useState("comfortable"); // "compact" | "comfortable"
+  // UI state (how big things should look)
+  const [density, setDensity] = useState("comfortable"); // compact or comfortable
   const [range, setRange] = useState(() => {
     const today = new Date();
     return {
-      from: startOfDay(addDays(today, -6)), // default last 7 days
+      from: startOfDay(addDays(today, -6)), // default is last 7 days
       to: endOfDay(today),
       key: "7d",
     };
@@ -73,32 +73,32 @@ export default function DashboardPanel() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ---- data ----
-  const [dashboard, setDashboard] = useState(null); // /dashboard (totals + lists)
-  const [salesReport, setSalesReport] = useState(null); // /reports/sales
-  const [inventoryReport, setInventoryReport] = useState(null); // /reports/inventory
-  const [recentSales, setRecentSales] = useState([]); // /sales
-  const [recentPurchases, setRecentPurchases] = useState([]); // /purchases
-  const [activity, setActivity] = useState([]); // /inventory-logs
+  // Data we get from the server
+  const [dashboard, setDashboard] = useState(null); // from /dashboard (totals + lists)
+  const [salesReport, setSalesReport] = useState(null); // from /reports/sales
+  const [inventoryReport, setInventoryReport] = useState(null); // from /reports/inventory
+  const [recentSales, setRecentSales] = useState([]); // from /sales
+  const [recentPurchases, setRecentPurchases] = useState([]); // from /purchases
+  const [activity, setActivity] = useState([]); // from /inventory-logs
 
-  // --- admin-only data ---
+  // Admin-only data
   const [receivables, setReceivables] = useState(null);
   const [topProducts, setTopProducts] = useState(null);
   const [combinedTrend, setCombinedTrend] = useState(null);
 
-  // --- AI summary strip (admin only) ---
+  // AI summary strip (admin only)
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryError, setAiSummaryError] = useState("");
   const [aiHeadline, setAiHeadline] = useState("");
   const [aiHeadlineError, setAiHeadlineError] = useState("");
 
-  // --- Smart query (admin only) ---
+  // Smart query (admin only)
   const [smartQuestion, setSmartQuestion] = useState("");
   const [smartLoading, setSmartLoading] = useState(false);
   const [smartError, setSmartError] = useState("");
   const [smartAnswer, setSmartAnswer] = useState(null);
 
-  // role-based visibility
+  // Check user role to show or hide things
   const role = (() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -108,7 +108,7 @@ export default function DashboardPanel() {
     }
   })();
 
-  // Get user name for welcome message (reactive to localStorage changes)
+  // Get user name for welcome message (updates when localStorage changes)
   const [userName, setUserName] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -129,7 +129,7 @@ export default function DashboardPanel() {
       }
     };
 
-    // Update on mount
+    // Update when component loads
     updateUserName();
 
     // Listen for storage events (works across tabs/windows)
@@ -143,7 +143,7 @@ export default function DashboardPanel() {
     // Update when window gains focus (in case localStorage was changed in same tab)
     window.addEventListener("focus", updateUserName);
 
-    // Also check periodically (every 2 seconds) as a fallback
+    // Also check every 2 seconds as a backup
     const interval = setInterval(updateUserName, 2000);
 
     return () => {
@@ -153,7 +153,7 @@ export default function DashboardPanel() {
     };
   }, []);
 
-  // preset range helper
+  // Helper function to set date range presets (today, 7 days, 30 days)
   const setPreset = (key) => {
     const today = new Date();
     if (key === "today") {
@@ -182,7 +182,7 @@ export default function DashboardPanel() {
     }
   };
 
-  // ---- fetchers (existing) ----
+  // Functions to get data from the server
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -244,7 +244,7 @@ export default function DashboardPanel() {
     };
   }, [range.from, range.to]);
 
-  // ---- admin-only fetchers ----
+  // Functions to get admin-only data from the server
   useEffect(() => {
     let mounted = true;
     const run = async () => {
@@ -277,7 +277,7 @@ export default function DashboardPanel() {
     return () => (mounted = false);
   }, [range.from, range.to, role]);
 
-  // ---- AI summary fetch (admin only) ----
+  // Get AI summary (admin only)
   useEffect(() => {
     if (role !== "admin") {
       setAiSummary(null);
@@ -305,21 +305,15 @@ export default function DashboardPanel() {
     const loadAiSummary = async () => {
       try {
         setAiSummaryError("");
-        const [monthlyRes, smartRes, anomalyRes] = await Promise.all([
-          api.get("/ai-monthly-summary").catch(() => null),
-          api.get("/smart-alerts").catch(() => null),
-          api.get("/ai-anomaly").catch(() => null),
-        ]);
+        const monthlyRes = await api.get("/ai-monthly-summary").catch(() => null);
 
         if (!mounted) return;
 
         const monthly = monthlyRes?.data;
-        const smart = smartRes?.data;
-        const anomaly = anomalyRes?.data;
 
         const parts = [];
 
-        // Monthly revenue trend
+        // Monthly revenue trend chart
         if (monthly?.success && monthly.stats) {
           const { revenueChangePct, revenueTrend } = monthly.stats;
           const monthName = monthly.period?.month;
@@ -337,30 +331,6 @@ export default function DashboardPanel() {
             );
           } else if (monthly.summaryText) {
             parts.push(monthly.summaryText);
-          }
-        }
-
-        // Smart alerts (stock / payments)
-        if (smart?.success && smart.counts) {
-          const { total, stock, payments } = smart.counts;
-          if (total > 0) {
-            parts.push(
-              `${total} smart alert${
-                total > 1 ? "s" : ""
-              } active (stock ${stock}, payments ${payments}).`
-            );
-          }
-        }
-
-        // Anomalies
-        if (anomaly?.success && anomaly.stats && anomaly.window) {
-          const totalAnomalies = anomaly.stats.totalAnomalies || 0;
-          if (totalAnomalies > 0) {
-            parts.push(
-              `${totalAnomalies} demand anomal${
-                totalAnomalies > 1 ? "ies" : "y"
-              } detected in the last ${anomaly.window.days || 30} days.`
-            );
           }
         }
 
@@ -386,7 +356,7 @@ export default function DashboardPanel() {
     };
   }, [role]);
 
-  // ---- derived ----
+  // Calculate values from the data we got
   const densityCls = DENSITIES[density];
   const outOfStockCount = dashboard?.outOfStock?.length || 0;
   const lowStockCount = dashboard?.lowStock?.length || 0;
@@ -435,7 +405,7 @@ export default function DashboardPanel() {
     }));
   }, [combinedTrend]);
 
-  // low-stock CSV
+  // Function to download low-stock CSV
   const handleExportLowStock = async () => {
     try {
       const res = await api.get("/dashboard/low-stock/export.csv", {
@@ -456,7 +426,7 @@ export default function DashboardPanel() {
     }
   };
 
-  // Smart query handler
+  // Function to handle smart query (admin only)
   const handleSmartQuery = async (e) => {
     e?.preventDefault();
     const question = smartQuestion.trim();
@@ -493,7 +463,7 @@ export default function DashboardPanel() {
     }
   };
 
-  // Category badge colors
+  // Colors for category badges
   const getCategoryColor = (category) => {
     const colors = {
       sales: "bg-blue-100 text-blue-700",
@@ -507,7 +477,7 @@ export default function DashboardPanel() {
     return colors[category] || colors.general;
   };
 
-  // ---- skeletons ----
+  // Loading placeholders (skeletons)
   const SkeletonCard = () => (
     <div className={`rounded shadow bg-white ${densityCls.card} animate-pulse`}>
       <div className="h-4 w-28 bg-gray-200 rounded mb-3"></div>
@@ -518,7 +488,7 @@ export default function DashboardPanel() {
   // KPI grid columns (5 per row for admin, smaller for others)
   const kpiGridCols = role === "admin" ? "xl:grid-cols-5" : "xl:grid-cols-3";
 
-  // ---- rendering ----
+  // Render the component
   return (
     <div className="p-6">
       <StickyHeader>

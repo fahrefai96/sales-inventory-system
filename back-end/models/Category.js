@@ -10,18 +10,18 @@ const categorySchema = new mongoose.Schema({
   },
   description: { type: String, trim: true },
 
-  // Every category has sizes via one of these modes
+  // Every category has sizes using one of these modes
   sizeMode: {
     type: String,
-    enum: ["fixed", "custom"], // fixed = Small/Medium/Large, custom = you provide list
+    enum: ["fixed", "custom"], // fixed = Small/Medium/Large, custom = you provide the list
     required: true,
     default: "fixed",
   },
   // If sizeMode=fixed we will force this to ["Small","Medium","Large"] in controller
-  // If sizeMode=custom we will save what you provide (must be non-empty)
+  // If sizeMode=custom we will save what you provide (must not be empty)
   sizeOptions: {
     type: [String],
-    default: [], // stored list used by products to pick size
+    default: [], // stored list used by products to choose size
   },
 
   createdAt: { type: Date, default: Date.now },

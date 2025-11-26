@@ -175,6 +175,12 @@ export const downloadDocument = async (req, res) => {
   try {
     const { id, docId } = req.params;
 
+    // Set CORS headers for all responses (success and error)
+    const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+    res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
     if (
       !mongoose.Types.ObjectId.isValid(id) ||
       !mongoose.Types.ObjectId.isValid(docId)
@@ -195,6 +201,7 @@ export const downloadDocument = async (req, res) => {
         .json({ success: false, error: "Document not found" });
     }
 
+    // Set file download headers
     res.setHeader("Content-Type", document.mimeType);
     res.setHeader(
       "Content-Disposition",
@@ -205,6 +212,10 @@ export const downloadDocument = async (req, res) => {
     res.send(document.fileData);
   } catch (error) {
     console.error("Error downloading document:", error);
+    // Ensure CORS headers are set even on error
+    const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+    res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     return res
       .status(500)
       .json({ success: false, error: "Failed to download document" });

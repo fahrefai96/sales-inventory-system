@@ -1,4 +1,4 @@
-// frontend/src/components/Purchases.jsx
+// This is the Purchases page component
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import AsyncSelect from "react-select/async";
 import axiosInstance from "../utils/api";
@@ -6,9 +6,7 @@ import axios from "axios";
 import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import { fuzzySearch } from "../utils/fuzzySearch";
 
-/** =========================
- * Utilities & Small Bits
- * ========================= */
+// These are helper functions and small things we use in this component
 const DENSITIES = {
   comfortable: { 
     row: "py-3", 
@@ -50,7 +48,7 @@ const Field = ({ label, required, children }) => (
   </label>
 );
 
-// Combo component for searchable dropdowns
+// This is a dropdown that you can search in
 const Combo = ({
   value,
   onChange,
@@ -369,37 +367,35 @@ const StatusChip = ({ status }) => {
   );
 };
 
-/** =========================
- * Main Component
- * ========================= */
+// This is the main component that shows the purchases list
 const Purchases = () => {
-  // data
+  // Store the data we get from the server
   const [loading, setLoading] = useState(false);
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [productOptions, setProductOptions] = useState([]);
 
-  // ui state (list)
+  // Store UI settings like how big things should look
   const [density, setDensity] = useState("comfortable");
 
-  // server-side filters
-  const [query, setQuery] = useState(""); // search (invoice, supplier, note, etc.)
-  const [statusFilter, setStatusFilter] = useState(""); // draft / posted / cancelled
-  const [fromDate, setFromDate] = useState(""); // from (date)
-  const [toDate, setToDate] = useState(""); // to (date)
-  const [minTotal, setMinTotal] = useState(""); // min grandTotal
-  const [maxTotal, setMaxTotal] = useState(""); // max grandTotal
+  // These are filters that we send to the server
+  const [query, setQuery] = useState(""); // search text for invoice, supplier, note, etc.
+  const [statusFilter, setStatusFilter] = useState(""); // filter by draft, posted, or cancelled
+  const [fromDate, setFromDate] = useState(""); // start date
+  const [toDate, setToDate] = useState(""); // end date
+  const [minTotal, setMinTotal] = useState(""); // minimum total amount
+  const [maxTotal, setMaxTotal] = useState(""); // maximum total amount
 
-  // server-side sorting
+  // How to sort the list (server does the sorting)
   const [sortBy, setSortBy] = useState({ key: "invoiceDate", dir: "desc" });
 
-  // server-side pagination
-  const [pageSize, setPageSize] = useState(25); // limit
-  const [page, setPage] = useState(1); // current page (1-based)
-  const [total, setTotal] = useState(0); // total records (from backend)
-  const [totalPages, setTotalPages] = useState(1);
+  // Pagination settings (server does the pagination)
+  const [pageSize, setPageSize] = useState(25); // how many items per page
+  const [page, setPage] = useState(1); // which page we are on (starts at 1)
+  const [total, setTotal] = useState(0); // total number of purchases
+  const [totalPages, setTotalPages] = useState(1); // how many pages total
 
-  // drawer (create/edit draft)
+  // For the drawer where we create or edit a purchase
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -414,11 +410,11 @@ const Purchases = () => {
     note: "",
   });
 
-  // view modal
+  // For the popup that shows purchase details
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
 
-  // user role
+  // Check if user is admin or staff
   const role = (() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -428,7 +424,7 @@ const Purchases = () => {
     }
   })();
 
-  /** ---------- Fetchers (SERVER-SIDE LIST) ---------- */
+  // Functions to get data from the server
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
     try {
@@ -443,12 +439,12 @@ const Purchases = () => {
       if (statusFilter) params.status = statusFilter;
       if (fromDate) {
         const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0); // Set to start of day
+        start.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         params.from = start.toISOString();
       }
       if (toDate) {
         const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999); // Set to end of day
+        end.setHours(23, 59, 59, 999); // Make it end at end of the day
         params.to = end.toISOString();
       }
       if (minTotal) params.min = minTotal;
@@ -512,16 +508,22 @@ const Purchases = () => {
     }
   }, []);
 
-  // Load product options for AsyncSelect (similar to Sales.jsx)
+  // Load products for the dropdown (like in Sales page)
   const loadProductOptions = async (inputValue) => {
     try {
+      // If no supplier is picked, don't show any products (user must pick supplier first)
+      if (!form.supplier) {
+        return [];
+      }
+
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      const res = await axios.get(
-        `${apiBase}/products?dropdown=true&search=${encodeURIComponent(
-          inputValue || ""
-        )}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("pos-token")}` } }
-      );
+      const url = `${apiBase}/products?dropdown=true&search=${encodeURIComponent(
+        inputValue || ""
+      )}&supplier=${form.supplier}`;
+
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("pos-token")}` }
+      });
       const products = Array.isArray(res.data) ? res.data : [];
       return products.map((p) => ({ value: p.value, label: p.label }));
     } catch (err) {
@@ -531,18 +533,18 @@ const Purchases = () => {
   };
 
 
-  // initial + whenever filters/sort/pagination change
+  // Get purchases when component loads or when filters/sorting/pagination changes
   useEffect(() => {
     fetchPurchases();
   }, [fetchPurchases]);
 
-  // dropdowns only on mount
+  // Get suppliers and products only when component first loads
   useEffect(() => {
     fetchSuppliers();
     fetchProductDropdown();
   }, [fetchSuppliers, fetchProductDropdown]);
 
-  // Close drawers/modals on ESC key press
+  // Close popups when user presses ESC key
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape") {
@@ -567,7 +569,7 @@ const Purchases = () => {
     };
   }, [drawerOpen, viewOpen]);
 
-  // Apply fuzzy search to purchases (frontend only, on top of server results)
+  // Do a simple search on the purchases we got from server (just on the frontend)
   const displayPurchases = useMemo(() => {
     if (!query || !query.trim()) return purchases;
     return fuzzySearch(purchases, query, ["invoiceNo", "supplier.name", "note"], 0.4);
@@ -580,12 +582,12 @@ const Purchases = () => {
       if (statusFilter) params.set("status", statusFilter);
       if (fromDate) {
         const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0); // Set to start of day
+        start.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         params.set("from", start.toISOString());
       }
       if (toDate) {
         const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999); // Set to end of day
+        end.setHours(23, 59, 59, 999); // Make it end at end of the day
         params.set("to", end.toISOString());
       }
 
@@ -643,12 +645,12 @@ const Purchases = () => {
     params.set("token", token);
     const url = `${apiBase}/purchases/export/pdf?${params.toString()}`;
 
-    // Use window.open for PDF exports to avoid streaming issues
+    // Open PDF in new window so it downloads properly
     window.open(url, "_blank");
   };
 
   const handlePrint = () => {
-    // Create a hidden iframe for printing (no new tab)
+    // Make a hidden iframe to print without opening new tab
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -788,7 +790,7 @@ const Purchases = () => {
     iframeDoc.write(htmlContent);
     iframeDoc.close();
 
-    // Use a flag to prevent duplicate print calls
+    // Use a flag to stop printing twice
     let hasPrinted = false;
     let fallbackTimeout = null;
     
@@ -796,7 +798,7 @@ const Purchases = () => {
       if (hasPrinted) return;
       hasPrinted = true;
       
-      // Clear fallback timeout if it exists
+      // Clear the timeout if it exists
       if (fallbackTimeout) {
         clearTimeout(fallbackTimeout);
         fallbackTimeout = null;
@@ -807,7 +809,7 @@ const Purchases = () => {
           if (iframe.contentWindow) {
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
-            // Remove iframe after print dialog interaction
+            // Remove iframe after user closes print dialog
             setTimeout(() => {
               if (iframe.parentNode) {
                 document.body.removeChild(iframe);
@@ -823,10 +825,10 @@ const Purchases = () => {
       }, 100);
     };
 
-    // Set onload handler
+    // When iframe loads, print it
     iframe.onload = doPrint;
     
-    // Fallback timeout (only if onload didn't fire within 500ms)
+    // If iframe doesn't load in 500ms, try printing anyway
     fallbackTimeout = setTimeout(() => {
       if (!hasPrinted) {
         doPrint();
@@ -834,7 +836,7 @@ const Purchases = () => {
     }, 500);
   };
 
-  /** ---------- Search & Filters (all server-side) ---------- */
+  // Functions to handle search and filters (server does the filtering)
   const onSearchChange = (e) => {
     setQuery(e.target.value);
     setPage(1);
@@ -865,7 +867,7 @@ const Purchases = () => {
     setPage(1);
   };
 
-  /** ---------- Sorting (server-side) ---------- */
+  // Function to handle sorting (server does the sorting)
   const setSort = (key) => {
     setSortBy((prev) =>
       prev.key === key
@@ -875,7 +877,7 @@ const Purchases = () => {
     setPage(1);
   };
 
-  /** ---------- Pagination (server-side) ---------- */
+  // Functions to handle pagination (server does the pagination)
   const dens = DENSITIES[density];
 
   const startIdx = total === 0 ? 0 : (page - 1) * pageSize;
@@ -891,7 +893,7 @@ const Purchases = () => {
     setPage(1);
   };
 
-  /** ---------- Helpers for drawer & view ---------- */
+  // Helper functions for the drawer and view popup
   const productLabel = (id) =>
     productOptions.find((o) => o.value === id)?.label || "—";
 
@@ -911,7 +913,7 @@ const Purchases = () => {
     return sub - discount + tax;
   };
 
-  /** ---------- Drawer: Add/Edit Draft Purchase ---------- */
+  // Functions to open and close the drawer for creating/editing purchases
   const openDrawer = () => {
     setForm({
       supplier: "",
@@ -1007,7 +1009,7 @@ const Purchases = () => {
     }
   };
 
-  /** ---------- View modal & actions ---------- */
+  // Functions to show purchase details and do actions like post, cancel, delete
   const openView = async (id) => {
     try {
       const { data } = await axiosInstance.get(`/purchases/${id}`, {
@@ -1044,7 +1046,7 @@ const Purchases = () => {
         note: p.note || "",
       });
 
-      // Populate selectedProducts, quantities, and unitCosts
+      // Fill in the products, quantities, and costs from the purchase we're editing
       const products = (p.items || []).map((it) => {
         const productId = it.product?._id || it.product;
         const productName = it.product?.name || productLabel(productId);
@@ -1143,7 +1145,7 @@ const Purchases = () => {
     }
   };
 
-  /** ---------- Quick Add Product wiring ---------- */
+  // Function to add a new product to the dropdown list
   const appendProductOption = (opt) => {
     setProductOptions((opts) => {
       if (!opt?.value) return opts;
@@ -1152,7 +1154,7 @@ const Purchases = () => {
     });
   };
 
-  /** ---------- UI ---------- */
+  // This is what gets shown on the page
   return (
     <div className="p-6">
       {/* Header */}
@@ -1195,7 +1197,7 @@ const Purchases = () => {
         </div>
       </div>
 
-      {/* Toolbar / Filters */}
+      {/* Search and filter bar */}
       <div className={`mb-4 ${dens.filterBar}`}>
         <div className={`grid ${dens.filterGap} lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2`}>
           <div>
@@ -1277,7 +1279,7 @@ const Purchases = () => {
           </div>
         </div>
 
-        {/* Clear Button and Export Buttons */}
+        {/* Buttons to clear filters and export data */}
         <div className={`flex justify-end items-center ${dens.exportBar}`}>
           <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
             <button
@@ -1323,7 +1325,7 @@ const Purchases = () => {
         </div>
       </div>
 
-      {/* Rows per page selector */}
+      {/* Choose how many rows to show per page */}
       <div className={`${dens.pagination} flex items-center justify-end gap-2`}>
         <span className="text-sm text-gray-600">Rows:</span>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
@@ -1342,7 +1344,7 @@ const Purchases = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* The purchases list table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="max-h-[70vh] overflow-auto">
           <table className="min-w-full table-auto">
@@ -1479,7 +1481,7 @@ const Purchases = () => {
           </table>
         </div>
 
-        {/* Pagination footer (server-side now) */}
+        {/* Page navigation at bottom (server does the pagination) */}
         <Pagination
           density={density}
           pageSize={pageSize}
@@ -1493,7 +1495,7 @@ const Purchases = () => {
         />
       </div>
 
-      {/* Drawer: Create/Edit Purchase (Draft) */}
+      {/* Popup drawer to create or edit a purchase */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50">
           <div
@@ -1521,19 +1523,23 @@ const Purchases = () => {
               </button>
             </div>
 
-            {/* Content */}
+            {/* Form content */}
             <form
               onSubmit={onSubmitDrawer}
               className="flex flex-1 flex-col overflow-y-auto min-h-0"
             >
               <div className="flex-1 px-5 py-4 space-y-4 pb-28">
-                {/* Supplier */}
+                {/* Pick supplier */}
                 <Field label="Supplier">
                   <Combo
                     value={form.supplier}
                     onChange={(val) => {
                       const fakeEvent = { target: { name: "supplier", value: val } };
                       onFormChange(fakeEvent);
+                      // Remove products when supplier changes
+                      setSelectedProducts([]);
+                      setQuantities({});
+                      setUnitCosts({});
                     }}
                     options={[
                       { value: "", label: "-- optional --" },
@@ -1546,7 +1552,7 @@ const Purchases = () => {
                   />
                 </Field>
 
-                {/* Invoice */}
+                {/* Invoice details */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label="Invoice No">
                     <input
@@ -1577,17 +1583,18 @@ const Purchases = () => {
                   </Field>
                 </div>
 
-                {/* Products Selection */}
+                {/* Pick products */}
                 <Field label="Products" required>
                   <AsyncSelect
+                    key={form.supplier || "no-supplier"} // Make it reload when supplier changes
                     isMulti
                     cacheOptions
-                    defaultOptions
+                    defaultOptions={!!form.supplier} // Only load products if supplier is picked
                     loadOptions={loadProductOptions}
                     value={selectedProducts}
                     onChange={(v) => {
                       setSelectedProducts(v || []);
-                      // Remove quantities and costs for removed products
+                      // Remove quantities and costs when products are removed
                       const newQuantities = {};
                       const newUnitCosts = {};
                       (v || []).forEach((p) => {
@@ -1601,11 +1608,12 @@ const Purchases = () => {
                       setQuantities(newQuantities);
                       setUnitCosts(newUnitCosts);
                     }}
-                    placeholder="Search and select products..."
+                    placeholder={form.supplier ? "Search and select products..." : "Select a supplier first"}
+                    isDisabled={!form.supplier}
                   />
                 </Field>
 
-                {/* Quantities and Unit Costs for Selected Products */}
+                {/* Enter quantity and cost for each product */}
                 {selectedProducts.length > 0 && (
                   <div>
                     <div className="mb-2 text-sm font-medium text-gray-700">
@@ -1667,7 +1675,7 @@ const Purchases = () => {
                   </div>
                 )}
 
-                {/* Totals */}
+                {/* Calculate totals */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label="Discount">
                     <input
@@ -1702,7 +1710,7 @@ const Purchases = () => {
                 </div>
               </div>
 
-              {/* Sticky footer */}
+              {/* Buttons at bottom that stay visible */}
               <div className="border-t border-gray-200 bg-white px-5 py-4 sticky bottom-0">
                 <div className="flex items-center justify-end gap-3">
                   <button
@@ -1725,7 +1733,7 @@ const Purchases = () => {
         </div>
       )}
 
-      {/* View modal */}
+      {/* Popup to view purchase details */}
       {viewOpen && viewData && (
         <div 
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
@@ -1803,7 +1811,7 @@ const Purchases = () => {
               </div>
             </div>
 
-            {/* Body */}
+            {/* Purchase details content */}
             <div className="p-5 space-y-4">
               {viewData?.note ? (
                 <div className="rounded border border-gray-200 p-3 text-sm">

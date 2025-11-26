@@ -5,7 +5,7 @@ import Purchase from "../models/Purchase.js";
 import PDFDocument from "pdfkit";
 import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
-// POST /api/supplier/add
+// Add a new supplier
 const addSupplier = async (req, res) => {
   try {
     const { name, email, phone, address, country } = req.body;
@@ -25,7 +25,7 @@ const addSupplier = async (req, res) => {
       email,
       phone,
       address,
-      country, // NEW
+      country,
     });
 
     return res.status(201).json({
@@ -46,7 +46,7 @@ const getSuppliers = async (req, res) => {
       search = "",
       page = "1",
       limit = "25",
-      sortBy = "createdAt", // "name" | "email" | "phone" | "country" | "createdAt"
+      sortBy = "createdAt", // name, email, phone, country, or createdAt
       sortDir = "desc",
     } = req.query;
 
@@ -54,7 +54,7 @@ const getSuppliers = async (req, res) => {
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
     const sortDirNum = sortDir === "asc" ? 1 : -1;
 
-    // Build query
+    // Build search query
     const q = {};
     if (search && search.trim()) {
       q.$or = [
@@ -66,18 +66,18 @@ const getSuppliers = async (req, res) => {
       ];
     }
 
-    // Build sort
+    // Build sort object
     const sort = {};
     if (sortBy === "name") sort.name = sortDirNum;
     else if (sortBy === "email") sort.email = sortDirNum;
     else if (sortBy === "phone") sort.phone = sortDirNum;
     else if (sortBy === "country") sort.country = sortDirNum;
-    else sort.createdAt = sortDirNum; // default: createdAt
+    else sort.createdAt = sortDirNum; // default is createdAt
 
-    // Get total count
+    // Get total count of suppliers
     const total = await Supplier.countDocuments(q);
 
-    // Get paginated results
+    // Get suppliers for the current page
     const skip = (pageNum - 1) * limitNum;
     const suppliers = await Supplier.find(q)
       .sort(sort)
@@ -99,7 +99,7 @@ const getSuppliers = async (req, res) => {
   }
 };
 
-// PUT /api/supplier/:id
+// Update a supplier
 const updateSupplier = async (req, res) => {
   try {
     const { id } = req.params;
@@ -126,7 +126,7 @@ const updateSupplier = async (req, res) => {
   }
 };
 
-// DELETE /api/supplier/:id
+// Delete a supplier
 const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;

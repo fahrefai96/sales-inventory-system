@@ -1,20 +1,13 @@
 import React from "react";
 import {
   FiTrendingUp,
-  FiUsers,
-  FiAlertTriangle,
-  FiActivity,
   FiFileText,
 } from "react-icons/fi";
 import Forecasting from "./Forecasting.jsx";
-import CustomerInsights from "./CustomerInsights.jsx";
-import SmartAlerts from "./SmartAlerts.jsx";
-import AnomalyDetection from "./AnomalyDetection.jsx";
 import AIMonthlySummary from "./AIMonthlySummary.jsx";
-import ProductDemand from "./ProductDemand.jsx";
 
 export default function AnalyticsHome() {
-  const [tab, setTab] = React.useState("forecasting"); // forecasting | insights | alerts | anomaly | summary
+  const [tab, setTab] = React.useState("forecasting"); // forecasting | summary
   const [density, setDensity] = React.useState("comfortable");
 
   const baseTab =
@@ -29,8 +22,7 @@ export default function AnalyticsHome() {
         <div>
           <h1 className="text-4xl font-bold">Analytics & Insights</h1>
           <p className="text-gray-600 text-lg">
-            AI-powered forecasting, customer intelligence, smart alerts, anomaly
-            detection, and monthly summaries for your shop.
+            AI-powered forecasting and monthly summaries for your shop.
           </p>
         </div>
         {/* Density */}
@@ -69,39 +61,6 @@ export default function AnalyticsHome() {
 
         <button
           className={`${baseTab} ${
-            tab === "insights" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("insights")}
-        >
-          <FiUsers className="text-[15px]" />
-          <span>Customer Insights</span>
-        </button>
-
-        <button
-          className={`${baseTab} ${tab === "alerts" ? activeTab : inactiveTab}`}
-          onClick={() => setTab("alerts")}
-        >
-          <FiAlertTriangle className="text-[15px]" />
-          <span>Smart Alerts</span>
-        </button>
-
-        <button
-          className={`${baseTab} ${
-            tab === "anomaly" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("anomaly")}
-        >
-          <FiActivity className="text-[15px]" />
-          <span>Anomaly Detection</span>
-        </button>
-        <button
-          className={`${baseTab} ${tab === "demand" ? activeTab : inactiveTab}`}
-          onClick={() => setTab("demand")}
-        >
-          Product Demand
-        </button>
-        <button
-          className={`${baseTab} ${
             tab === "summary" ? activeTab : inactiveTab
           }`}
           onClick={() => setTab("summary")}
@@ -112,11 +71,6 @@ export default function AnalyticsHome() {
       </div>
 
       {tab === "forecasting" && <Forecasting density={density} />}
-      {tab === "insights" && <CustomerInsights density={density} />}
-      {tab === "alerts" && <SmartAlerts density={density} />}
-      {tab === "anomaly" && <AnomalyDetection density={density} />}
-      {tab === "demand" && <ProductDemand density={density} />}
-
       {tab === "summary" && <AIMonthlySummary density={density} />}
     </div>
   );

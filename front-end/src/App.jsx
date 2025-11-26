@@ -77,6 +77,7 @@ function App() {
           <Route path="purchases" element={<Purchases />} />
           <Route path="sales" element={<Sales />} />
           <Route path="customers" element={<Customer />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="logout" element={<Logout />} />
         </Route>

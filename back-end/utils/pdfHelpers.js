@@ -1,9 +1,7 @@
 import Settings from "../models/Settings.js";
 
-/**
- * Fetch business information from Settings
- * Returns business info with defaults if not set
- */
+// Get business information from Settings
+// Returns business info with defaults if not set
 export const getBusinessInfo = async () => {
   try {
     const settings = await Settings.findOne().lean();
@@ -19,7 +17,7 @@ export const getBusinessInfo = async () => {
     };
   } catch (error) {
     console.error("Error fetching business info:", error);
-    // Return defaults on error
+    // Return defaults if there's an error
     return {
       businessName: "A2R Ceramic & Hardware",
       address: "",
@@ -31,11 +29,9 @@ export const getBusinessInfo = async () => {
   }
 };
 
-/**
- * Add business information header to a PDF document
- * @param {PDFDocument} doc - The PDFKit document
- * @param {Object} businessInfo - Business information object
- */
+// Add business information header to a PDF document
+// doc: The PDFKit document
+// businessInfo: Business information object
 export const addBusinessHeader = (doc, businessInfo) => {
   const { businessName, address, phone, email, logoUrl } = businessInfo;
   
@@ -50,7 +46,7 @@ export const addBusinessHeader = (doc, businessInfo) => {
     doc.fontSize(10).text(address, { align: "left" });
   }
   
-  // Contact information
+  // Contact information (phone and email)
   const contactParts = [];
   if (phone) contactParts.push(`Tel: ${phone}`);
   if (email) contactParts.push(`Email: ${email}`);

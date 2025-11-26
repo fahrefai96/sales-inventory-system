@@ -29,7 +29,7 @@ export function buildSystemPrompt(role = "staff") {
     "- Customers: Manage customer information and relationships",
     "- Suppliers: Manage supplier information",
     "- Inventory Logs: Track all stock movements and changes",
-    "- Reports: Generate sales, inventory, and performance reports",
+    "- Reports: Generate sales and inventory reports",
     "",
     "Users can be either Admin (full access) or Staff (limited access).",
     "",

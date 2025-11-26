@@ -1,4 +1,4 @@
-// frontend/src/components/Sales.jsx
+// This is the Sales page component
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import AsyncSelect from "react-select/async";
 import axios from "axios";
@@ -6,7 +6,7 @@ import { FaDownload, FaFileCsv, FaPrint } from "react-icons/fa";
 import PaymentModal from "./PaymentModal";
 import api from "../utils/api";
 
-// Density options to match other screens
+// Size options to match other pages
 const DENSITIES = {
   comfortable: { 
     row: "py-3", 
@@ -28,7 +28,7 @@ const DENSITIES = {
   },
 };
 
-// Sortable table header component
+// Table header that you can click to sort
 const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   const isActive = sortBy.key === sortKey;
   return (
@@ -50,7 +50,7 @@ const Th = ({ label, sortKey, sortBy, setSort, headerCell }) => {
   );
 };
 
-// Combo component for searchable dropdowns
+// Dropdown that you can search in
 const Combo = ({
   value,
   onChange,
@@ -209,17 +209,17 @@ const Sales = () => {
   const [maxAmount, setMaxAmount] = useState("");
   const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
 
-  // Filter dropdowns
+  // Store filter dropdown options
   const [customerFilter, setCustomerFilter] = useState("all");
   const [customerOptions, setCustomerOptions] = useState([]);
 
-  // UI
+  // Store UI state like errors and size
   const [uiError, setUiError] = useState("");
   const [modalError, setModalError] = useState("");
   const [density, setDensity] = useState("comfortable");
   const dens = DENSITIES[density];
 
-  // Server-side pagination
+  // Pagination settings (server does the pagination)
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -227,7 +227,7 @@ const Sales = () => {
 
   const token = localStorage.getItem("pos-token");
 
-  // role (admin / staff)
+  // Check if user is admin or staff
   const role = (() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
@@ -237,16 +237,16 @@ const Sales = () => {
     }
   })();
 
-  // Payment modal state
+  // Store state for payment popup
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paySale, setPaySale] = useState(null);
 
-  // Sales settings state
+  // Store sales settings
   const [salesSettings, setSalesSettings] = useState({
     defaultPaymentMethod: "choose", // "choose", "cash", or "cheque"
   });
 
-  // Admin adjustment modal state
+  // Store state for admin payment adjustment popup
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [adjustSale, setAdjustSale] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState("");
@@ -254,15 +254,15 @@ const Sales = () => {
   const [adjustError, setAdjustError] = useState("");
   const [adjustLoading, setAdjustLoading] = useState(false);
 
-  // View modal state
+  // Store state for view popup
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewSale, setViewSale] = useState(null);
 
-  // Return drawer state
+  // Store state for return drawer
   const [returnDrawerOpen, setReturnDrawerOpen] = useState(false);
   const [returnSale, setReturnSale] = useState(null);
 
-  // Product dropdown
+  // Load products for the dropdown
   const loadProductOptions = async (inputValue) => {
     try {
       const res = await axios.get(
@@ -279,7 +279,7 @@ const Sales = () => {
     }
   };
 
-  // Customer dropdown
+  // Load customers for the dropdown
   const loadCustomerOptions = async (inputValue) => {
     try {
       const res = await axios.get(
@@ -375,7 +375,7 @@ const Sales = () => {
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
-        // Load customers
+        // Get customers
         const customerRes = await axios.get(
           `http://localhost:3000/api/customers?dropdown=true&search=`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -395,12 +395,12 @@ const Sales = () => {
     loadFilterOptions();
   }, [token]);
 
-  // Auto-fetch when filters/sort/pagination change
+  // Get sales automatically when filters, sorting, or pagination changes
   useEffect(() => {
     fetchSales();
   }, [fetchSales]);
 
-  // Fetch sales settings on mount and listen for updates
+  // Get sales settings when component loads and listen for changes
   useEffect(() => {
     const fetchSalesSettings = async () => {
       try {
@@ -412,14 +412,14 @@ const Sales = () => {
         }
       } catch (err) {
         console.error("Error loading sales settings:", err);
-        // Default to "choose" if settings can't be loaded
+        // Use "choose" if we can't load settings
         setSalesSettings({ defaultPaymentMethod: "choose" });
       }
     };
 
     fetchSalesSettings();
 
-    // Listen for sales settings updates
+    // Listen for when sales settings change
     const handleSalesSettingsUpdate = (event) => {
       if (event.detail?.defaultPaymentMethod) {
         setSalesSettings({
@@ -434,7 +434,7 @@ const Sales = () => {
     };
   }, []);
 
-  // Calculate allowed payment methods based on settings
+  // Figure out which payment methods are allowed based on settings
   const getAllowedPaymentMethods = () => {
     const setting = salesSettings.defaultPaymentMethod;
     if (setting === "cash") return ["cash"];
@@ -442,12 +442,12 @@ const Sales = () => {
     return ["cash", "cheque"]; // "choose" allows both
   };
 
-  // Reset to page 1 when filters change
+  // Go back to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [customerFilter]);
 
-  // Close modals on ESC key press
+  // Close popups when user presses ESC key
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape") {
@@ -496,7 +496,7 @@ const Sales = () => {
     setQuantities((prev) => ({ ...prev, [productId]: Number(value) }));
   };
 
-  // ===== Payment helpers =====
+  // Functions to handle payments
   const getPaid = (s) => Number(s?.amountPaid ?? 0);
 
   const getBaseTotal = (s) =>
@@ -525,11 +525,11 @@ const Sales = () => {
   };
 
   const handlePaymentSuccess = (updatedSale) => {
-    // Refresh the sales table
+    // Reload the sales list
     fetchSales();
   };
 
-  // ===== Admin Payment Adjustment helpers =====
+  // Functions for admin to adjust payments
   const openAdjustModal = (sale) => {
     setAdjustError("");
     setAdjustSale(sale);
@@ -576,8 +576,13 @@ const Sales = () => {
     }
   };
 
-  // ===== Edit sale =====
+  // Functions to edit a sale
   const openModalForEdit = (sale) => {
+    // Don't let staff users edit sales
+    if (role !== "admin") {
+      alert("You do not have permission to edit sales. Only administrators can edit sales.");
+      return;
+    }
     setUiError("");
     setModalError("");
     setEditingSaleId(sale._id);
@@ -612,7 +617,7 @@ const Sales = () => {
     setIsModalOpen(true);
   };
 
-  // ===== Delete sale (admin only) =====
+  // Function to delete a sale (admin only)
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this sale?")) return;
     try {
@@ -631,7 +636,7 @@ const Sales = () => {
     }
   };
 
-  // ==== Invoice PDF ====
+  // Function to download invoice PDF
   const downloadInvoice = (id) => {
     setUiError("");
     const tok = localStorage.getItem("pos-token") || token || "";
@@ -644,7 +649,7 @@ const Sales = () => {
     }
   };
 
-  // ==== Submit sale ====
+  // Function to save a new sale
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUiError("");
@@ -752,19 +757,19 @@ const Sales = () => {
 
   const fmtLKR = (n) => `Rs. ${Number(n || 0).toFixed(2)}`;
 
-  // Open view modal
+  // Open popup to view sale details
   const openViewModal = (sale) => {
     setViewSale(sale);
     setIsViewOpen(true);
   };
 
-  // Close view modal
+  // Close the view popup
   const closeViewModal = () => {
     setIsViewOpen(false);
     setViewSale(null);
   };
 
-  // Return drawer helpers
+  // Functions to handle returns
   const openReturnDrawer = (sale) => {
     setReturnSale(sale);
     setReturnDrawerOpen(true);
@@ -775,7 +780,7 @@ const Sales = () => {
     setReturnSale(null);
   };
 
-  /** ---------- Sorting (server-side) ---------- */
+  // Function to handle sorting (server does the sorting)
   const setSort = (key) => {
     setSortBy((prev) =>
       prev.key === key
@@ -785,7 +790,7 @@ const Sales = () => {
     setPage(1);
   };
 
-  // Pagination computed
+  // Calculate pagination values
   const total = totalCount;
   const start = total === 0 ? 0 : (page - 1) * pageSize;
   const end = total === 0 ? 0 : Math.min(start + sales.length, total);
@@ -864,12 +869,12 @@ const Sales = () => {
     params.set("token", token);
     const url = `${apiBase}/sales/export/pdf?${params.toString()}`;
     
-    // Use window.open for PDF exports to avoid streaming issues
+    // Open PDF in new window so it downloads properly
     window.open(url, "_blank");
   };
 
   const handlePrint = () => {
-    // Create a hidden iframe for printing (no new tab)
+    // Make a hidden iframe to print without opening new tab
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -1030,7 +1035,7 @@ const Sales = () => {
     iframeDoc.write(htmlContent);
     iframeDoc.close();
 
-    // Use a flag to prevent duplicate print calls
+    // Use a flag to stop printing twice
     let hasPrinted = false;
     let fallbackTimeout = null;
     
@@ -1038,7 +1043,7 @@ const Sales = () => {
       if (hasPrinted) return;
       hasPrinted = true;
       
-      // Clear fallback timeout if it exists
+      // Clear the timeout if it exists
       if (fallbackTimeout) {
         clearTimeout(fallbackTimeout);
         fallbackTimeout = null;
@@ -1049,7 +1054,7 @@ const Sales = () => {
           if (iframe.contentWindow) {
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
-            // Remove iframe after print dialog interaction
+            // Remove iframe after user closes print dialog
             setTimeout(() => {
               if (iframe.parentNode) {
                 document.body.removeChild(iframe);
@@ -1065,10 +1070,10 @@ const Sales = () => {
       }, 100);
     };
 
-    // Set onload handler
+    // When iframe loads, print it
     iframe.onload = doPrint;
     
-    // Fallback timeout (only if onload didn't fire within 500ms)
+    // If iframe doesn't load in 500ms, try printing anyway
     fallbackTimeout = setTimeout(() => {
       if (!hasPrinted) {
         doPrint();
@@ -1380,7 +1385,7 @@ const Sales = () => {
                   const due = getDue(sale);
                   const paid = getPaid(sale);
                   
-                  // Calculate item count
+                  // Count how many items
                   const itemCount = Array.isArray(sale.products) ? sale.products.length : 0;
                   const itemsText = itemCount === 0 ? "0 items" : itemCount === 1 ? "1 item" : `${itemCount} items`;
 
@@ -1440,13 +1445,15 @@ const Sales = () => {
                             View
                           </button>
 
-                          {/* Edit */}
-                          <button
-                            onClick={() => openModalForEdit(sale)}
-                            className="text-blue-600 hover:text-blue-800 font-medium"
-                          >
-                            Edit
-                          </button>
+                          {/* Edit – admin only */}
+                          {role === "admin" && (
+                            <button
+                              onClick={() => openModalForEdit(sale)}
+                              className="text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Edit
+                            </button>
+                          )}
 
                           {/* Delete – admin only */}
                           {role === "admin" && (
@@ -2056,9 +2063,9 @@ const Sales = () => {
               onClose={closeReturnDrawer}
               onSuccess={async () => {
                 closeReturnDrawer();
-                // Refresh sales list
+                // Reload the sales list
                 await fetchSales(page, pageSize);
-                // Refresh view modal if open - find updated sale in the list
+                // Reload view popup if it's open - find the updated sale in the list
                 if (isViewOpen && viewSale) {
                   try {
                     const res = await axios.get(
@@ -2082,7 +2089,7 @@ const Sales = () => {
   );
 };
 
-/* ----------------------------- RETURN DRAWER COMPONENT ---------------------------- */
+// Component for the return drawer
 const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
   const [returnQuantities, setReturnQuantities] = useState({});
   const [reason, setReason] = useState("");
@@ -2092,7 +2099,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
 
   const fmtLKR = (n) => `Rs. ${Number(n || 0).toFixed(2)}`;
 
-  // Calculate already returned quantities per product
+  // Figure out how many of each product were already returned
   const alreadyReturned = useMemo(() => {
     const returned = {};
     if (Array.isArray(sale?.returns)) {
@@ -2104,7 +2111,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
     return returned;
   }, [sale?.returns]);
 
-  // Calculate total return amount
+  // Figure out the total amount to return
   const totalReturnAmount = useMemo(() => {
     let total = 0;
     if (Array.isArray(sale?.products)) {
@@ -2132,7 +2139,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
     e.preventDefault();
     setError("");
 
-    // Build items array with only products that have returnQty > 0
+    // Make items array with only products that have return quantity > 0
     const items = [];
     if (Array.isArray(sale?.products)) {
       sale.products.forEach((item) => {
@@ -2173,7 +2180,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Success
+      // It worked
       if (onSuccess) await onSuccess();
     } catch (err) {
       console.error("Error processing return:", err);
@@ -2312,7 +2319,7 @@ const ReturnDrawerContent = ({ sale, onClose, onSuccess, token }) => {
   );
 };
 
-/* ----------------------------- REUSABLE COMPONENTS ---------------------------- */
+// Components that are used in multiple places
 
 const Field = ({ label, required, children }) => (
   <label className="block">

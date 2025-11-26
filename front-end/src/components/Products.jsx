@@ -1,4 +1,4 @@
-// /src/components/Products.jsx
+// This is the Products page component
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import axiosInstance from "../utils/api";
 import axios from "axios";
@@ -43,7 +43,7 @@ const Products = () => {
     category: "all",
     brand: "all",
     supplier: "all",
-    stock: "all", // all | low | out | in
+    stock: "all", // all, low, out, or in
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -66,37 +66,40 @@ const Products = () => {
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  // role flag for admin-only actions like delete
-  let isAdmin = false;
-  try {
-    const raw = localStorage.getItem("pos-user");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      isAdmin = parsed?.role === "admin";
+  // Check if user is admin (needed for actions like delete)
+  const role = (() => {
+    try {
+      const raw = localStorage.getItem("pos-user");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed?.role || "staff";
+      }
+      return "staff";
+    } catch {
+      return "staff";
     }
-  } catch {
-    isAdmin = false;
-  }
+  })();
+  const isAdmin = role === "admin";
 
   const fetchProducts = React.useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
       
-      // Search
+      // Add search to params
       if (query.trim()) params.search = query.trim();
       
-      // Filters
+      // Add filters to params
       if (filters.category !== "all") params.category = filters.category;
       if (filters.brand !== "all") params.brand = filters.brand;
       if (filters.supplier !== "all") params.supplier = filters.supplier;
       if (filters.stock !== "all") params.stock = filters.stock;
       
-      // Sorting
+      // Add sorting to params
       if (sortBy.key) params.sortBy = sortBy.key;
       if (sortBy.dir) params.sortDir = sortBy.dir;
       
-      // Pagination
+      // Add pagination to params
       params.page = page;
       params.limit = pageSize;
 
@@ -144,7 +147,7 @@ const Products = () => {
     fetchBrands();
   }, []);
 
-  // Fetch inventory settings to get low stock threshold
+  // Get inventory settings to find out what low stock threshold is
   useEffect(() => {
     const fetchInventorySettings = async () => {
       try {
@@ -158,12 +161,12 @@ const Products = () => {
         }
       } catch (err) {
         console.error("Failed to fetch inventory settings:", err);
-        // Use default 5 if fetch fails
+        // Use default 5 if we can't get settings
       }
     };
     fetchInventorySettings();
 
-    // Listen for inventory settings updates
+    // Listen for when inventory settings get updated
     const handleSettingsUpdate = (event) => {
       if (event.detail?.lowStockThreshold != null) {
         setLowStockThreshold(Number(event.detail.lowStockThreshold));
@@ -176,17 +179,17 @@ const Products = () => {
     };
   }, []);
 
-  // Auto-fetch when filters, sorting, or pagination changes
+  // Get products automatically when filters, sorting, or pagination changes
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Reset to page 1 when filters or sorting changes
+  // Go back to page 1 when filters or sorting changes
   useEffect(() => {
     setPage(1);
   }, [query, filters.category, filters.brand, filters.supplier, filters.stock, sortBy.key, sortBy.dir]);
 
-  // Close drawer on ESC key press
+  // Close drawer when user presses ESC key
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape" && drawerOpen) {
@@ -208,7 +211,7 @@ const Products = () => {
     setPage(1);
   };
 
-  // Calculate display indices
+  // Calculate which items to show (for pagination)
   const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endIdx = Math.min(page * pageSize, total);
 
@@ -362,7 +365,7 @@ const Products = () => {
 
   const dens = DENSITIES[density];
 
-  // Apply fuzzy search to products (frontend only, on top of server results)
+  // Do a simple search on the products we got from server (just on the frontend)
   const displayProducts = useMemo(() => {
     if (!query || !query.trim()) return products;
     return fuzzySearchProducts(products, query);
@@ -397,7 +400,7 @@ const Products = () => {
         URL.revokeObjectURL(href);
       }
     } catch (e) {
-      // Check if we got a blob response despite the error
+      // Check if we got a file response even though there was an error
       if (e.response && e.response.data instanceof Blob) {
         const blob = new Blob([e.response.data], { type: "text/csv;charset=utf-8" });
         const href = URL.createObjectURL(blob);
@@ -1023,7 +1026,11 @@ const Products = () => {
                       min="0"
                       step="0.01"
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editingId && role !== "admin"}
+                      className={`w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        editingId && role !== "admin" ? "bg-gray-100 cursor-not-allowed opacity-60" : ""
+                      }`}
+                      title={editingId && role !== "admin" ? "Only administrators can edit price" : ""}
                     />
                   </Field>
                   <Field label="Stock" required>
@@ -1034,7 +1041,11 @@ const Products = () => {
                       onChange={onFormChange}
                       min="0"
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editingId && role !== "admin"}
+                      className={`w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        editingId && role !== "admin" ? "bg-gray-100 cursor-not-allowed opacity-60" : ""
+                      }`}
+                      title={editingId && role !== "admin" ? "Only administrators can edit stock" : ""}
                     />
                   </Field>
                 </div>

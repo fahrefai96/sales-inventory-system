@@ -1,16 +1,12 @@
-// back-end/routes/report.js
+// This file sets up all the report routes
 import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
-import { getCustomerClusters } from "../Controllers/Analytics/aiCustomerClustersController.js";
-import { getCustomerCreditRiskClusters } from "../Controllers/Analytics/aiCreditRiskClustersController.js";
 import { getAiMonthlyOpenAI } from "../Controllers/Analytics/aiMonthlyOpenAIController.js";
 
 import {
   // Core JSON
   getSalesReport,
   getInventoryReport,
-  getUserPerformance,
-  getProductTrends,
   getReceivables,
   getCustomerBalances,
   getReceivablesReport,
@@ -20,8 +16,6 @@ import {
   // CSV exports
   exportSalesCsv,
   exportInventoryCsv,
-  exportPerformanceUsersCsv,
-  exportPerformanceProductsCsv,
   exportCustomerBalancesCsv,
   exportReceivablesCsv,
   exportCustomerPaymentsCsv,
@@ -29,60 +23,46 @@ import {
   // PDF exports
   exportSalesPdf,
   exportInventoryPdf,
-  exportPerformanceUsersPdf,
-  exportPerformanceProductsPdf,
   exportCustomerBalancesPdf,
   exportCustomerPaymentsPdf,
 } from "../Controllers/reportController.js";
 
 const router = express.Router();
 
-// All /reports endpoints are admin-only
+// All report endpoints are admin-only
 router.use(authMiddleware, requireRole(["admin"]));
 
-/* -------- Core JSON endpoints -------- */
+// Core JSON endpoints (return data as JSON)
 
-// Sales report (KPIs + series + top products/customers)
+// Sales report (shows KPIs, charts, top products, top customers)
 router.get("/sales", getSalesReport);
 
-// Inventory report (stock, valuation, low stock, etc.)
+// Inventory report (shows stock, value, low stock items, etc.)
 router.get("/inventory", getInventoryReport);
 
-// Performance reports
-router.get("/performance/users", getUserPerformance);
-router.get("/performance/products", getProductTrends);
-
-// Receivables + customer balances
+// Receivables and customer balances
 router.get("/receivables", getReceivablesReport);
 router.get("/receivables/summary", getReceivables);
 router.get("/customer-balances", getCustomerBalances);
 router.get("/customer-payments", getCustomerPaymentsReport);
 router.get("/sales-returns", getSalesReturns);
 
-/* -------- CSV exports -------- */
+// CSV exports (download as Excel file)
 
 router.get("/sales/export/csv", exportSalesCsv);
 router.get("/inventory/export/csv", exportInventoryCsv);
-router.get("/performance/users/export/csv", exportPerformanceUsersCsv);
-router.get("/performance/products/export/csv", exportPerformanceProductsCsv);
 router.get("/customer-balances/export/csv", exportCustomerBalancesCsv);
 router.get("/receivables/export/csv", exportReceivablesCsv);
 router.get("/customer-payments/export/csv", exportCustomerPaymentsCsv);
 
-/* -------- PDF exports -------- */
+// PDF exports (download as PDF file)
 
 router.get("/sales/export/pdf", exportSalesPdf);
 router.get("/inventory/export/pdf", exportInventoryPdf);
-router.get("/performance/users/export/pdf", exportPerformanceUsersPdf);
-router.get("/performance/products/export/pdf", exportPerformanceProductsPdf);
 router.get("/customer-balances/export/pdf", exportCustomerBalancesPdf);
 router.get("/customer-payments/export/pdf", exportCustomerPaymentsPdf);
 
-/* -------- AI Customer Clusters -------- */
-router.get("/analytics/customer-clusters", getCustomerClusters);
-router.get("/analytics/customer-credit-risk-clusters", getCustomerCreditRiskClusters);
-
-/* -------- AI Monthly OpenAI Summary -------- */
+// AI Monthly OpenAI Summary
 router.get("/ai-monthly-openai", authMiddleware, requireRole(["admin"]), getAiMonthlyOpenAI);
 
 export default router;

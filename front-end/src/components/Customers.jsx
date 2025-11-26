@@ -1,4 +1,4 @@
-// /src/components/Customers.jsx
+// This is the Customers page component
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import api from "../utils/api";
 import { fuzzySearchCustomers } from "../utils/fuzzySearch";
@@ -28,22 +28,22 @@ const DENSITIES = {
 };
 
 const Customers = () => {
-  // data
+  // Data we get from the server
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // ui state
+  // UI state (how things look and work)
   const [query, setQuery] = useState("");
   const [density, setDensity] = useState("comfortable");
   const [sortBy, setSortBy] = useState({ key: "createdAt", dir: "desc" });
 
-  // pagination
+  // Pagination settings
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  // drawer (add/edit)
+  // Drawer for adding or editing customers
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -51,13 +51,14 @@ const Customers = () => {
     email: "",
     phone: "",
     address: "",
+    note: "",
   });
 
-  // profile modal (purchases + payments)
+  // Profile modal (shows purchases and payments)
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileCustomer, setProfileCustomer] = useState(null);
-  const [profileTab, setProfileTab] = useState("purchases"); // 'purchases' | 'payments'
+  const [profileTab, setProfileTab] = useState("purchases"); // purchases or payments
 
   // Purchases tab state
   const [purchaseHistory, setPurchaseHistory] = useState([]);
@@ -87,10 +88,10 @@ const Customers = () => {
 
   // Sales settings state
   const [salesSettings, setSalesSettings] = useState({
-    defaultPaymentMethod: "choose", // "choose", "cash", or "cheque"
+    defaultPaymentMethod: "choose", // choose, cash, or cheque
   });
 
-  // Payment history tab state (new endpoint)
+  // Payment history tab state
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState("");
@@ -101,20 +102,20 @@ const Customers = () => {
 
   const token = localStorage.getItem("pos-token");
 
-  // -------- Fetch customers --------
+  // Function to get customers from the server
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
       
-      // Search
+      // Add search to params
       if (query.trim()) params.search = query.trim();
       
-      // Sorting
+      // Add sorting to params
       if (sortBy.key) params.sortBy = sortBy.key;
       if (sortBy.dir) params.sortDir = sortBy.dir;
       
-      // Pagination
+      // Add pagination to params
       params.page = page;
       params.limit = pageSize;
 
@@ -142,12 +143,12 @@ const Customers = () => {
     }
   }, [query, sortBy.key, sortBy.dir, page, pageSize, token]);
 
-  // Auto-fetch when filters, sorting, or pagination changes
+  // Get customers automatically when filters, sorting, or pagination changes
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // Fetch sales settings on mount and listen for updates
+  // Get sales settings when component loads and listen for updates
   useEffect(() => {
     const fetchSalesSettings = async () => {
       try {
@@ -254,6 +255,7 @@ const Customers = () => {
       email: c.email || "",
       phone: c.phone || "",
       address: c.address || "",
+      note: c.note || "",
     });
     setDrawerOpen(true);
   };
@@ -702,7 +704,7 @@ const Customers = () => {
           <button
             onClick={() => {
               setEditingId(null);
-              setFormData({ name: "", email: "", phone: "", address: "" });
+              setFormData({ name: "", email: "", phone: "", address: "", note: "" });
               setDrawerOpen(true);
             }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -1047,6 +1049,18 @@ const Customers = () => {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </Field>
+                <Field label="Note">
+                  <textarea
+                    name="note"
+                    value={formData.note}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, note: e.target.value }))
+                    }
+                    rows={3}
+                    placeholder="Add any additional information about this customer..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </Field>
               </div>
 
               {/* Sticky footer */}
@@ -1130,6 +1144,10 @@ const Customers = () => {
                   <div className="sm:col-span-2">
                     <span className="font-semibold">Address:</span>{" "}
                     {profileCustomer.address || "—"}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="font-semibold">Note:</span>{" "}
+                    <span className="text-gray-700 whitespace-pre-wrap">{profileCustomer.note || "—"}</span>
                   </div>
                 </div>
               </div>

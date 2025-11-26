@@ -7,14 +7,14 @@ import User from "../models/User.js";
 import Customer from "../models/Customer.js";
 import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
-/** ------- helpers ------- */
+// Helper functions we use in this file
 const asDate = (v) => (v ? new Date(v) : null);
 const clampRange = (from, to) => {
   const end = to ? new Date(to) : new Date();
   const start = from ? new Date(from) : new Date(end.getTime() - 29 * 864e5);
-  // Set start to beginning of day (00:00:00.000)
+  // Make start time beginning of the day
   start.setHours(0, 0, 0, 0);
-  // Set end to end of day (23:59:59.999) for inclusive date range
+  // Make end time end of the day to include the whole day
   end.setHours(23, 59, 59, 999);
   if (Number.isNaN(start.getTime())) throw new Error("Invalid 'from' date");
   if (Number.isNaN(end.getTime())) throw new Error("Invalid 'to' date");
@@ -27,8 +27,8 @@ const fmtGroup = (groupBy = "day") => {
 };
 const money = (n) => Number(Number(n || 0).toFixed(2));
 
-// === NEW HELPERS ===
-/** previous period window with same length as [start..end] */
+// More helper functions
+// Get previous period window with same length as [start..end]
 const previousWindow = (start, end) => {
   const msDay = 864e5;
   const lenDays = Math.max(1, Math.round((end - start) / msDay) + 1);
@@ -36,7 +36,7 @@ const previousWindow = (start, end) => {
   const prevStart = new Date(prevEnd.getTime() - (lenDays - 1) * msDay);
   return { prevStart, prevEnd };
 };
-/** percent delta helper */
+// Calculate percent change helper
 const pctDelta = (curr, prev) => {
   const c = Number(curr) || 0;
   const p = Number(prev) || 0;
@@ -44,10 +44,8 @@ const pctDelta = (curr, prev) => {
   return Number((((c - p) / p) * 100).toFixed(2));
 };
 
-/** ===========================
- *  SALES REPORT
- *  GET /api/reports/sales?from&to&groupBy=day|week|month&user?
- *  =========================== */
+// SALES REPORT
+// GET /api/reports/sales?from&to&groupBy=day|week|month&user?
 export const getSalesReport = async (req, res) => {
   try {
     const {
@@ -55,15 +53,15 @@ export const getSalesReport = async (req, res) => {
       from,
       to,
       user,
-      // Top Products pagination/sorting
+      // Top Products pagination and sorting
       topProductsPage = "1",
       topProductsLimit = "10",
-      topProductsSortBy = "qty", // "qty" | "revenue" | "code" | "name"
+      topProductsSortBy = "qty", // qty, revenue, code, or name
       topProductsSortDir = "desc",
-      // Top Customers pagination/sorting
+      // Top Customers pagination and sorting
       topCustomersPage = "1",
       topCustomersLimit = "10",
-      topCustomersSortBy = "revenue", // "revenue" | "orders" | "name"
+      topCustomersSortBy = "revenue", // revenue, orders, or name
       topCustomersSortDir = "desc",
     } = req.query;
     const { start, end } = clampRange(from, to);
@@ -101,7 +99,7 @@ export const getSalesReport = async (req, res) => {
       ],
     };
 
-    // Time-series
+    // Time-series data (grouped by day, week, or month)
     const { fmt } = fmtGroup(groupBy);
     const series = await Sale.aggregate([
       { $match: match },
@@ -131,7 +129,7 @@ export const getSalesReport = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // KPIs (current window)
+    // KPIs for the current time period
     const kpiAgg = await Sale.aggregate([
       { $match: match },
       {
@@ -149,7 +147,7 @@ export const getSalesReport = async (req, res) => {
     const netSales = money(grossSales - returnsTotal);
     const currAov = money(netSales / Math.max(1, currOrders));
 
-    // === previous-period comparisons ===
+    // Compare with previous period (same length as current period)
     const { prevStart, prevEnd } = previousWindow(start, end);
     const prevMatch = {
       $and: [
@@ -190,7 +188,7 @@ export const getSalesReport = async (req, res) => {
       orders: currOrders,
       grossSales,
       returnsTotal,
-      revenue: netSales, // Display netSales as revenue
+      revenue: netSales, // Show netSales as revenue
       netSales,
       avgOrderValue: currAov,
       deltas: {
@@ -353,25 +351,23 @@ export const getSalesReport = async (req, res) => {
   }
 };
 
-/** ===========================
- *  INVENTORY REPORT (with Supplier)
- *  GET /api/reports/inventory?supplier=<id>
- *  =========================== */
+// INVENTORY REPORT (with Supplier)
+// GET /api/reports/inventory?supplier=<id>
 export const getInventoryReport = async (req, res) => {
   try {
     const {
       supplier,
       from,
       to,
-      // Stock Status table pagination/sorting
+      // Stock Status table pagination and sorting
       stockStatusPage = "1",
       stockStatusLimit = "25",
-      stockStatusSortBy = "code", // "code" | "name" | "supplier" | "stock" | "avgCost" | "stockValue"
+      stockStatusSortBy = "code", // code, name, supplier, stock, avgCost, or stockValue
       stockStatusSortDir = "asc",
-      // Supplier Summary pagination/sorting
+      // Supplier Summary pagination and sorting
       supplierSummaryPage = "1",
       supplierSummaryLimit = "10",
-      supplierSummarySortBy = "totalSpent", // "supplier" | "purchases" | "totalSpent"
+      supplierSummarySortBy = "totalSpent", // supplier, purchases, or totalSpent
       supplierSummarySortDir = "desc",
     } = req.query;
 
@@ -396,7 +392,7 @@ export const getInventoryReport = async (req, res) => {
         createdAtMatch.$lte = end;
       }
       
-      // Match if invoiceDate is within range, or if invoiceDate is null/undefined, use createdAt
+      // Match if invoiceDate is within range, or if invoiceDate is missing, use createdAt
       purchaseMatch.$or = [
         { invoiceDate: invoiceDateMatch },
         {
@@ -416,13 +412,29 @@ export const getInventoryReport = async (req, res) => {
       
       productIdsInRange = purchasedProducts.map((p) => p._id);
       
-      // If no products found in range, return empty results
+      // If no products found in range, return empty results with correct structure
       if (productIdsInRange.length === 0) {
+        const stockStatusPageNum = Math.max(1, parseInt(stockStatusPage, 10) || 1);
+        const stockStatusLimitNum = Math.max(1, Math.min(200, parseInt(stockStatusLimit, 10) || 25));
+        const supplierSummaryPageNum = Math.max(1, parseInt(supplierSummaryPage, 10) || 1);
+        const supplierSummaryLimitNum = Math.max(1, Math.min(200, parseInt(supplierSummaryLimit, 10) || 10));
+        
         return res.json({
           success: true,
           KPIs: { totalSkus: 0, totalUnits: 0, stockValue: 0 },
-          rows: [],
-          supplierSummary: [],
+          stockStatus: {
+            rows: [],
+            total: 0,
+            page: stockStatusPageNum,
+            limit: stockStatusLimitNum,
+          },
+          supplierSummary: {
+            rows: [],
+            total: 0,
+            page: supplierSummaryPageNum,
+            limit: supplierSummaryLimitNum,
+          },
+          stockValueBySupplier: [],
         });
       }
     }
@@ -618,328 +630,8 @@ export const getInventoryReport = async (req, res) => {
   }
 };
 
-/** ===========================
- *  USER PERFORMANCE
- *  GET /api/reports/performance/users?from&to
- *  =========================== */
-export const getUserPerformance = async (req, res) => {
-  try {
-    const {
-      from,
-      to,
-      page = "1",
-      limit = "25",
-      sortBy = "revenue", // "name" | "orders" | "revenue" | "aov"
-      sortDir = "desc",
-    } = req.query;
-    
-    // Handle "All Time" case (empty dates or empty strings)
-    const isAllTime = (!from || from === "") && (!to || to === "");
-    let match = {};
-    let start, end;
-    
-    if (!isAllTime) {
-      const range = clampRange(from, to);
-      start = range.start;
-      end = range.end;
-      // clampRange already sets start to 00:00:00 and end to 23:59:59.999
-      // Match sales by saleDate or createdAt (fallback for sales without saleDate)
-      match = {
-        $or: [
-          { saleDate: { $gte: start, $lte: end } },
-          { 
-            $and: [
-              { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
-              { createdAt: { $gte: start, $lte: end } }
-            ]
-          }
-        ]
-      };
-    } else {
-      // For "All Time", match all sales (no date filter)
-      match = {};
-    }
 
-    const revenueExpr = {
-      $cond: [
-        { $gt: ["$discountedAmount", 0] },
-        "$discountedAmount",
-        {
-          $subtract: [
-            "$totalAmount",
-            { $multiply: ["$totalAmount", { $divide: ["$discount", 100] }] },
-          ],
-        },
-      ],
-    };
-
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
-    const sortDirNum = sortDir === "asc" ? 1 : -1;
-
-    // Build sort stage
-    const sortStage = {};
-    if (sortBy === "name") sortStage.name = sortDirNum;
-    else if (sortBy === "orders") sortStage.orders = sortDirNum;
-    else if (sortBy === "aov") sortStage.aov = sortDirNum;
-    else sortStage.revenue = sortDirNum; // default: revenue
-
-    const userPerfAgg = [
-      { $match: match },
-      {
-        $group: {
-          _id: "$createdBy",
-          orders: { $sum: 1 },
-          revenue: { $sum: revenueExpr },
-          returnsTotal: { $sum: { $ifNull: ["$returnTotal", 0] } },
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          orders: 1,
-          revenue: { $subtract: ["$revenue", { $ifNull: ["$returnsTotal", 0] }] }, // netSales (after returns)
-          returnsTotal: 1,
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 0,
-          userId: "$user._id",
-          name: { $ifNull: ["$user.name", "(unknown)"] },
-          orders: 1,
-          revenue: 1, // Already netSales (after returns) from previous stage
-          aov: {
-            $cond: [
-              { $gt: ["$orders", 0] },
-              { $divide: ["$revenue", "$orders"] },
-              0,
-            ],
-          },
-        },
-      },
-    ];
-
-    // Get total count before pagination
-    const countAgg = [
-      ...userPerfAgg,
-      { $count: "total" },
-    ];
-    const countResult = await Sale.aggregate(countAgg);
-    const total = countResult[0]?.total || 0;
-
-    // Apply sorting and pagination
-    userPerfAgg.push({ $sort: sortStage });
-    userPerfAgg.push({ $skip: (pageNum - 1) * limitNum });
-    userPerfAgg.push({ $limit: limitNum });
-
-    const data = await Sale.aggregate(userPerfAgg);
-
-    data.forEach((d) => {
-      d.revenue = money(d.revenue);
-      d.aov = money(d.aov);
-    });
-
-    return res.json({
-      success: true,
-      range: isAllTime ? { from: null, to: null } : { from: start, to: end },
-      data: {
-        rows: data,
-        total,
-        page: pageNum,
-        limit: limitNum,
-      },
-    });
-  } catch (err) {
-    console.error("getUserPerformance error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-/** ===========================
- *  PRODUCT TRENDS
- *  GET /api/reports/performance/products?from&to
- *  =========================== */
-export const getProductTrends = async (req, res) => {
-  try {
-    const {
-      from,
-      to,
-      // Top products pagination/sorting
-      topPage = "1",
-      topLimit = "10",
-      topSortBy = "qty", // "code" | "name" | "qty" | "revenue"
-      topSortDir = "desc",
-      // Slow movers pagination/sorting
-      slowPage = "1",
-      slowLimit = "10",
-      slowSortBy = "stock", // "code" | "name" | "stock"
-      slowSortDir = "asc",
-    } = req.query;
-    
-    // Handle "All Time" case (empty dates or empty strings)
-    const isAllTime = (!from || from === "") && (!to || to === "");
-    let match = {};
-    let start, end;
-    
-    if (!isAllTime) {
-      const range = clampRange(from, to);
-      start = range.start;
-      end = range.end;
-      // clampRange already sets start to 00:00:00 and end to 23:59:59.999
-      // Match sales by saleDate or createdAt (fallback for sales without saleDate)
-      match = {
-        $or: [
-          { saleDate: { $gte: start, $lte: end } },
-          { 
-            $and: [
-              { $or: [{ saleDate: { $exists: false } }, { saleDate: null }] },
-              { createdAt: { $gte: start, $lte: end } }
-            ]
-          }
-        ]
-      };
-    } else {
-      // For "All Time", match all sales (no date filter)
-      match = {};
-    }
-
-    // Top products with pagination and sorting
-    const topPageNum = Math.max(1, parseInt(topPage, 10) || 1);
-    const topLimitNum = Math.max(1, Math.min(200, parseInt(topLimit, 10) || 10));
-    const topSortDirNum = topSortDir === "asc" ? 1 : -1;
-
-    // Build sort stage for top products
-    const topSortStage = {};
-    if (topSortBy === "code") topSortStage.code = topSortDirNum;
-    else if (topSortBy === "name") topSortStage.name = topSortDirNum;
-    else if (topSortBy === "revenue") topSortStage.revenue = topSortDirNum;
-    else topSortStage.qty = topSortDirNum; // default: qty
-
-    const topAgg = [
-      { $match: match },
-      { $unwind: "$products" },
-      {
-        $group: {
-          _id: "$products.product",
-          qty: { $sum: "$products.quantity" },
-          revenue: {
-            $sum: { $multiply: ["$products.quantity", "$products.unitPrice"] },
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: "products",
-          localField: "_id",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      { $unwind: "$product" },
-      {
-        $project: {
-          _id: 0,
-          productId: "$product._id",
-          code: { $ifNull: ["$product.code", ""] },
-          name: { $ifNull: ["$product.name", "(no name)"] },
-          qty: 1,
-          revenue: 1,
-        },
-      },
-    ];
-
-    // Get total count before pagination
-    const topCountAgg = [
-      ...topAgg,
-      { $count: "total" },
-    ];
-    const topCountResult = await Sale.aggregate(topCountAgg);
-    const topTotal = topCountResult[0]?.total || 0;
-
-    // Apply sorting and pagination
-    topAgg.push({ $sort: topSortStage });
-    topAgg.push({ $skip: (topPageNum - 1) * topLimitNum });
-    topAgg.push({ $limit: topLimitNum });
-
-    const top = await Sale.aggregate(topAgg);
-
-    // Slow movers with pagination and sorting
-    const slowPageNum = Math.max(1, parseInt(slowPage, 10) || 1);
-    const slowLimitNum = Math.max(1, Math.min(200, parseInt(slowLimit, 10) || 10));
-    const slowSortDirNum = slowSortDir === "asc" ? 1 : -1;
-
-    // Build sort for slow movers
-    const slowSort = {};
-    if (slowSortBy === "code") slowSort.code = slowSortDirNum;
-    else if (slowSortBy === "name") slowSort.name = slowSortDirNum;
-    else slowSort.stock = slowSortDirNum; // default: stock
-
-    const soldIds = await Sale.aggregate([
-      { $match: match },
-      { $unwind: "$products" },
-      { $group: { _id: "$products.product" } },
-    ]).then((r) => new Set(r.map((x) => String(x._id))));
-
-    // Get all slow movers first for count
-    const allSlow = await Product.find({
-      isDeleted: false,
-      stock: { $gt: 0 },
-      _id: { $nin: Array.from(soldIds) },
-    })
-      .select("_id code name stock")
-      .lean();
-
-    // Sort all slow movers
-    allSlow.sort((a, b) => {
-      const aVal = a[slowSortBy] ?? "";
-      const bVal = b[slowSortBy] ?? "";
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return slowSortDirNum * (aVal - bVal);
-      }
-      return slowSortDirNum * String(aVal).localeCompare(String(bVal));
-    });
-
-    const slowTotal = allSlow.length;
-    const slow = allSlow.slice(
-      (slowPageNum - 1) * slowLimitNum,
-      slowPageNum * slowLimitNum
-    );
-
-    return res.json({
-      success: true,
-      range: isAllTime ? { from: null, to: null } : { from: start, to: end },
-      top: {
-        rows: top.map((t) => ({ ...t, revenue: money(t.revenue) })),
-        total: topTotal,
-        page: topPageNum,
-        limit: topLimitNum,
-      },
-      slow: {
-        rows: slow,
-        total: slowTotal,
-        page: slowPageNum,
-        limit: slowLimitNum,
-      },
-    });
-  } catch (err) {
-    console.error("getProductTrends error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-/** ===========================
- *  CSV EXPORTS (simple "Excel")
- *  =========================== */
+// CSV EXPORTS (simple Excel format)
 const sendCsv = (res, filename, headers, rows) => {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -994,7 +686,7 @@ export const exportSalesCsv = async (req, res) => {
       revenue: money(r.revenue),
     }));
 
-    // Fetch returns data
+    // Get returns data
     const returnsMatch = {
       $and: [
         {
@@ -1198,140 +890,6 @@ export const exportInventoryCsv = async (req, res) => {
   }
 };
 
-/** ===========================
- *  PERFORMANCE EXPORTS - CSV
- *  =========================== */
-export const exportPerformanceUsersCsv = async (req, res) => {
-  try {
-    const { from, to } = req.query;
-    const { start, end } = clampRange(from, to);
-
-    const revenueExpr = {
-      $cond: [
-        { $gt: ["$discountedAmount", 0] },
-        "$discountedAmount",
-        {
-          $subtract: [
-            "$totalAmount",
-            { $multiply: ["$totalAmount", { $divide: ["$discount", 100] }] },
-          ],
-        },
-      ],
-    };
-
-    const users = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
-      {
-        $group: {
-          _id: "$createdBy",
-          orders: { $sum: 1 },
-          revenue: { $sum: revenueExpr },
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 0,
-          name: { $ifNull: ["$user.name", "(unknown)"] },
-          orders: 1,
-          revenue: 1,
-          aov: {
-            $cond: [
-              { $gt: ["$orders", 0] },
-              { $divide: ["$revenue", "$orders"] },
-              0,
-            ],
-          },
-        },
-      },
-      { $sort: { revenue: -1 } },
-    ]);
-
-    const rows = users.map((u) => ({
-      name: u.name,
-      orders: u.orders,
-      revenue: money(u.revenue),
-      aov: money(u.aov),
-    }));
-
-    sendCsv(
-      res,
-      "performance_users.csv",
-      ["name", "orders", "revenue", "aov"],
-      rows
-    );
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-export const exportPerformanceProductsCsv = async (req, res) => {
-  try {
-    const { from, to, limit = 10 } = req.query;
-    const { start, end } = clampRange(from, to);
-    const lim = Math.min(Number(limit) || 10, 50);
-
-    const top = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
-      { $unwind: "$products" },
-      {
-        $group: {
-          _id: "$products.product",
-          qty: { $sum: "$products.quantity" },
-          revenue: {
-            $sum: { $multiply: ["$products.quantity", "$products.unitPrice"] },
-          },
-        },
-      },
-      { $sort: { qty: -1 } },
-      { $limit: lim },
-      {
-        $lookup: {
-          from: "products",
-          localField: "_id",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      { $unwind: "$product" },
-      {
-        $project: {
-          _id: 0,
-          code: "$product.code",
-          name: "$product.name",
-          qty: 1,
-          revenue: 1,
-        },
-      },
-    ]);
-
-    const rows = top.map((t) => ({
-      code: t.code,
-      name: t.name,
-      qty: t.qty,
-      revenue: money(t.revenue),
-    }));
-
-    sendCsv(
-      res,
-      "performance_products_top.csv",
-      ["code", "name", "qty", "revenue"],
-      rows
-    );
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
 
 /** ===========================
  *  PDF EXPORTS (simple, matches invoice style)
@@ -1842,221 +1400,6 @@ export const exportInventoryPdf = async (req, res) => {
   }
 };
 
-/** ===========================
- *  PERFORMANCE EXPORTS - PDF
- *  =========================== */
-export const exportPerformanceUsersPdf = async (req, res) => {
-  try {
-    const { from, to } = req.query;
-    const { start, end } = clampRange(from, to);
-
-    const tz = "Asia/Colombo";
-    const fmtDate = (d) =>
-      new Date(d).toLocaleString("en-LK", {
-        timeZone: tz,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-
-    const revenueExpr = {
-      $cond: [
-        { $gt: ["$discountedAmount", 0] },
-        "$discountedAmount",
-        {
-          $subtract: [
-            "$totalAmount",
-            { $multiply: ["$totalAmount", { $divide: ["$discount", 100] }] },
-          ],
-        },
-      ],
-    };
-
-    const data = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
-      {
-        $group: {
-          _id: "$createdBy",
-          orders: { $sum: 1 },
-          revenue: { $sum: revenueExpr },
-        },
-      },
-      { $sort: { revenue: -1 } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 0,
-          name: { $ifNull: ["$user.name", "(unknown)"] },
-          orders: 1,
-          revenue: 1,
-          aov: {
-            $cond: [
-              { $gt: ["$orders", 0] },
-              { $divide: ["$revenue", "$orders"] },
-              0,
-            ],
-          },
-        },
-      },
-    ]);
-
-    const doc = pipeDoc(res, "performance_users.pdf");
-    
-    // Fetch and add business information header
-    const businessInfo = await getBusinessInfo();
-    addBusinessHeader(doc, businessInfo);
-    
-    doc.fontSize(16).text("User Performance", { align: "left" }).moveDown(0.3);
-    doc
-      .fontSize(10)
-      .text(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
-      .moveDown(0.6);
-
-    if (!data.length) {
-      doc.fontSize(10).text("No data");
-      doc.end();
-      return;
-    }
-
-    doc.fontSize(12).text("Users", { underline: true }).moveDown(0.25);
-    doc.fontSize(10);
-    data.forEach((u) => {
-      doc.text(
-        `${u.name}  |  Orders: ${u.orders}  |  Revenue: ${money(
-          u.revenue
-        ).toFixed(2)}  |  AOV: ${money(u.aov).toFixed(2)}`
-      );
-    });
-
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    if (!res.headersSent)
-      res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-export const exportPerformanceProductsPdf = async (req, res) => {
-  try {
-    const { from, to, limit = 10 } = req.query;
-    const { start, end } = clampRange(from, to);
-    const lim = Math.min(Number(limit) || 10, 50);
-
-    const tz = "Asia/Colombo";
-    const fmtDate = (d) =>
-      new Date(d).toLocaleString("en-LK", {
-        timeZone: tz,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-
-    // top products
-    const top = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
-      { $unwind: "$products" },
-      {
-        $group: {
-          _id: "$products.product",
-          qty: { $sum: "$products.quantity" },
-          revenue: {
-            $sum: { $multiply: ["$products.quantity", "$products.unitPrice"] },
-          },
-        },
-      },
-      { $sort: { qty: -1 } },
-      { $limit: lim },
-      {
-        $lookup: {
-          from: "products",
-          localField: "_id",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      { $unwind: "$product" },
-      {
-        $project: {
-          _id: 0,
-          code: "$product.code",
-          name: "$product.name",
-          qty: 1,
-          revenue: 1,
-        },
-      },
-    ]);
-
-    // slow movers
-    const soldIds = await Sale.aggregate([
-      { $match: { saleDate: { $gte: start, $lte: end } } },
-      { $unwind: "$products" },
-      { $group: { _id: "$products.product" } },
-    ]).then((r) => new Set(r.map((x) => String(x._id))));
-    const slow = await Product.find({
-      isDeleted: false,
-      stock: { $gt: 0 },
-      _id: { $nin: Array.from(soldIds) },
-    })
-      .select("code name stock")
-      .sort({ stock: 1 })
-      .limit(lim)
-      .lean();
-
-    const doc = pipeDoc(res, "performance_products.pdf");
-    
-    // Fetch and add business information header
-    const businessInfo = await getBusinessInfo();
-    addBusinessHeader(doc, businessInfo);
-    
-    doc
-      .fontSize(16)
-      .text("Product Performance", { align: "left" })
-      .moveDown(0.3);
-    doc
-      .fontSize(10)
-      .text(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
-      .moveDown(0.6);
-
-    doc
-      .fontSize(12)
-      .text(`Top ${lim} Products (Qty)`, { underline: true })
-      .moveDown(0.25);
-    doc.fontSize(10);
-    if (top.length === 0) doc.text("No top products in this range");
-    top.forEach((p) =>
-      doc.text(
-        `${p.code || "-"}  |  ${p.name}  |  Qty: ${p.qty}  |  Revenue: ${money(
-          p.revenue
-        ).toFixed(2)}`
-      )
-    );
-
-    doc.moveDown(0.6);
-    doc
-      .fontSize(12)
-      .text(`Slow Movers (max ${lim})`, { underline: true })
-      .moveDown(0.25);
-    doc.fontSize(10);
-    if (slow.length === 0) doc.text("No slow movers");
-    slow.forEach((s) =>
-      doc.text(`${s.code || "-"}  |  ${s.name}  |  Stock: ${s.stock}`)
-    );
-
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    if (!res.headersSent)
-      res.status(500).json({ success: false, message: "Server error" });
-  }
-};
 
 export const getReceivables = async (req, res) => {
   try {

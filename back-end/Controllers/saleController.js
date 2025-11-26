@@ -5,9 +5,9 @@ import PDFDocument from "pdfkit";
 import Customer from "../models/Customer.js";
 import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
-// Generate Sale ID
+// Make a unique sale ID for each sale
 const generateSaleId = async () => {
-  const today = new Date().toISOString().split("T")[0].replace(/-/g, ""); // YYYYMMDD
+  const today = new Date().toISOString().split("T")[0].replace(/-/g, ""); // Format like 20240101
   const pattern = new RegExp(`^INV-${today}`);
   let count = await Sale.countDocuments({ saleId: { $regex: pattern } });
   let newId;
@@ -18,7 +18,7 @@ const generateSaleId = async () => {
   return newId;
 };
 
-// Create Sale
+// Create a new sale
 const addSale = async (req, res) => {
   try {
     const { products, customer, saleDate, discount, paymentMethod, chequeNumber, chequeDate, chequeBank, chequeStatus } = req.body;
@@ -66,15 +66,15 @@ const addSale = async (req, res) => {
     const discountedAmount =
       totalAmount - totalAmount * ((Number(discount) || 0) / 100);
 
-    // Validate and set paymentMethod (default to "cash" if not provided or invalid)
+    // Check payment method and use "cash" if not given or wrong
     const validPaymentMethod = paymentMethod === "cash" || paymentMethod === "cheque" ? paymentMethod : "cash";
 
-    // Handle saleDate: if provided, combine with current time to preserve local timezone
+    // Handle sale date: if given, use that date but keep current time
     let finalSaleDate;
     if (saleDate) {
       const providedDate = new Date(saleDate);
       const now = new Date();
-      // Set the date from provided date but keep current time
+      // Use the date from input but keep the current time of day
       finalSaleDate = new Date(
         providedDate.getFullYear(),
         providedDate.getMonth(),
@@ -100,7 +100,7 @@ const addSale = async (req, res) => {
       paymentMethod: validPaymentMethod,
     };
 
-    // Include optional cheque fields if present
+    // Add cheque details if they were provided
     if (chequeNumber !== undefined) saleData.chequeNumber = chequeNumber;
     if (chequeDate !== undefined) saleData.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
     if (chequeBank !== undefined) saleData.chequeBank = chequeBank;
@@ -122,29 +122,29 @@ const addSale = async (req, res) => {
   }
 };
 
-// Get All Sales
+// Get all sales with filters and pagination
 const getSales = async (req, res) => {
   try {
     const {
-      saleId, // partial match on saleId
-      customer, // exact customer _id
-      customerName, // fuzzy name -> resolves to ids
-      product, // exact product _id
-      from, // ISO date (start) on saleDate
-      to, // ISO date (end) on saleDate
-      min, // min discountedAmount
-      max, // max discountedAmount
-      sortBy, // 'createdAt' | 'saleDate' | 'discountedAmount'
-      sortDir, // 'asc' | 'desc'
-      page = 1, // page number (1-based)
-      limit = 25, // page size
-      search, // unified search (saleId / customerName)
-      status, // payment status filter: 'paid' | 'partial' | 'unpaid'
+      saleId, // search by sale ID
+      customer, // filter by customer ID
+      customerName, // search by customer name
+      product, // filter by product ID
+      from, // start date
+      to, // end date
+      min, // minimum total amount
+      max, // maximum total amount
+      sortBy, // sort by createdAt, saleDate, or discountedAmount
+      sortDir, // sort direction: asc or desc
+      page = 1, // which page to show
+      limit = 25, // how many items per page
+      search, // search by sale ID
+      status, // filter by payment status: paid, partial, or unpaid
     } = req.query || {};
 
     const q = {};
 
-    // --- Unified search: only search by saleId ---
+    // Handle search: only search by sale ID
     let effectiveSaleId = saleId;
     let effectiveCustomerName = customerName;
     const hasUnifiedSearch = search && search.trim();
@@ -152,16 +152,16 @@ const getSales = async (req, res) => {
     if (hasUnifiedSearch) {
       const s = search.trim();
       if (!effectiveSaleId) effectiveSaleId = s;
-      // Don't set effectiveCustomerName from unified search anymore
+      // Don't use customer name from search anymore
     }
 
-    // If unified search is used, only search by saleId
+    // If search is used, only search by sale ID
     if (hasUnifiedSearch && !saleId && !customerName) {
-      // Only match saleId
+      // Only search by sale ID
       if (effectiveSaleId && effectiveSaleId.trim()) {
         q.saleId = { $regex: effectiveSaleId.trim(), $options: "i" };
       } else {
-        // No saleId to search
+        // No sale ID to search, return empty
         return res.json({
           success: true,
           sales: [],
@@ -171,25 +171,25 @@ const getSales = async (req, res) => {
         });
       }
     } else {
-      // Normal individual filters (not unified search)
-    // saleId partial (ignore empty/whitespace)
+      // Use normal filters (not search)
+    // Filter by sale ID (ignore empty)
     if (effectiveSaleId && effectiveSaleId.trim()) {
       q.saleId = { $regex: effectiveSaleId.trim(), $options: "i" };
     }
 
-    // customer exact id
+    // Filter by customer ID
     if (customer && String(customer).trim()) {
       q.customer = customer;
     }
 
-    // customerName -> ids (AND with 'customer' if present)
+    // Search by customer name and find matching customer IDs
     if (effectiveCustomerName && effectiveCustomerName.trim()) {
       const rx = new RegExp(effectiveCustomerName.trim(), "i");
       const custs = await Customer.find({ name: rx }).select("_id").lean();
       const ids = custs.map((c) => c._id);
 
       if (!ids.length) {
-        // no customers matched → empty results with paging meta
+        // no customers found, return empty list
         return res.json({
           success: true,
           sales: [],
@@ -202,22 +202,22 @@ const getSales = async (req, res) => {
       if (!q.customer) {
         q.customer = { $in: ids };
       }
-      // If q.customer already set (exact id), we leave it so the AND still applies naturally.
+      // If customer ID was already set, keep it so both filters work together
       }
     }
 
-    // product filter: match sales that contain this product
+    // Filter by product: find sales that include this product
     if (product && String(product).trim()) {
       q["products.product"] = product;
     }
 
-    // saleDate range
+    // Filter by date range
     if (from || to) {
       const range = {};
       if (from) {
         const d = new Date(from);
         if (!isNaN(d)) {
-          // Set to start of day (00:00:00.000)
+          // Make it start at beginning of the day
           d.setHours(0, 0, 0, 0);
           range.$gte = d;
         }
@@ -225,7 +225,7 @@ const getSales = async (req, res) => {
       if (to) {
         const d = new Date(to);
         if (!isNaN(d)) {
-          // Set to end of day (23:59:59.999) to include the entire day
+          // Make it end at end of the day to include the whole day
           d.setHours(23, 59, 59, 999);
           range.$lte = d;
         }
@@ -233,7 +233,7 @@ const getSales = async (req, res) => {
       if (Object.keys(range).length) q.saleDate = range;
     }
 
-    // discountedAmount range (ignore blanks/NaN)
+    // Filter by total amount range (skip empty values)
     const minNum = min === "" ? NaN : Number(min);
     const maxNum = max === "" ? NaN : Number(max);
     if (!Number.isNaN(minNum) || !Number.isNaN(maxNum)) {
@@ -243,21 +243,21 @@ const getSales = async (req, res) => {
       q.discountedAmount = amt;
     }
 
-    // payment status filter
+    // Filter by payment status
     if (status && ["paid", "partial", "unpaid"].includes(status)) {
       q.paymentStatus = status;
     }
 
-    // sorting (whitelist)
+    // Set up sorting (only allow certain fields to sort by)
     let sortField = "createdAt";
     if (["saleDate", "discountedAmount", "createdAt"].includes(sortBy)) {
       sortField = sortBy;
     }
     const dir = String(sortDir).toLowerCase() === "asc" ? 1 : -1;
 
-    // --- Pagination: page & limit ---
+    // Set up pagination
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25)); // cap at 200
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25)); // max 200 per page
     const skip = (pageNum - 1) * limitNum;
 
     const totalCount = await Sale.countDocuments(q);
@@ -271,7 +271,7 @@ const getSales = async (req, res) => {
       .populate("customer", "name")
       .populate("createdBy", "name")
       .populate("updatedBy", "name")
-      .sort({ [sortField]: dir, _id: -1 }) // stable tiebreaker
+      .sort({ [sortField]: dir, _id: -1 }) // use _id to keep order the same
       .skip(skip)
       .limit(limitNum);
 
@@ -290,7 +290,7 @@ const getSales = async (req, res) => {
   }
 };
 
-// Update Sale
+// Update a sale
 const updateSale = async (req, res) => {
   try {
     const { products, customer, saleDate, discount, paymentMethod, chequeNumber, chequeDate, chequeBank, chequeStatus } = req.body;
@@ -302,7 +302,7 @@ const updateSale = async (req, res) => {
 
     const logsToWrite = [];
 
-    // Restore stock for previous sale items
+    // Put stock back for the old sale items
     for (const item of sale.products) {
       const product = await Product.findById(item.product);
       if (product) {
@@ -323,7 +323,7 @@ const updateSale = async (req, res) => {
       }
     }
 
-    // Validate and deduct new stock
+    // Check and take away stock for the new items
     let totalAmount = 0;
     for (const item of products) {
       const product = await Product.findById(item.product);
@@ -371,12 +371,12 @@ const updateSale = async (req, res) => {
     sale.discountedAmount = discountedAmount;
     sale.updatedBy = req.user._id;
 
-    // Update paymentMethod if provided
+    // Update payment method if provided
     if (paymentMethod === "cash" || paymentMethod === "cheque") {
       sale.paymentMethod = paymentMethod;
     }
 
-    // Update optional cheque fields if present
+    // Update cheque details if provided
     if (chequeNumber !== undefined) sale.chequeNumber = chequeNumber;
     if (chequeDate !== undefined) sale.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
     if (chequeBank !== undefined) sale.chequeBank = chequeBank;
@@ -395,7 +395,7 @@ const updateSale = async (req, res) => {
   }
 };
 
-// Delete Sale
+// Delete a sale
 const deleteSale = async (req, res) => {
   try {
     // only admin can delete sales
@@ -413,7 +413,7 @@ const deleteSale = async (req, res) => {
 
     const logsToWrite = [];
 
-    // Restore stock before deleting
+    // Put stock back before we delete the sale
     for (const item of sale.products) {
       const product = await Product.findById(item.product);
       if (product) {
@@ -447,10 +447,7 @@ const deleteSale = async (req, res) => {
   }
 };
 
-/**
- * Stream a PDF invoice for a sale
- * GET /api/sales/:id/invoice.pdf
- */
+// Make a PDF invoice for a sale
 const getSaleInvoicePdf = async (req, res) => {
   try {
     const { id } = req.params;
@@ -471,7 +468,7 @@ const getSaleInvoicePdf = async (req, res) => {
         .json({ success: false, message: "Sale not found" });
     }
 
-    // Fetch business information
+    // Get business info
     const businessInfo = await getBusinessInfo();
 
     const filename = `${sale.saleId || "invoice"}.pdf`;
@@ -493,10 +490,10 @@ const getSaleInvoicePdf = async (req, res) => {
     });
     doc.pipe(res);
 
-    // Add business information header
+    // Add business info to the PDF header
     addBusinessHeader(doc, businessInfo);
 
-    // Title + meta
+    // Add invoice title and date
     const invoiceDate = sale.createdAt || sale.saleDate;
 
     doc
@@ -516,14 +513,14 @@ const getSaleInvoicePdf = async (req, res) => {
         { align: "right" }
       )
       .moveDown(1);
-    // Bill To
+    // Add customer info
     doc.fontSize(12).text("Bill To:", { underline: true });
     doc
       .fontSize(11)
       .text(`${sale.customer?.name || "-"}`)
       .moveDown(1);
 
-    // Table header
+    // Add table header row
     doc
       .fontSize(11)
       .text("Item", 40, doc.y, { continued: true })
@@ -536,7 +533,7 @@ const getSaleInvoicePdf = async (req, res) => {
       .lineTo(540, doc.y + 3)
       .stroke();
 
-    // Line items: Name (line1), Brand (line2), Size (line3), Code (line4)
+    // Add each product line with name, brand, size, and code
     let subtotal = 0;
     (sale.products || []).forEach((item) => {
       const name = item.product?.name || "-";
@@ -549,7 +546,7 @@ const getSaleInvoicePdf = async (req, res) => {
       const line = unit * qty;
       subtotal += line;
 
-      // First line: main row aligned with Qty/Unit/Total
+      // First line: product name with quantity, unit price, and total
       const startY = doc.y + 6;
       doc.fontSize(10).text(name, 40, startY, { continued: true });
       doc.text(String(qty), 280, startY, {
@@ -567,7 +564,7 @@ const getSaleInvoicePdf = async (req, res) => {
         align: "right",
       });
 
-      // Subsequent detail lines under the Item column only
+      // Other lines (brand, size, code) go under the Item column
       let y = startY + 14;
       if (brand) {
         doc.fontSize(9).text(`Brand: ${brand}`, 40, y);
@@ -581,13 +578,13 @@ const getSaleInvoicePdf = async (req, res) => {
         doc.fontSize(9).text(`Code: ${code}`, 40, y);
         y += 12;
       }
-      // Make sure we add a small gap before the next item
+      // Add a small space before the next product line
       doc.moveDown(0.2);
     });
 
     doc.moveDown(1);
 
-    // Totals
+    // Add totals section (subtotal, discount, grand total)
     const discountPct = Number(sale.discount || 0);
     const discountAmt = (subtotal * discountPct) / 100;
     const grandTotal = subtotal - discountAmt;
@@ -633,7 +630,7 @@ const getSaleInvoicePdf = async (req, res) => {
 
     doc.moveDown(2);
 
-    // Footer
+    // Add footer text
     doc
       .fontSize(9)
       .text(
@@ -684,7 +681,7 @@ const recordPayment = async (req, res) => {
       sale.payments = [];
     }
 
-    // Build payment entry with optional payment method and cheque fields
+    // Make payment entry with payment method and cheque info if provided
     const paymentEntry = {
       amount: applied,
       note: note || "",
@@ -697,7 +694,7 @@ const recordPayment = async (req, res) => {
     if (paymentMethod === "cash" || paymentMethod === "cheque") {
       paymentEntry.method = paymentMethod;
       
-      // Add cheque fields if payment method is cheque
+      // Add cheque details if payment method is cheque
       if (paymentMethod === "cheque") {
         if (chequeNumber !== undefined) paymentEntry.chequeNumber = chequeNumber;
         if (chequeDate !== undefined) paymentEntry.chequeDate = chequeDate ? new Date(chequeDate) : chequeDate;
@@ -707,7 +704,7 @@ const recordPayment = async (req, res) => {
         }
       }
       
-      // Optionally update sale-level paymentMethod to reflect most recent payment (backward compatible)
+      // Also update the sale's payment method to match this payment
       sale.paymentMethod = paymentMethod;
       if (paymentMethod === "cheque") {
         if (chequeNumber !== undefined) sale.chequeNumber = chequeNumber;
@@ -764,7 +761,7 @@ const adjustPayment = async (req, res) => {
         .json({ message: "Adjustment amount must be a non-zero number." });
     }
 
-    // extra safety: only admin should reach here (route will also guard)
+    // extra check: only admin should be here (route also checks this)
     if (req.user?.role !== "admin") {
       return res
         .status(403)
@@ -838,7 +835,7 @@ const adjustPayment = async (req, res) => {
   }
 };
 
-// Get Sale by ID
+// Get one sale by ID
 const getSaleById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -866,19 +863,19 @@ const getSaleById = async (req, res) => {
   }
 };
 
-// Return sale items
+// Handle returned items from a sale
 const returnSaleItems = async (req, res) => {
   try {
     const { id } = req.params;
     const { items, reason, refundMethod } = req.body;
 
-    // Load sale
+    // Get the sale from database
     const sale = await Sale.findById(id).populate("products.product");
     if (!sale) {
       return res.status(404).json({ success: false, message: "Sale not found." });
     }
 
-    // Validation
+    // Check if items to return are valid
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "No items to return." });
     }
@@ -886,11 +883,11 @@ const returnSaleItems = async (req, res) => {
     let totalReturnAmount = 0;
     const logsToWrite = [];
 
-    // Process each return item
+    // Handle each item that is being returned
     for (const returnItem of items) {
       const { productId, quantity: returnQty } = returnItem;
 
-      // Validate quantity
+      // Check if return quantity is valid
       const qtyNum = Number(returnQty);
       if (!qtyNum || qtyNum <= 0) {
         return res.status(400).json({
@@ -899,7 +896,7 @@ const returnSaleItems = async (req, res) => {
         });
       }
 
-      // Find corresponding line in sale.products
+      // Find the product line in the sale that matches this product
       const saleLine = sale.products.find(
         (p) => String(p.product._id || p.product) === String(productId)
       );
@@ -911,7 +908,7 @@ const returnSaleItems = async (req, res) => {
         });
       }
 
-      // Calculate max returnable
+      // Figure out how many can be returned (sold minus already returned)
       const soldQty = saleLine.quantity || 0;
       const alreadyReturnedQty = Array.isArray(sale.returns)
         ? sale.returns
@@ -928,12 +925,12 @@ const returnSaleItems = async (req, res) => {
         });
       }
 
-      // Calculate line amount using unit price from sale line
+      // Calculate how much to refund using the price from when it was sold
       const unitPrice = saleLine.unitPrice || 0;
       const lineAmount = unitPrice * qtyNum;
       totalReturnAmount += lineAmount;
 
-      // Add to sale.returns
+      // Add to the sale's returns list
       sale.returns.push({
         product: productId,
         quantity: qtyNum,
@@ -942,7 +939,7 @@ const returnSaleItems = async (req, res) => {
         createdAt: new Date(),
       });
 
-      // Update product stock
+      // Add stock back to the product
       const product = await Product.findById(productId);
       if (!product) {
         return res.status(404).json({
@@ -956,7 +953,7 @@ const returnSaleItems = async (req, res) => {
       const afterQty = product.stock;
       await product.save();
 
-      // Create inventory log entry
+      // Record this return in the inventory log
       logsToWrite.push({
         product: productId,
         action: "sale.return",
@@ -969,11 +966,11 @@ const returnSaleItems = async (req, res) => {
       });
     }
 
-    // Update sale totals
+    // Update the sale's totals (return total and discounted amount)
     sale.returnTotal = Number(sale.returnTotal || 0) + totalReturnAmount;
     sale.discountedAmount = Math.max(0, Number(sale.discountedAmount || 0) - totalReturnAmount);
 
-    // Optional refund as negative payment
+    // Optionally add refund as a negative payment entry
     if (refundMethod && refundMethod !== "none") {
       if (refundMethod === "cash" || refundMethod === "cheque") {
         sale.payments.push({
@@ -988,12 +985,12 @@ const returnSaleItems = async (req, res) => {
       }
     }
 
-    // Write inventory logs
+    // Save inventory logs
     if (logsToWrite.length > 0) {
       await InventoryLog.insertMany(logsToWrite);
     }
 
-    // Save sale (pre-save hook will recompute amountDue and paymentStatus)
+    // Save sale (the model will automatically update amountDue and paymentStatus)
     await sale.save();
 
     return res.json({
@@ -1073,12 +1070,12 @@ export const exportSalesListCsv = async (req, res) => {
       query.saleDate = {};
       if (from) {
         const d = new Date(from);
-        d.setHours(0, 0, 0, 0); // Set to start of day
+        d.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         query.saleDate.$gte = d;
       }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999); // Set to end of day
+        end.setHours(23, 59, 59, 999); // Make it end at end of the day
         query.saleDate.$lte = end;
       }
     }
@@ -1152,12 +1149,12 @@ export const exportSalesListPdf = async (req, res) => {
       query.saleDate = {};
       if (from) {
         const d = new Date(from);
-        d.setHours(0, 0, 0, 0); // Set to start of day
+        d.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         query.saleDate.$gte = d;
       }
       if (to) {
         const end = new Date(to);
-        end.setHours(23, 59, 59, 999); // Set to end of day
+        end.setHours(23, 59, 59, 999); // Make it end at end of the day
         query.saleDate.$lte = end;
       }
     }
@@ -1181,7 +1178,7 @@ export const exportSalesListPdf = async (req, res) => {
 
     const doc = pipeDoc(res, `sales_${new Date().toISOString().slice(0, 10)}.pdf`);
     
-    // Fetch and add business information header
+    // Get business info and add it to the PDF header
     const businessInfo = await getBusinessInfo();
     addBusinessHeader(doc, businessInfo);
     

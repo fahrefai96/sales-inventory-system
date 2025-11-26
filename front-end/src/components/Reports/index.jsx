@@ -1,21 +1,36 @@
-// front-end/src/components/Reports/index.jsx
+// This is the Reports page component
 import React from "react";
 import {
   FiDollarSign,
   FiPackage,
-  FiTrendingUp,
   FiUsers,
   FiCreditCard,
 } from "react-icons/fi";
 import Sales from "./Sales.jsx";
 import Inventory from "./Inventory.jsx";
-import Performance from "./Performance.jsx";
 import CustomerBalances from "./CustomerBalances.jsx";
 import CustomerPayments from "./CustomerPayments.jsx";
 
 export default function ReportsIndex() {
-  const [tab, setTab] = React.useState("sales"); // "sales" | "inventory" | "performance" | "balances" | "payments"
+  // Get user role from localStorage to check if admin or staff
+  const role = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos-user") || "{}");
+      return u?.role || "staff";
+    } catch {
+      return "staff";
+    }
+  })();
+
+  const [tab, setTab] = React.useState("sales"); // "sales" | "inventory" | "balances" | "payments"
   const [density, setDensity] = React.useState("comfortable");
+  
+  // Make sure Staff users can only see Sales tab
+  React.useEffect(() => {
+    if (role !== "admin" && tab !== "sales") {
+      setTab("sales");
+    }
+  }, [tab, role]);
 
   const baseTab =
     "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors";
@@ -29,10 +44,10 @@ export default function ReportsIndex() {
       <div>
         <h1 className="text-4xl font-bold">Reports</h1>
         <p className="text-gray-600 text-lg">
-        View structured sales, inventory, performance, and customer balance reports.
+        View structured sales, inventory, and customer balance reports.
         </p>
         </div>
-        {/* Density */}
+        {/* Choose how big things should look */}
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
           <button
             className={`px-3 py-2 text-xs font-medium ${
@@ -63,49 +78,47 @@ export default function ReportsIndex() {
           <FiDollarSign className="text-[15px]" />
           <span>Sales</span>
         </button>
-        <button
-          className={`${baseTab} ${
-            tab === "inventory" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("inventory")}
-        >
-          <FiPackage className="text-[15px]" />
-          <span>Inventory</span>
-        </button>
-        <button
-          className={`${baseTab} ${
-            tab === "performance" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("performance")}
-        >
-          <FiTrendingUp className="text-[15px]" />
-          <span>Performance</span>
-        </button>
-        <button
-          className={`${baseTab} ${
-            tab === "balances" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("balances")}
-        >
-          <FiUsers className="text-[15px]" />
-          <span>Customer Balances</span>
-        </button>
-        <button
-          className={`${baseTab} ${
-            tab === "payments" ? activeTab : inactiveTab
-          }`}
-          onClick={() => setTab("payments")}
-        >
-          <FiCreditCard className="text-[15px]" />
-          <span>Customer Payments</span>
-        </button>
+        {role === "admin" && (
+          <>
+            <button
+              className={`${baseTab} ${
+                tab === "inventory" ? activeTab : inactiveTab
+              }`}
+              onClick={() => setTab("inventory")}
+            >
+              <FiPackage className="text-[15px]" />
+              <span>Inventory</span>
+            </button>
+            <button
+              className={`${baseTab} ${
+                tab === "balances" ? activeTab : inactiveTab
+              }`}
+              onClick={() => setTab("balances")}
+            >
+              <FiUsers className="text-[15px]" />
+              <span>Customer Balances</span>
+            </button>
+            <button
+              className={`${baseTab} ${
+                tab === "payments" ? activeTab : inactiveTab
+              }`}
+              onClick={() => setTab("payments")}
+            >
+              <FiCreditCard className="text-[15px]" />
+              <span>Customer Payments</span>
+            </button>
+          </>
+        )}
       </div>
 
       {tab === "sales" && <Sales density={density} />}
-      {tab === "inventory" && <Inventory density={density} />}
-      {tab === "performance" && <Performance density={density} />}
-      {tab === "balances" && <CustomerBalances density={density} />}
-      {tab === "payments" && <CustomerPayments density={density} />}
+      {role === "admin" && (
+        <>
+          {tab === "inventory" && <Inventory density={density} />}
+          {tab === "balances" && <CustomerBalances density={density} />}
+          {tab === "payments" && <CustomerPayments density={density} />}
+        </>
+      )}
     </div>
   );
 }

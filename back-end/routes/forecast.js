@@ -2,7 +2,7 @@ import express from "express";
 import authMiddleware, { requireRole } from "../middleware/authMiddleware.js";
 import {
   getForecastOverview,
-  getReorderSuggestions, getMLForecast
+  getMLForecast
 } from "../Controllers/Analytics/forecastController.js";
 
 const router = express.Router();
@@ -14,7 +14,6 @@ router.use(requireRole(["admin"]));
 // Main overview endpoint (AI sales forecasting)
 router.get("/", getForecastOverview);
 router.get("/overview", getForecastOverview);
-router.get("/ai/reorder-suggestions", getReorderSuggestions);
 router.get("/ml-forecast", getMLForecast);
 
 

@@ -35,7 +35,7 @@ export const listBrands = async (req, res) => {
       search = "",
       page = "1",
       limit = "25",
-      sortBy = "name", // "name" | "active" | "createdAt"
+      sortBy = "name", // name, active, or createdAt
       sortDir = "asc",
     } = req.query;
 
@@ -43,22 +43,22 @@ export const listBrands = async (req, res) => {
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
     const sortDirNum = sortDir === "asc" ? 1 : -1;
 
-    // Build query
+    // Build search query
     const q = {};
     if (search && search.trim()) {
       q.name = { $regex: search.trim(), $options: "i" };
     }
 
-    // Build sort
+    // Build sort object
     const sort = {};
     if (sortBy === "active") sort.active = sortDirNum;
     else if (sortBy === "createdAt") sort.createdAt = sortDirNum;
-    else sort.name = sortDirNum; // default: name
+    else sort.name = sortDirNum; // default is name
 
-    // Get total count
+    // Get total count of brands
     const total = await Brand.countDocuments(q);
 
-    // Get paginated results
+    // Get brands for the current page
     const skip = (pageNum - 1) * limitNum;
     const brands = await Brand.find(q)
       .sort(sort)
@@ -88,7 +88,7 @@ export const updateBrand = async (req, res) => {
     if (description !== undefined) update.description = description;
     if (active !== undefined) update.active = !!active;
 
-    // avoid duplicate names
+    // Avoid duplicate names
     if (update.name) {
       const dup = await Brand.findOne({ _id: { $ne: id }, name: update.name });
       if (dup) {

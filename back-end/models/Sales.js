@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// NEW: individual payment / adjustment entries
+// Individual payment and adjustment entries
 const paymentEntrySchema = new mongoose.Schema(
   {
     amount: {
@@ -16,13 +16,13 @@ const paymentEntrySchema = new mongoose.Schema(
       enum: ["payment", "adjustment"],
       default: "payment",
     },
-    // Payment method for individual payments (optional)
+    // Payment method for individual payments (optional - cash or cheque)
     method: {
       type: String,
       enum: ["cash", "cheque"],
       default: undefined,
     },
-    // Optional cheque fields for individual payments
+    // Optional cheque details for individual payments
     chequeNumber: {
       type: String,
     },
@@ -84,7 +84,7 @@ const saleSchema = new mongoose.Schema(
       required: true,
     },
 
-    // who last updated the sale (optional until first edit)
+    // Who last updated the sale (optional until first edit)
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -92,20 +92,20 @@ const saleSchema = new mongoose.Schema(
 
     createdAt: { type: Date, default: Date.now },
 
-    // Added saleDate
+    // Sale date
     saleDate: {
       type: Date,
       default: Date.now,
       required: true,
     },
 
-    // Add discount field (percentage discount, default to 0%)
+    // Discount field (percentage discount, default is 0%)
     discount: {
       type: Number,
       default: 0,
     },
 
-    // Discounted total amount
+    // Total amount after discount
     discountedAmount: {
       type: Number,
       default: 0,
@@ -134,46 +134,46 @@ const saleSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    // payment history (normal payments + admin adjustments)
+    // Payment history (normal payments and admin adjustments)
     payments: [paymentEntrySchema],
 
-    // Return total amount
+    // Total amount of returned items
     returnTotal: {
       type: Number,
       default: 0,
     },
 
-    // Returned items
+    // List of returned items
     returns: [
       {
         product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
         quantity: { type: Number, required: true },
-        amount: { type: Number, required: true }, // value of this returned portion
+        amount: { type: Number, required: true }, // value of this returned part
         reason: { type: String, default: "" },
         createdAt: { type: Date, default: Date.now },
       },
     ],
   },
   {
-    //  automatic updatedAt
+    // Automatically update updatedAt
     timestamps: true,
   }
 );
 
 saleSchema.pre("save", function (next) {
-  // Calculate baseTotal: prefer discountedAmount, else totalAmount, else 0
+  // Calculate baseTotal: use discountedAmount if available, else totalAmount, else 0
   const baseTotal = Number(this.discountedAmount ?? this.totalAmount ?? 0);
   const returnTotal = Number(this.returnTotal || 0);
 
   // Initialize on create if not set
   if (this.isNew) {
-    // For new sales, explicitly set amountPaid to 0
+    // For new sales, set amountPaid to 0
     if (this.amountPaid == null) {
       this.amountPaid = 0;
     }
   }
 
-  // Recompute amountDue and status every save
+  // Recalculate amountDue and status every time we save
   const paid = Number(this.amountPaid || 0);
   this.amountDue = Math.max(0, baseTotal - paid);
 

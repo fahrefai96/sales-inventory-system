@@ -3,7 +3,7 @@ import Product from "../models/Product.js";
 
 const FIXED_SIZES = ["Small", "Medium", "Large"];
 
-// Add category
+// Add a new category
 const addCategory = async (req, res) => {
   try {
     const {
@@ -62,7 +62,7 @@ const getCategorys = async (req, res) => {
       search = "",
       page = "1",
       limit = "25",
-      sortBy = "name", // "name" | "createdAt"
+      sortBy = "name", // name or createdAt
       sortDir = "asc",
     } = req.query;
 
@@ -70,21 +70,21 @@ const getCategorys = async (req, res) => {
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
     const sortDirNum = sortDir === "asc" ? 1 : -1;
 
-    // Build query
+    // Build search query
     const q = {};
     if (search && search.trim()) {
       q.name = { $regex: search.trim(), $options: "i" };
     }
 
-    // Build sort
+    // Build sort object
     const sort = {};
     if (sortBy === "createdAt") sort.createdAt = sortDirNum;
-    else sort.name = sortDirNum; // default: name
+    else sort.name = sortDirNum; // default is name
 
-    // Get total count
+    // Get total count of categories
     const total = await Category.countDocuments(q);
 
-    // Get paginated results
+    // Get categories for the current page
     const skip = (pageNum - 1) * limitNum;
     const categories = await Category.find(q)
       .sort(sort)

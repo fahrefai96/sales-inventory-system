@@ -1,4 +1,4 @@
-// Controllers/purchaseController.js
+// This file handles all purchase-related requests
 import mongoose from "mongoose";
 import Purchase from "../models/Purchase.js";
 import Product from "../models/Product.js";
@@ -7,7 +7,7 @@ import Supplier from "../models/Supplier.js";
 import PDFDocument from "pdfkit";
 import { getBusinessInfo, addBusinessHeader } from "../utils/pdfHelpers.js";
 
-// ---------- helpers ----------
+// Helper functions that we use in the controllers
 function computeTotals(payload) {
   const items = (payload.items || []).map((it) => {
     const qty = Number(it.quantity || 0);
@@ -50,15 +50,45 @@ async function ensureAllProductsExistAndActive(items) {
   }
 }
 
-// ---------- controllers ----------
+// These are the main controller functions that handle requests
 export const createDraft = async (req, res, next) => {
   try {
     const { items, subTotal, discount, tax, grandTotal } = computeTotals(
       req.body
     );
 
-    // Strict rule (Option A): all products must already exist & not be soft-deleted
+    // Make sure all products exist and are not deleted
     await ensureAllProductsExistAndActive(items);
+
+    // Make sure each product can only belong to one supplier
+    const purchaseSupplierId = req.body.supplier;
+    
+    for (const line of items) {
+      const product = await Product.findById(line.product);
+      
+      if (!product) {
+        const e = new Error(`Product not found for item`);
+        e.status = 404;
+        throw e;
+      }
+
+      // If product already has a supplier, it must be the same as the purchase supplier
+      if (product.supplier && purchaseSupplierId) {
+        if (product.supplier.toString() !== purchaseSupplierId.toString()) {
+          const e = new Error(
+            `Product ${product.code || product.name || product._id} belongs to a different supplier and cannot be purchased from this supplier.`
+          );
+          e.status = 422;
+          throw e;
+        }
+      }
+
+      // If product has no supplier and purchase has a supplier, assign the supplier to the product
+      if (!product.supplier && purchaseSupplierId) {
+        product.supplier = purchaseSupplierId;
+        await product.save();
+      }
+    }
 
     const doc = await Purchase.create({
       supplier: req.body.supplier,
@@ -100,7 +130,7 @@ export const postPurchase = async (req, res, next) => {
       throw e;
     }
 
-    // Re-validate products in case something changed since draft
+    // Check products again in case something changed since we made the draft
     await ensureAllProductsExistAndActive(purchase.items);
 
     for (const line of purchase.items) {
@@ -108,12 +138,31 @@ export const postPurchase = async (req, res, next) => {
         .session(session)
         .exec();
 
+      const purchaseSupplierId = purchase.supplier;
+
+      // Make sure each product can only belong to one supplier
+      // If product already has a supplier, it must be the same as the purchase supplier
+      if (product.supplier && purchaseSupplierId) {
+        if (product.supplier.toString() !== purchaseSupplierId.toString()) {
+          const e = new Error(
+            "Product belongs to a different supplier and cannot be posted for this supplier"
+          );
+          e.status = 400;
+          throw e;
+        }
+      }
+
+      // If product has no supplier and purchase has a supplier, assign the supplier to the product
+      if (!product.supplier && purchaseSupplierId) {
+        product.supplier = purchaseSupplierId;
+      }
+
       const prevQty = Number(product.stock || 0);
       const prevAvg = Number(product.avgCost || 0);
       const qty = Number(line.quantity || 0);
       const cost = Number(line.unitCost || 0);
 
-      // --- STOCK & COSTS ---
+      // Update stock and cost information
       const newQty = prevQty + qty;
       product.stock = newQty;
 
@@ -123,15 +172,11 @@ export const postPurchase = async (req, res, next) => {
         denominator > 0
           ? +((prevQty * prevAvg + qty * cost) / denominator).toFixed(4)
           : cost;
-
-      if (!product.supplier && purchase.supplier) {
-        product.supplier = purchase.supplier;
-      }
-      // If later you add telemetry (e.g., lastPurchasedFrom), update it here (optional).
+      // If you want to track more info later (like last purchased from), you can add it here
 
       await product.save({ session });
 
-      // Inventory log per line
+      // Record this in the inventory log for each product
       await InventoryLog.create(
         [
           {
@@ -164,7 +209,7 @@ export const postPurchase = async (req, res, next) => {
 };
 
 export const cancelPurchase = async (req, res, next) => {
-  // 🔒 Only admin can cancel posted purchases
+  // Only admin can cancel posted purchases
   if (!req.user || req.user.role !== "admin") {
     return res
       .status(403)
@@ -190,7 +235,7 @@ export const cancelPurchase = async (req, res, next) => {
       throw e;
     }
 
-    // Strict policy: stock must be sufficient to reverse
+    // Make sure we have enough stock to reverse the purchase
     for (const line of purchase.items) {
       const product = await Product.findById(line.product)
         .session(session)
@@ -208,7 +253,7 @@ export const cancelPurchase = async (req, res, next) => {
       }
     }
 
-    // Apply reversal & logs
+    // Reverse the stock changes and record in logs
     for (const line of purchase.items) {
       const product = await Product.findById(line.product)
         .session(session)
@@ -253,7 +298,7 @@ export const cancelPurchase = async (req, res, next) => {
   }
 };
 
-// ---------- read endpoints ----------
+// Functions to get purchase data
 export const listPurchases = async (req, res, next) => {
   try {
     const { supplier, status, from, to, page = 1, limit = 20 } = req.query;
@@ -266,12 +311,12 @@ export const listPurchases = async (req, res, next) => {
       filter.invoiceDate = {};
       if (from) {
         const d = new Date(from);
-        d.setHours(0, 0, 0, 0); // Set to start of day
+        d.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         filter.invoiceDate.$gte = d;
       }
       if (to) {
         const d = new Date(to);
-        d.setHours(23, 59, 59, 999); // Set to end of day
+        d.setHours(23, 59, 59, 999); // Make it end at end of the day
         filter.invoiceDate.$lte = d;
       }
     }
@@ -338,7 +383,7 @@ export const deleteDraft = async (req, res, next) => {
     }
 
     await Purchase.deleteOne({ _id: doc._id });
-    // No stock/log changes needed because drafts never touched stock
+    // We don't need to change stock or logs because drafts never changed stock
     res.status(200).json({ message: "Draft deleted", data: { _id: doc._id } });
   } catch (err) {
     next(err);
@@ -357,7 +402,7 @@ export const updateDraft = async (req, res, next) => {
         .status(409)
         .json({ message: "Only draft purchases can be edited" });
 
-    // Assign header fields
+    // Get the header information from the request
     const { supplier, invoiceNo, invoiceDate, discount, tax, note, items } =
       req.body;
 
@@ -367,7 +412,7 @@ export const updateDraft = async (req, res, next) => {
         .json({ message: "At least one line item is required" });
     }
 
-    // Normalize & validate items and totals
+    // Check and fix the items and calculate totals
     const normItems = items.map((r) => {
       const quantity = Number(r.quantity || 0);
       const unitCost = Number(r.unitCost || 0);
@@ -383,7 +428,7 @@ export const updateDraft = async (req, res, next) => {
     const t = Number(tax || 0);
     const grandTotal = subTotal - d + t;
 
-    // Persist
+    // Save the changes
     purchase.supplier = supplier || null;
     purchase.invoiceNo = invoiceNo || undefined;
     purchase.invoiceDate = invoiceDate || undefined;
@@ -421,31 +466,31 @@ export const getPurchases = async (req, res) => {
     limit = Number(limit);
     const skip = (page - 1) * limit;
 
-    // ---------- FILTERS ----------
+    // Set up filters for the search
     const filter = {};
 
-    // status filter
+    // Filter by status
     if (status !== "all") filter.status = status;
 
-    // supplier filter
+    // Filter by supplier
     if (supplier !== "all") filter.supplier = supplier;
 
-    // date range - filter by invoiceDate (with fallback to createdAt if invoiceDate is missing)
+    // Filter by date range - use invoiceDate if available, otherwise use createdAt
     let dateFilter = {};
     if (from || to) {
       const dateRange = {};
       if (from) {
         const d = new Date(from);
-        d.setHours(0, 0, 0, 0); // Set to start of day
+        d.setHours(0, 0, 0, 0); // Make it start at beginning of the day
         dateRange.$gte = d;
       }
       if (to) {
         const d = new Date(to);
-        d.setHours(23, 59, 59, 999); // Set to end of day
+        d.setHours(23, 59, 59, 999); // Make it end at end of the day
         dateRange.$lte = d;
       }
       
-      // Match by invoiceDate if present, otherwise fallback to createdAt
+      // Use invoiceDate if it exists, otherwise use createdAt
       dateFilter = {
         $or: [
           { invoiceDate: dateRange },
@@ -459,26 +504,26 @@ export const getPurchases = async (req, res) => {
       };
     }
 
-    // total amount range
+    // Filter by total amount range
     if (min || max) {
       filter.grandTotal = {};
       if (min) filter.grandTotal.$gte = Number(min);
       if (max) filter.grandTotal.$lte = Number(max);
     }
 
-    // keyword search – invoiceNo, supplier name, note
+    // Search by invoice number, supplier name, or note
     let searchFilter = {};
     if (search.trim() !== "") {
       const s = search.trim();
 
-      // Find suppliers whose NAME matches the search text
+      // Find suppliers whose name matches the search text
       const matchingSuppliers = await Supplier.find({
         name: { $regex: s, $options: "i" },
       }).select("_id");
 
       const supplierIds = matchingSuppliers.map((sup) => sup._id);
 
-      // Build OR conditions
+      // Build search conditions (match any of these)
       const orConditions = [
         { invoiceNo: { $regex: s, $options: "i" } },
         { note: { $regex: s, $options: "i" } },
@@ -491,7 +536,7 @@ export const getPurchases = async (req, res) => {
       searchFilter.$or = orConditions;
     }
 
-    // Combine date filter and search filter using $and if both exist
+    // Combine date filter and search filter if both exist
     if (Object.keys(dateFilter).length > 0 && Object.keys(searchFilter).length > 0) {
       filter.$and = [dateFilter, searchFilter];
     } else if (Object.keys(dateFilter).length > 0) {
@@ -500,10 +545,10 @@ export const getPurchases = async (req, res) => {
       Object.assign(filter, searchFilter);
     }
 
-    // ---------- SORTING ----------
+    // Set up sorting
     const sort = {};
 
-    // Ensure sortDir is valid, default to "desc" for newest first
+    // Make sure sort direction is valid, default to "desc" to show newest first
     const validSortDir = sortDir === "asc" ? "asc" : "desc";
     const dir = validSortDir === "asc" ? 1 : -1;
 
@@ -512,20 +557,20 @@ export const getPurchases = async (req, res) => {
     else if (sortBy === "grandTotal") sort.grandTotal = dir;
     else if (sortBy === "status") sort.status = dir;
     else {
-      // For invoiceDate, sort by invoiceDate first, then createdAt as fallback
-      // This ensures purchases without invoiceDate still sort correctly
-      // Use $ifNull to treat null invoiceDate as createdAt for sorting
+      // For invoiceDate, sort by invoiceDate first, then createdAt if invoiceDate is missing
+      // This makes sure purchases without invoiceDate still sort correctly
+      // Use $ifNull to use createdAt when invoiceDate is null
       sort.invoiceDate = dir;
       sort.createdAt = dir; // Secondary sort for consistency
     }
 
-    // ---------- QUERY ----------
-    // Use aggregation to properly handle null invoiceDate values when sorting
+    // Build the database query
+    // Use aggregation to handle null invoiceDate values when sorting
     let pipeline = [
       { $match: filter }
     ];
 
-    // If sorting by invoiceDate, use a computed field that falls back to createdAt
+    // If sorting by invoiceDate, make a computed field that uses createdAt if invoiceDate is missing
     if (sortBy === "invoiceDate" || !sortBy || sortBy === "") {
       pipeline.push({
         $addFields: {
@@ -534,19 +579,19 @@ export const getPurchases = async (req, res) => {
           }
         }
       });
-      // Update sort to use the computed field
+      // Use the computed field for sorting
       const computedSort = { sortDate: dir };
       pipeline.push({ $sort: computedSort });
     } else {
-      // For other sort fields, use the regular sort
+      // For other sort fields, use normal sorting
       pipeline.push({ $sort: sort });
     }
 
-    // Add pagination
+    // Skip and limit for pagination
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limit });
 
-    // Populate supplier
+    // Get supplier information
     pipeline.push({
       $lookup: {
         from: "suppliers",
@@ -562,7 +607,7 @@ export const getPurchases = async (req, res) => {
       }
     });
 
-    // Project fields (remove the computed sortDate field)
+    // Select which fields to return (remove the computed sortDate field)
     pipeline.push({
       $project: {
         supplier: {
@@ -737,7 +782,7 @@ export const exportPurchasesPdf = async (req, res) => {
 
     const doc = pipeDoc(res, `purchases_${new Date().toISOString().slice(0, 10)}.pdf`);
     
-    // Fetch and add business information header
+    // Get business info and add it to the PDF header
     const businessInfo = await getBusinessInfo();
     addBusinessHeader(doc, businessInfo);
     

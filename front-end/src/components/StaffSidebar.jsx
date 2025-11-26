@@ -12,6 +12,7 @@ import {
   FiMessageSquare,
   FiLayers,
   FiUser,
+  FiBarChart2,
 } from "react-icons/fi";
 
 const StaffSidebar = () => {
@@ -51,6 +52,11 @@ const StaffSidebar = () => {
       name: "Customers",
       path: "/staff/customers",
       icon: <FiUsers />,
+    },
+    {
+      name: "Reports",
+      path: "/staff/reports",
+      icon: <FiBarChart2 />,
     },
     {
       name: "Chatbot",

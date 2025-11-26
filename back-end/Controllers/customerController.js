@@ -2,16 +2,16 @@ import Customer from "../models/Customer.js";
 import Sale from "../models/Sales.js";
 import PDFDocument from "pdfkit";
 
-// Add customer
+// Add a new customer
 export const addCustomer = async (req, res) => {
   try {
-    const { name, email, phone, address } = req.body;
+    const { name, email, phone, address, note } = req.body;
     if (!name)
       return res
         .status(400)
         .json({ success: false, error: "Name is required" });
 
-    const newCustomer = new Customer({ name, email, phone, address });
+    const newCustomer = new Customer({ name, email, phone, address, note });
     await newCustomer.save();
 
     res.status(201).json({
@@ -27,9 +27,9 @@ export const addCustomer = async (req, res) => {
 
 // Get customers
 // Query params:
-//  - search: unified search (name, email, phone, address)
+//  - search: search by name, email, phone, or address
 //  - sortBy: field to sort by (name, email, phone, createdAt)
-//  - sortDir: asc | desc
+//  - sortDir: asc or desc
 //  - page: page number (default: 1)
 //  - limit: items per page (default: 25)
 export const getCustomers = async (req, res) => {
@@ -64,17 +64,17 @@ export const getCustomers = async (req, res) => {
     };
     const sortField = validSortFields[sortBy] || "createdAt";
     const sortDirection = sortDir === "asc" ? 1 : -1;
-    const sortObj = { [sortField]: sortDirection, _id: -1 }; // stable tiebreaker
+    const sortObj = { [sortField]: sortDirection, _id: -1 }; // use _id to keep order the same
 
-    // Pagination
+    // Set up pagination
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 25));
     const skip = (pageNum - 1) * limitNum;
 
-    // Get total count
+    // Get total count of customers
     const total = await Customer.countDocuments(q);
 
-    // Get paginated customers
+    // Get customers for the current page
     const customers = await Customer.find(q)
       .sort(sortObj)
       .skip(skip)
@@ -95,15 +95,15 @@ export const getCustomers = async (req, res) => {
   }
 };
 
-// Update customer
+// Update a customer
 export const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, address } = req.body;
+    const { name, email, phone, address, note } = req.body;
 
     const updated = await Customer.findByIdAndUpdate(
       id,
-      { name, email, phone, address },
+      { name, email, phone, address, note },
       { new: true }
     );
     if (!updated)
@@ -118,7 +118,7 @@ export const updateCustomer = async (req, res) => {
   }
 };
 
-// Delete customer
+// Delete a customer
 export const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -140,7 +140,7 @@ export const getCustomerPurchases = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // make sure the customer exists
+    // Make sure the customer exists
     const customer = await Customer.findById(id);
     if (!customer) {
       return res
@@ -301,7 +301,7 @@ export const exportCustomersCsv = async (req, res) => {
     
     const q = {};
     
-    // Unified search (name, email, phone, address)
+    // Search by name, email, phone, or address
     if (search && search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: "i" };
       q.$or = [
@@ -330,12 +330,13 @@ export const exportCustomersCsv = async (req, res) => {
       email: c.email || "-",
       phone: c.phone || "-",
       address: c.address || "-",
+      note: c.note || "-",
     }));
     
     sendCsv(
       res,
       `customers_${new Date().toISOString().slice(0, 10)}.csv`,
-      ["name", "email", "phone", "address"],
+      ["name", "email", "phone", "address", "note"],
       rows
     );
   } catch (error) {
@@ -440,7 +441,7 @@ export const exportCustomersPdf = async (req, res) => {
     
     const q = {};
     
-    // Unified search (name, email, phone, address)
+    // Search by name, email, phone, or address
     if (search && search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: "i" };
       q.$or = [
@@ -482,7 +483,7 @@ export const exportCustomersPdf = async (req, res) => {
       doc.text(
         `${c.name || "-"} | Email: ${c.email || "-"} | Phone: ${
           c.phone || "-"
-        } | Address: ${c.address || "-"}`
+        } | Address: ${c.address || "-"}${c.note ? ` | Note: ${c.note}` : ""}`
       );
     });
     

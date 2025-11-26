@@ -173,7 +173,6 @@ export function answerHowViewReports(role = "staff") {
       "2. Select a report tab:\n" +
       "   • **Sales:** Sales summaries, top products, top customers, returned sales\n" +
       "   • **Inventory:** Stock status, supplier summaries\n" +
-      "   • **Performance:** User performance, product trends\n" +
       "   • **Customer Balances:** Outstanding balances for all customers\n" +
       "   • **Customer Payments:** Payment history across all customers\n" +
       "3. Use date filters to narrow down the time period\n" +

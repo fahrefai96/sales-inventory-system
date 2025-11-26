@@ -33,12 +33,6 @@ const Forecasting = ({ density = "comfortable" }) => {
   const [seasonality, setSeasonality] = React.useState(null);
   const [forecast, setForecast] = React.useState(null);
 
-  // reorder suggestions state
-  const [reorderLoading, setReorderLoading] = React.useState(true);
-  const [reorderError, setReorderError] = React.useState("");
-  const [reorderSuggestions, setReorderSuggestions] = React.useState([]);
-  const [reorderMeta, setReorderMeta] = React.useState(null);
-
   // ML forecast state
   const [mlData, setMlData] = React.useState([]);
   const [mlLoading, setMlLoading] = React.useState(false);
@@ -78,35 +72,6 @@ const Forecasting = ({ density = "comfortable" }) => {
       } else {
         setLoading(false);
       }
-    }
-
-    // reorder suggestions (separate so its error doesn't kill main forecast)
-    try {
-      setReorderLoading(true);
-      setReorderError("");
-
-      const res2 = await api.get("/forecast/ai/reorder-suggestions");
-      const d = res2.data || {};
-
-      const list =
-        Array.isArray(d.data) && d.data.length
-          ? d.data
-          : Array.isArray(d.suggestions)
-          ? d.suggestions
-          : [];
-
-      setReorderSuggestions(list);
-      setReorderMeta(d.meta || null);
-    } catch (err) {
-      console.error("Error loading reorder suggestions:", err);
-      setReorderError(
-        err?.response?.data?.error ||
-          err?.response?.data?.message ||
-          "Failed to load reorder suggestions."
-      );
-      setReorderSuggestions([]);
-    } finally {
-      setReorderLoading(false);
     }
   }, []);
 
@@ -259,9 +224,6 @@ const Forecasting = ({ density = "comfortable" }) => {
       ? seasonality.lowMonths.join(", ")
       : "N/A";
 
-  const lookbackDays = reorderMeta?.lookbackDays;
-  const targetDays = reorderMeta?.targetDays;
-
   const baseTab =
     "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors";
   const activeTab = "bg-gray-900 text-white";
@@ -276,7 +238,7 @@ const Forecasting = ({ density = "comfortable" }) => {
           Sales Forecasting
           </h2>
           <p className="text-sm text-gray-500">            {mode === "business"
-              ? "AI-based sales forecasting using historical data (linear regression) to predict future revenue, highlight seasonal patterns, and suggest reorder quantities."
+              ? "AI-based sales forecasting using historical data (linear regression) to predict future revenue and highlight seasonal patterns."
               : "ML-based daily sales forecast using XGBoost model trained on retail sales data."}
           </p>
         </div>
@@ -508,89 +470,6 @@ const Forecasting = ({ density = "comfortable" }) => {
             </div>
           </div>
 
-          {/*  Reorder Suggestions */}
-          <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900">
-                  Reorder Suggestions
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Products that are likely to run out soon based on{" "}
-                  {lookbackDays ? `${lookbackDays} days` : "recent"} sales, with
-                  recommended reorder quantities to reach about{" "}
-                  {targetDays ? `${targetDays} days` : "the target"} of stock cover.
-                </p>
-              </div>
-            </div>
-
-            {reorderError && (
-              <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {reorderError}
-              </div>
-            )}
-
-            {reorderLoading ? (
-              <div className="h-24 flex items-center justify-center text-sm text-gray-500">
-                Loading reorder suggestions…
-              </div>
-            ) : reorderSuggestions.length === 0 ? (
-              <div className="text-sm text-gray-500">
-                No products currently need reorder suggestions based on the
-                selected period.
-              </div>
-            ) : (
-              <div className="max-h-80 overflow-auto rounded-lg border border-gray-100">
-                <table className="min-w-full text-xs">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-semibold">Product</th>
-                      <th className="px-3 py-2 text-right font-semibold">
-                        Current stock
-                      </th>
-                      <th className="px-3 py-2 text-right font-semibold">
-                        Avg daily sales
-                      </th>
-                      <th className="px-3 py-2 text-right font-semibold">
-                        Days of cover
-                      </th>
-                      <th className="px-3 py-2 text-right font-semibold">
-                        Suggested reorder
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reorderSuggestions.map((item) => (
-                      <tr key={item.productId} className="border-t border-gray-100">
-                        <td className="px-3 py-1.5">
-                          <div className="font-medium text-gray-900">
-                            {item.name || "Unknown product"}
-                          </div>
-                          {item.code && (
-                            <div className="text-[11px] text-gray-500">
-                              Code: {item.code}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          {item.currentStock}
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          {item.avgDailySales}
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          {item.daysOfCover}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-semibold text-indigo-700">
-                          {item.recommendedQty}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </>
       )}
 
